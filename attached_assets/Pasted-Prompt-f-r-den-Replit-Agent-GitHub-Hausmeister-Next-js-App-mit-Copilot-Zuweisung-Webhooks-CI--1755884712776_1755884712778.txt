@@ -1,0 +1,547 @@
+Prompt für den Replit Agent: „GitHub Hausmeister“ – Next.js App mit Copilot-Zuweisung, Webhooks, CI-Checks & Auto-Merge
+
+> Ziel: Baue eine produktionsreife Next.js-App (App Router) mit einfacher mobiler UI und API-Backend, die für ausgewählte Repos automatisch Chore-Issues erstellt, Copilot (Coding Agent) via GraphQL zuweist, PRs überwacht, CI-Ergebnisse (npm build/test) auswertet und bei Erfolg approved & merged.
+Es soll immer nur 1 Task gleichzeitig laufen (konfigurierbare maximale Anzahl Tasks insgesamt). Hosting: Replit (Deployment), Secrets via Replit-Umgebungsvariablen.
+
+
+
+
+---
+
+1) Anforderungen & Architektur
+
+Tech: Next.js (App Router), TypeScript, Tailwind (mobile-first), API-Routen als Backend.
+
+GitHub-Integration:
+
+Auth: Personal Access Token (Classic oder Fine-Grained) mit repo, workflow, admin:repo_hook, read:org.
+
+REST: Issues/PRs/Reviews/Merge/Webhooks registrieren.
+
+GraphQL v4: Copilot-Agent als Assignee setzen (addAssigneesToAssignable), optional Lookup seiner NodeID.
+
+
+Webhooks (ein Endpoint):
+
+issues (assigned), pull_request (opened, ready_for_review, reopened), check_suite.completed oder workflow_run.completed (für CI).
+
+
+CI-Definition (im Ziel-Repo): GitHub Actions, die bei PR npm ci && npm run build && npm test ausführen.
+
+Task-Queue (Single Concurrency): In-Memory Queue + persistentes JSON (z. B. data/state.json). Nur 1 aktiver Task gleichzeitig; nach Erfolg/Ablehnung nächster Task.
+
+Kontingent: App-konfiguriert: MAX_MONTHLY_TASKS (z. B. 300). App zählt abgeschlossene Tasks.
+
+UI: Minimal-UI:
+
+Start/Stop „Chore-Schleife“, Anzeige aktueller Task, Queue, Durchläufe, PR-Status, CI-Status.
+
+Form: Repo auswählen, Anzahl Chore-Issues, Templates (z. B. „Tests ergänzen“, „Lint/Format“, „Typen härten“).
+
+
+Resilienz: Idempotente Webhooks (per X-GitHub-Delivery deduplizieren), Fehler-Logging, Retry für API-Calls mit Exponential Backoff.
+
+
+
+---
+
+2) Env & Projektstruktur
+
+ENV (Replit Secrets):
+
+GITHUB_TOKEN=ghp_xxx
+GITHUB_WEBHOOK_SECRET=super_secret
+COPILOT_ACTOR_ID= (optional, NodeID des Copilot-Coding-Agent)
+OWNER=mein-github-user-oder-org
+REPOSITORIES=repo1,repo2
+MAX_MONTHLY_TASKS=50
+
+Struktur:
+
+/app
+  /ui
+    page.tsx
+    components/StatusCard.tsx
+    components/RepoPicker.tsx
+/app/api
+  /webhook/route.ts
+  /issues/create/route.ts
+  /tasks/start/route.ts
+  /tasks/status/route.ts
+  /tasks/approve-merge/route.ts
+/lib
+  github-rest.ts
+  github-graphql.ts
+  queue.ts
+  state.ts
+  ci.ts
+  copilot.ts
+  webhook-verify.ts
+/data
+  state.json
+  deliveries.json
+/styles/globals.css
+next.config.js
+package.json
+tsconfig.json
+
+
+---
+
+3) GitHub GraphQL: Copilot als Assignee
+
+> Strategie: Wenn COPILOT_ACTOR_ID gesetzt ist, direkt nutzen. Sonst versuch, Copilot-Agent-ID via GraphQL zu finden (Fallback: klarer Fehlerhinweis).
+
+
+
+3.1 GraphQL-Client (lib/github-graphql.ts)
+
+// lib/github-graphql.ts
+import fetch from "node-fetch";
+
+const GQL = "https://api.github.com/graphql";
+const TOKEN = process.env.GITHUB_TOKEN!;
+
+export async function gql<T>(query: string, variables: Record<string, any> = {}): Promise<T> {
+  const res = await fetch(GQL, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+  if (!res.ok) throw new Error(`GraphQL HTTP ${res.status}: ${await res.text()}`);
+  const json = await res.json();
+  if (json.errors) throw new Error(`GraphQL errors: ${JSON.stringify(json.errors)}`);
+  return json.data as T;
+}
+
+3.2 Copilot-ID ermitteln & zuweisen (lib/copilot.ts)
+
+// lib/copilot.ts
+import { gql } from "./github-graphql";
+
+export async function getCopilotNodeId(): Promise<string> {
+  const configured = process.env.COPILOT_ACTOR_ID;
+  if (configured && configured.trim()) return configured.trim();
+
+  // Versuche via GraphQL den Copilot-Agenten zu finden (Login kann variieren, hier heuristisch)
+  const query = `
+    query($login: String!) {
+      user(login: $login) { id login }
+      organization(login: $login) { id login }
+    }`;
+  const candidates = ["copilot", "github-copilot", "copilot-swe-agent"];
+  for (const login of candidates) {
+    try {
+      const data: any = await gql(query, { login });
+      if (data?.user?.id) return data.user.id;
+      if (data?.organization?.id) return data.organization.id;
+    } catch {}
+  }
+  throw new Error("COPILOT_ACTOR_ID nicht konfiguriert und Copilot-Agent-ID nicht auffindbar. Bitte .env setzen.");
+}
+
+export async function addAssignee(issueNodeId: string, assigneeNodeId: string) {
+  const mutation = `
+    mutation($assignableId: ID!, $assigneeIds: [ID!]!) {
+      addAssigneesToAssignable(input: {assignableId: $assignableId, assigneeIds: $assigneeIds}) {
+        assignable { ... on Issue { id number title } }
+      }
+    }`;
+  return gql(mutation, { assignableId: issueNodeId, assigneeIds: [assigneeNodeId] });
+}
+
+
+---
+
+4) REST-Helfer & Issue/PR-Operationen
+
+4.1 Octokit REST (lib/github-rest.ts)
+
+// lib/github-rest.ts
+import { Octokit } from "octokit";
+
+export const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+
+export async function createIssue(owner: string, repo: string, title: string, body: string, labels: string[] = []) {
+  const { data } = await octokit.rest.issues.create({ owner, repo, title, body, labels });
+  return data; // includes number, id, node_id
+}
+
+export async function getIssue(owner: string, repo: string, issue_number: number) {
+  return (await octokit.rest.issues.get({ owner, repo, issue_number })).data;
+}
+
+export async function createReviewApprove(owner: string, repo: string, pull_number: number, body = "LGTM (auto)") {
+  return octokit.rest.pulls.createReview({ owner, repo, pull_number, event: "APPROVE", body });
+}
+
+export async function mergePullRequest(owner: string, repo: string, pull_number: number, method: "merge"|"squash"|"rebase" = "squash") {
+  return octokit.rest.pulls.merge({ owner, repo, pull_number, merge_method: method });
+}
+
+export async function listPRsForIssue(owner: string, repo: string, issue_number: number) {
+  // PRs referenzieren das Issue per „Closes #<nr>“; alternativ: search
+  const { data } = await octokit.rest.search.issuesAndPullRequests({
+    q: `repo:${owner}/${repo} type:pr in:body is:open "${`#${issue_number}`}"`,
+  });
+  return data.items;
+}
+
+
+---
+
+5) CI-Checks (npm build/test)
+
+5.1 CI-Ergebnis prüfen (lib/ci.ts)
+
+// lib/ci.ts
+import { octokit } from "./github-rest";
+
+export async function isPRGreen(owner: string, repo: string, sha: string) {
+  // Nutze combined status + checks
+  const [statusRes, checksRes] = await Promise.all([
+    octokit.rest.repos.getCombinedStatusForRef({ owner, repo, ref: sha }),
+    octokit.rest.checks.listForRef({ owner, repo, ref: sha }),
+  ]);
+
+  const allStatusesOk = statusRes.data.state === "success";
+  const allChecksOk = checksRes.data.check_runs.every(cr => cr.conclusion === "success");
+  return allStatusesOk && allChecksOk;
+}
+
+5.2 Beispiel GitHub Actions Workflow (im Ziel-Repo .github/workflows/ci.yml)
+
+name: CI
+on:
+  pull_request:
+    branches: [ main ]
+jobs:
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: 'npm' }
+      - run: npm ci
+      - run: npm run build
+      - run: npm test --if-present
+
+
+---
+
+6) Queue & State (1 Task gleichzeitig)
+
+6.1 State Persistenz (lib/state.ts)
+
+// lib/state.ts
+import fs from "fs";
+import path from "path";
+
+const p = path.join(process.cwd(), "data/state.json");
+
+type State = {
+  monthlyDone: number;
+  activeTask?: {
+    owner: string; repo: string; issueNumber: number; pullNumber?: number; headSha?: string;
+  };
+  queue: Array<{ owner: string; repo: string; title: string; body: string; labels: string[] }>;
+};
+
+const DEFAULT_STATE: State = { monthlyDone: 0, queue: [] };
+
+export function loadState(): State {
+  try { return JSON.parse(fs.readFileSync(p, "utf8")); } catch { return DEFAULT_STATE; }
+}
+export function saveState(s: State) {
+  fs.mkdirSync(path.dirname(p), { recursive: true });
+  fs.writeFileSync(p, JSON.stringify(s, null, 2));
+}
+
+6.2 Simple Queue (lib/queue.ts)
+
+// lib/queue.ts
+import { loadState, saveState } from "./state";
+import { createIssue } from "./github-rest";
+import { getCopilotNodeId, addAssignee } from "./copilot";
+import { gql } from "./github-graphql";
+
+export async function startNextIfIdle() {
+  const s = loadState();
+  if (s.activeTask || s.queue.length === 0) return;
+
+  const max = Number(process.env.MAX_MONTHLY_TASKS || 50);
+  if (s.monthlyDone >= max) return;
+
+  const job = s.queue.shift()!;
+  // 1) Issue erstellen
+  const issue = await createIssue(job.owner, job.repo, job.title, job.body, job.labels);
+  // 2) Copilot zuweisen (GraphQL)
+  const copilotId = await getCopilotNodeId();
+  await addAssignee(issue.node_id, copilotId);
+
+  s.activeTask = { owner: job.owner, repo: job.repo, issueNumber: issue.number };
+  saveState(s);
+}
+
+export function markDoneAndContinue() {
+  const s = loadState();
+  s.activeTask = undefined;
+  s.monthlyDone += 1;
+  saveState(s);
+  // nächster Start asynchron
+  setTimeout(() => { startNextIfIdle().catch(console.error); }, 1000);
+}
+
+
+---
+
+7) Webhook-Handler & PR-Automation
+
+7.1 Signaturprüfung (lib/webhook-verify.ts)
+
+// lib/webhook-verify.ts
+import crypto from "crypto";
+
+export function verifySignature(secret: string, payload: string, sig256: string | undefined) {
+  const hmac = crypto.createHmac("sha256", secret);
+  const digest = `sha256=${hmac.update(payload).digest("hex")}`;
+  return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(sig256 || ""));
+}
+
+7.2 Route: /api/webhook/route.ts
+
+// app/api/webhook/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { verifySignature } from "@/lib/webhook-verify";
+import { loadState, saveState } from "@/lib/state";
+import { octokit } from "@/lib/github-rest";
+import { isPRGreen } from "@/lib/ci";
+import { createReviewApprove, mergePullRequest } from "@/lib/github-rest";
+import { markDoneAndContinue } from "@/lib/queue";
+
+export async function POST(req: NextRequest) {
+  const secret = process.env.GITHUB_WEBHOOK_SECRET!;
+  const sig256 = req.headers.get("x-hub-signature-256") || undefined;
+  const event = req.headers.get("x-github-event") || "unknown";
+  const delivery = req.headers.get("x-github-delivery") || "n/a";
+  const body = await req.text();
+
+  if (!verifySignature(secret, body, sig256)) return NextResponse.json({ ok: false }, { status: 401 });
+
+  const payload = JSON.parse(body);
+  const s = loadState();
+
+  // Idempotenz: optional deliveries.json pflegen (aus Platzgründen ausgelassen)
+
+  // Interessante Events:
+  if (event === "pull_request") {
+    const action = payload.action;
+    const pr = payload.pull_request;
+    const owner = payload.repository.owner.login;
+    const repo = payload.repository.name;
+
+    // Nur wenn es unser aktiver Task ist (Issue-Nummer in PR-Body referenziert)
+    const issueRef = s.activeTask?.issueNumber && pr.body?.includes(`#${s.activeTask.issueNumber}`);
+
+    if (issueRef) {
+      if (action === "opened" || action === "ready_for_review" || action === "synchronize") {
+        // PR merken
+        s.activeTask!.pullNumber = pr.number;
+        s.activeTask!.headSha = pr.head.sha;
+        saveState(s);
+      }
+
+      if (["ready_for_review", "synchronize"].includes(action)) {
+        // Prüfe CI (kann auch via workflow_run.completed Event komplementär passieren)
+        const ok = await isPRGreen(owner, repo, pr.head.sha);
+        if (ok) {
+          await createReviewApprove(owner, repo, pr.number, "Automatisches Review: CI grün ✔️");
+          await mergePullRequest(owner, repo, pr.number, "squash");
+          markDoneAndContinue();
+        }
+      }
+    }
+  }
+
+  // Optional: workflow_run.completed / check_suite.completed => bei CI-Erfolg PR ermitteln & mergen
+
+  return NextResponse.json({ ok: true, delivery, event });
+}
+
+
+---
+
+8) Steuer-API & UI
+
+8.1 API: Starten & Status
+
+// app/api/tasks/start/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { loadState, saveState } from "@/lib/state";
+import { startNextIfIdle } from "@/lib/queue";
+
+export async function POST(req: NextRequest) {
+  const { owner, repo, chores, limit } = await req.json();
+  const s = loadState();
+  const maxTasks = Number(limit ?? 10);
+
+  // Beispiel-Templates für Chores
+  const templates = [
+    { title: "Tests nachziehen (kritische Pfade)", body: "Bitte Unit Tests für Kernfunktionen ergänzen. Ziel: Abdeckung +10%. Closes after CI green.", labels: ["chore","tests"] },
+    { title: "Lint/Format Fehler beheben", body: "Bitte eslint/prettier-Probleme lösen und CI grün machen.", labels: ["chore","lint"] },
+    { title: "Types härten (strict/tsconfig)", body: "Bitte TypeScript-Fehler reduzieren; keine suppressions. CI muss grün sein.", labels: ["chore","types"] },
+  ];
+
+  for (let i = 0; i < Math.min(maxTasks, templates.length); i++) {
+    const t = templates[i % templates.length];
+    s.queue.push({ owner, repo, title: t.title, body: t.body + `\n\n(Closes to reference: will close when done)`, labels: t.labels });
+  }
+  saveState(s);
+  await startNextIfIdle();
+  return NextResponse.json({ ok: true, queued: s.queue.length });
+}
+
+// app/api/tasks/status/route.ts
+import { NextResponse } from "next/server";
+import { loadState } from "@/lib/state";
+export async function GET() { return NextResponse.json(loadState()); }
+
+8.2 UI: einfache mobile Seite
+
+// app/ui/page.tsx
+"use client";
+import { useEffect, useState } from "react";
+
+export default function Page() {
+  const [status, setStatus] = useState<any>(null);
+  const [owner, setOwner] = useState<string>(process.env.NEXT_PUBLIC_OWNER || "");
+  const [repo, setRepo] = useState<string>("");
+
+  async function refresh() {
+    const r = await fetch("/api/tasks/status");
+    setStatus(await r.json());
+  }
+  useEffect(() => { refresh(); }, []);
+
+  async function start() {
+    await fetch("/api/tasks/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ owner, repo, limit: 10 })
+    });
+    await refresh();
+  }
+
+  return (
+    <main className="p-4 max-w-md mx-auto space-y-4">
+      <h1 className="text-xl font-semibold">GitHub Hausmeister</h1>
+      <div className="space-y-2">
+        <input className="border p-2 w-full" placeholder="Owner" value={owner} onChange={e=>setOwner(e.target.value)} />
+        <input className="border p-2 w-full" placeholder="Repo" value={repo} onChange={e=>setRepo(e.target.value)} />
+        <button onClick={start} className="w-full rounded bg-black text-white p-2">Chore-Schleife starten</button>
+      </div>
+
+      <section className="border rounded p-3">
+        <h2 className="font-medium mb-2">Status</h2>
+        {!status ? <p>Lade…</p> : (
+          <div className="text-sm space-y-1">
+            <div>Monthly Done: <b>{status.monthlyDone}</b></div>
+            <div>Active Task: <pre className="whitespace-pre-wrap">{JSON.stringify(status.activeTask, null, 2)}</pre></div>
+            <div>Queue ({status.queue?.length || 0}): <pre className="whitespace-pre-wrap">{JSON.stringify(status.queue, null, 2)}</pre></div>
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}
+
+
+---
+
+9) Repos vorbereiten (einmalig)
+
+1. Webhook am Repo/Org auf die Replit-URL (/api/webhook) mit Events:
+issues, pull_request, workflow_run (oder check_suite), Secret=GITHUB_WEBHOOK_SECRET.
+
+
+2. CI-Workflow hinzufügen (s.o.).
+
+
+3. Branchschutz (optional): Require status checks before merging.
+
+
+4. Copilot Coding Agent im Repo aktivieren (UI), sicherstellen, dass der Agent PRs öffnen darf.
+
+
+
+
+---
+
+10) Ablauflogik (E2E)
+
+1. Nutzer startet „Chore-Schleife“ in der UI → App füllt Queue (max N) → startNextIfIdle().
+
+
+2. App erstellt Issue → GraphQL weist Copilot zu → Copilot beginnt zu arbeiten.
+
+
+3. Copilot öffnet PR (Draft) → Webhook pull_request.opened speichert PR/sha.
+
+
+4. Copilot markiert „ready for review“ → Webhook prüft via isPRGreen() CI-Status.
+
+
+5. Grün? → App approvt PR und merged; markDoneAndContinue() startet nächsten Task.
+
+
+6. Rot? → App kommentiert, optional schließt oder lässt PR offen (manueller Eingriff).
+
+
+
+
+---
+
+11) Bitte um Umsetzung
+
+Erstelle das Projekt gemäß obiger Struktur in Next.js + TS.
+
+Implementiere alle gezeigten Dateien/Funktionen (du darfst Boilerplate ergänzen).
+
+Füge Tailwind hinzu, mobile-first UI.
+
+Setze Replit Deploy (Build: npm run build, Run: npm run start).
+
+Dokumentiere in README.md:
+
+Replit-Env-Variablen,
+
+GitHub-Tokens & Berechtigungen,
+
+Webhook-Setup,
+
+CI-Workflow-Setup,
+
+Copilot-Agent-ID Konfiguration,
+
+Sicherheits-/Rate-Limit-Hinweise.
+
+
+
+Wichtig:
+
+Single Concurrency strikt einhalten (nur ein aktiver Task).
+
+Robuste Fehlerbehandlung & Idempotenz im Webhook.
+
+GraphQL-Fehlerszenarien (Copilot-ID nicht gefunden) klar loggen.
+
+Keine geheimen Tokens im Client-Bundle (nur Server lesen .env).
+
+
+> Wenn etwas unklar ist (z. B. exakte Copilot-Agent-ID), frage mich nach dem gewünschten Login/NodeID, oder baue eine UI-Einstellung „Copilot NodeID“ ein und persistiere sie serverseitig.
+
+
+
