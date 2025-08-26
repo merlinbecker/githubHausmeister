@@ -1,10 +1,39 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, json, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, json, boolean, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { relations } from "drizzle-orm";
+
+// Users table for GitHub OAuth
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey(), // GitHub user ID
+  username: text("username").notNull(),
+  email: text("email"),
+  avatarUrl: text("avatar_url"),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token"),
+  tokenExpiresAt: timestamp("token_expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// User repositories (user can select which repos to monitor)
+export const userRepositories = pgTable("user_repositories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  owner: text("owner").notNull(),
+  repo: text("repo").notNull(),
+  webhookId: integer("webhook_id"), // GitHub webhook ID
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("user_repositories_user_id_idx").on(table.userId),
+]);
 
 export const tasks = pgTable("tasks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  repositoryId: varchar("repository_id").notNull().references(() => userRepositories.id, { onDelete: "cascade" }),
   owner: text("owner").notNull(),
   repo: text("repo").notNull(),
   title: text("title").notNull(),
@@ -16,7 +45,10 @@ export const tasks = pgTable("tasks", {
   status: text("status").notNull().default("queued"), // queued, active, completed, failed
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("tasks_user_id_idx").on(table.userId),
+  index("tasks_status_idx").on(table.status),
+]);
 
 export const webhookDeliveries = pgTable("webhook_deliveries", {
   id: varchar("id").primaryKey(),
@@ -25,14 +57,81 @@ export const webhookDeliveries = pgTable("webhook_deliveries", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const systemState = pgTable("system_state", {
-  id: varchar("id").primaryKey().default("singleton"),
+// User-specific system state
+export const userSystemState = pgTable("user_system_state", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   monthlyDone: integer("monthly_done").default(0),
   systemRunning: boolean("system_running").default(true),
   lastReset: timestamp("last_reset").defaultNow(),
+}, (table) => [
+  index("user_system_state_user_id_idx").on(table.userId),
+]);
+
+// Session storage table
+export const sessions = pgTable("sessions", {
+  sid: varchar("sid").primaryKey(),
+  sess: json("sess").notNull(),
+  expire: timestamp("expire").notNull(),
+}, (table) => [
+  index("IDX_session_expire").on(table.expire),
+]);
+
+// Relations
+export const usersRelations = relations(users, ({ many }) => ({
+  repositories: many(userRepositories),
+  tasks: many(tasks),
+  systemState: many(userSystemState),
+}));
+
+export const userRepositoriesRelations = relations(userRepositories, ({ one, many }) => ({
+  user: one(users, {
+    fields: [userRepositories.userId],
+    references: [users.id],
+  }),
+  tasks: many(tasks),
+}));
+
+export const tasksRelations = relations(tasks, ({ one }) => ({
+  user: one(users, {
+    fields: [tasks.userId],
+    references: [users.id],
+  }),
+  repository: one(userRepositories, {
+    fields: [tasks.repositoryId],
+    references: [userRepositories.id],
+  }),
+}));
+
+export const userSystemStateRelations = relations(userSystemState, ({ one }) => ({
+  user: one(users, {
+    fields: [userSystemState.userId],
+    references: [users.id],
+  }),
+}));
+
+// Insert schemas
+export const insertUserSchema = createInsertSchema(users).pick({
+  id: true,
+  username: true,
+  email: true,
+  avatarUrl: true,
+  accessToken: true,
+  refreshToken: true,
+  tokenExpiresAt: true,
+});
+
+export const insertUserRepositorySchema = createInsertSchema(userRepositories).pick({
+  userId: true,
+  owner: true,
+  repo: true,
+  webhookId: true,
+  isActive: true,
 });
 
 export const insertTaskSchema = createInsertSchema(tasks).pick({
+  userId: true,
+  repositoryId: true,
   owner: true,
   repo: true,
   title: true,
@@ -45,17 +144,44 @@ export const insertWebhookDeliverySchema = createInsertSchema(webhookDeliveries)
   event: true,
 });
 
+// Types
+export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type UserRepository = typeof userRepositories.$inferSelect;
+export type InsertUserRepository = z.infer<typeof insertUserRepositorySchema>;
 export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type Task = typeof tasks.$inferSelect;
 export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;
-export type SystemState = typeof systemState.$inferSelect;
+export type UserSystemState = typeof userSystemState.$inferSelect;
 
 // API Response types
 export interface AppState {
+  user?: User;
   monthlyDone: number;
   activeTask?: Task;
   queue: Task[];
   systemRunning: boolean;
+  repositories: UserRepository[];
+}
+
+export interface GitHubUser {
+  id: string;
+  login: string;
+  email?: string;
+  avatar_url: string;
+}
+
+export interface GitHubRepository {
+  id: number;
+  name: string;
+  full_name: string;
+  owner: {
+    login: string;
+  };
+  permissions?: {
+    admin: boolean;
+    push: boolean;
+  };
 }
 
 export interface TaskTemplate {

@@ -1,10 +1,7 @@
 import { Octokit } from "octokit";
 
-export const octokit = new Octokit({ 
-  auth: process.env.GITHUB_TOKEN || process.env.GITHUB_TOKEN_ENV_VAR || "default_key"
-});
-
-export async function createIssue(owner: string, repo: string, title: string, body: string, labels: string[] = []) {
+export async function createIssue(token: string, owner: string, repo: string, title: string, body: string, labels: string[] = []) {
+  const octokit = new Octokit({ auth: token });
   const { data } = await octokit.rest.issues.create({ 
     owner, 
     repo, 
@@ -15,11 +12,13 @@ export async function createIssue(owner: string, repo: string, title: string, bo
   return data;
 }
 
-export async function getIssue(owner: string, repo: string, issue_number: number) {
+export async function getIssue(token: string, owner: string, repo: string, issue_number: number) {
+  const octokit = new Octokit({ auth: token });
   return (await octokit.rest.issues.get({ owner, repo, issue_number })).data;
 }
 
-export async function createReviewApprove(owner: string, repo: string, pull_number: number, body = "LGTM (auto)") {
+export async function createReviewApprove(token: string, owner: string, repo: string, pull_number: number, body = "LGTM (auto)") {
+  const octokit = new Octokit({ auth: token });
   return octokit.rest.pulls.createReview({ 
     owner, 
     repo, 
@@ -29,7 +28,8 @@ export async function createReviewApprove(owner: string, repo: string, pull_numb
   });
 }
 
-export async function mergePullRequest(owner: string, repo: string, pull_number: number, method: "merge"|"squash"|"rebase" = "squash") {
+export async function mergePullRequest(token: string, owner: string, repo: string, pull_number: number, method: "merge"|"squash"|"rebase" = "squash") {
+  const octokit = new Octokit({ auth: token });
   return octokit.rest.pulls.merge({ 
     owner, 
     repo, 
@@ -38,14 +38,16 @@ export async function mergePullRequest(owner: string, repo: string, pull_number:
   });
 }
 
-export async function listPRsForIssue(owner: string, repo: string, issue_number: number) {
+export async function listPRsForIssue(token: string, owner: string, repo: string, issue_number: number) {
+  const octokit = new Octokit({ auth: token });
   const { data } = await octokit.rest.search.issuesAndPullRequests({
     q: `repo:${owner}/${repo} type:pr in:body is:open "${`#${issue_number}`}"`,
   });
   return data.items;
 }
 
-export async function registerWebhook(owner: string, repo: string, webhookUrl: string, secret: string) {
+export async function registerWebhook(token: string, owner: string, repo: string, webhookUrl: string, secret: string) {
+  const octokit = new Octokit({ auth: token });
   const events = ["issues", "pull_request", "workflow_run", "check_suite"];
   
   try {
@@ -71,4 +73,13 @@ export async function registerWebhook(owner: string, repo: string, webhookUrl: s
     }
     throw error;
   }
+}
+
+export async function deleteWebhook(token: string, owner: string, repo: string, hookId: number) {
+  const octokit = new Octokit({ auth: token });
+  return octokit.rest.repos.deleteWebhook({
+    owner,
+    repo,
+    hook_id: hookId,
+  });
 }

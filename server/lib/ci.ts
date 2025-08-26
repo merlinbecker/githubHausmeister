@@ -1,6 +1,8 @@
-import { octokit } from "./github-rest";
+import { Octokit } from "octokit";
 
-export async function isPRGreen(owner: string, repo: string, sha: string): Promise<boolean> {
+export async function isPRGreen(token: string, owner: string, repo: string, sha: string): Promise<boolean> {
+  const octokit = new Octokit({ auth: token });
+  
   try {
     const [statusRes, checksRes] = await Promise.all([
       octokit.rest.repos.getCombinedStatusForRef({ owner, repo, ref: sha }),
@@ -19,7 +21,9 @@ export async function isPRGreen(owner: string, repo: string, sha: string): Promi
   }
 }
 
-export async function getCIStatus(owner: string, repo: string, sha: string) {
+export async function getCIStatus(token: string, owner: string, repo: string, sha: string) {
+  const octokit = new Octokit({ auth: token });
+  
   try {
     const [statusRes, checksRes] = await Promise.all([
       octokit.rest.repos.getCombinedStatusForRef({ owner, repo, ref: sha }),

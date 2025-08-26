@@ -1,21 +1,115 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import session from "express-session";
+import connectPg from "connect-pg-simple";
+import { randomUUID } from "crypto";
+import { databaseStorage } from "./lib/database-storage";
 import { insertTaskSchema, insertWebhookDeliverySchema, type TaskTemplate } from "@shared/schema";
 import { verifySignature, parseWebhookPayload } from "./lib/webhook-verify";
 import { startNextIfIdle, markTaskCompleted, markTaskFailed } from "./lib/queue";
 import { createReviewApprove, mergePullRequest } from "./lib/github-rest";
 import { isPRGreen } from "./lib/ci";
-import { resetMonthlyCounterIfNeeded } from "./lib/state";
+import { GitHubOAuth } from "./lib/github-oauth";
+import { requireAuth, optionalAuth, type AuthenticatedRequest } from "./lib/auth-middleware";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Initialize monthly counter reset check
-  resetMonthlyCounterIfNeeded();
+  // Session configuration
+  const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
+  const pgStore = connectPg(session);
+  const sessionStore = new pgStore({
+    conString: process.env.DATABASE_URL,
+    createTableIfMissing: false,
+    ttl: sessionTtl,
+    tableName: "sessions",
+  });
+
+  app.use(session({
+    secret: process.env.SESSION_SECRET || "dev-secret-change-in-production",
+    store: sessionStore,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: sessionTtl,
+    },
+  }));
+
+  // GitHub OAuth setup
+  const githubOAuth = new GitHubOAuth({
+    clientId: process.env.GITHUB_CLIENT_ID || "",
+    clientSecret: process.env.GITHUB_CLIENT_SECRET || "",
+    redirectUri: process.env.GITHUB_REDIRECT_URI || `${process.env.REPLIT_DOMAIN || 'http://localhost:5000'}/api/auth/github/callback`,
+  });
   
-  // Get application state
-  app.get("/api/status", async (req, res) => {
+  // GitHub OAuth routes
+  app.get("/api/auth/github", (req, res) => {
+    const state = randomUUID();
+    req.session!.oauthState = state;
+    const authUrl = githubOAuth.getAuthorizationUrl(state);
+    res.redirect(authUrl);
+  });
+
+  app.get("/api/auth/github/callback", async (req, res) => {
     try {
-      const appState = await storage.getAppState();
+      const { code, state } = req.query;
+      const sessionState = req.session!.oauthState;
+
+      if (!code || !state || state !== sessionState) {
+        return res.status(400).json({ error: "Invalid OAuth callback" });
+      }
+
+      // Exchange code for token
+      const { accessToken, refreshToken } = await githubOAuth.exchangeCodeForToken(code as string, state as string);
+      
+      // Get user info
+      const githubUser = await githubOAuth.getUserInfo(accessToken);
+      
+      // Create or update user
+      const user = await databaseStorage.createOrUpdateUser({
+        id: githubUser.id,
+        username: githubUser.login,
+        email: githubUser.email,
+        avatarUrl: githubUser.avatar_url,
+        accessToken,
+        refreshToken,
+        tokenExpiresAt: undefined, // GitHub tokens don't expire
+      });
+
+      // Set session
+      req.session!.userId = user.id;
+      delete req.session!.oauthState;
+
+      res.redirect("/");
+    } catch (error) {
+      console.error("OAuth callback error:", error);
+      res.status(500).json({ error: "Authentication failed" });
+    }
+  });
+
+  app.post("/api/auth/logout", (req, res) => {
+    req.session?.destroy((err) => {
+      if (err) {
+        console.error("Logout error:", err);
+        return res.status(500).json({ error: "Logout failed" });
+      }
+      res.json({ success: true });
+    });
+  });
+
+  app.get("/api/auth/user", optionalAuth, (req: AuthenticatedRequest, res) => {
+    if (req.user) {
+      const { accessToken, ...userWithoutToken } = req.user;
+      res.json(userWithoutToken);
+    } else {
+      res.status(401).json({ error: "Not authenticated" });
+    }
+  });
+
+  // Get application state (user-specific)
+  app.get("/api/status", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const appState = await databaseStorage.getUserAppState(req.user!.id);
       res.json(appState);
     } catch (error) {
       console.error("Error getting app state:", error);
@@ -23,18 +117,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create new tasks
-  app.post("/api/tasks", async (req, res) => {
+  // Get user repositories from GitHub
+  app.get("/api/repositories", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const { repo, templates, count = 1 } = req.body;
+      const repositories = await githubOAuth.getUserRepositories(req.user!.accessToken);
+      res.json(repositories);
+    } catch (error) {
+      console.error("Error getting repositories:", error);
+      res.status(500).json({ error: "Failed to get repositories" });
+    }
+  });
+
+  // Add repository to monitoring
+  app.post("/api/repositories", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { owner, repo } = req.body;
       
-      if (!repo || !templates || templates.length === 0) {
-        return res.status(400).json({ error: "Repository and templates are required" });
+      if (!owner || !repo) {
+        return res.status(400).json({ error: "Owner and repo are required" });
       }
 
-      const [owner, repoName] = repo.split("/");
-      if (!owner || !repoName) {
-        return res.status(400).json({ error: "Invalid repository format. Use owner/repo" });
+      // Register webhook
+      const webhookUrl = `${process.env.REPLIT_DOMAIN || req.protocol + '://' + req.get('host')}/api/webhook`;
+      const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET || "default-secret";
+      
+      const webhook = await githubOAuth.registerWebhook(req.user!.accessToken, owner, repo, webhookUrl, webhookSecret);
+      
+      // Add to user repositories
+      const repository = await databaseStorage.addUserRepository({
+        userId: req.user!.id,
+        owner,
+        repo,
+        webhookId: webhook.id,
+        isActive: true,
+      });
+
+      res.json(repository);
+    } catch (error) {
+      console.error("Error adding repository:", error);
+      res.status(500).json({ error: "Failed to add repository" });
+    }
+  });
+
+  // Remove repository from monitoring
+  app.delete("/api/repositories/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Get repository info
+      const repositories = await databaseStorage.getUserRepositories(req.user!.id);
+      const repository = repositories.find(r => r.id === id);
+      
+      if (!repository) {
+        return res.status(404).json({ error: "Repository not found" });
+      }
+
+      // Delete webhook if exists
+      if (repository.webhookId) {
+        try {
+          await githubOAuth.deleteWebhook(req.user!.accessToken, repository.owner, repository.repo, repository.webhookId);
+        } catch (error) {
+          console.warn("Failed to delete webhook:", error);
+        }
+      }
+
+      // Remove from database
+      await databaseStorage.removeUserRepository(id);
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing repository:", error);
+      res.status(500).json({ error: "Failed to remove repository" });
+    }
+  });
+
+  // Create new tasks
+  app.post("/api/tasks", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { repositoryId, templates, count = 1 } = req.body;
+      
+      if (!repositoryId || !templates || templates.length === 0) {
+        return res.status(400).json({ error: "Repository ID and templates are required" });
+      }
+
+      // Get repository info
+      const repositories = await databaseStorage.getUserRepositories(req.user!.id);
+      const repository = repositories.find(r => r.id === repositoryId);
+      
+      if (!repository) {
+        return res.status(404).json({ error: "Repository not found" });
       }
 
       const taskTemplates: Record<string, TaskTemplate> = {
@@ -77,14 +248,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!template) continue;
 
           const taskData = insertTaskSchema.parse({
-            owner,
-            repo: repoName,
+            userId: req.user!.id,
+            repositoryId: repository.id,
+            owner: repository.owner,
+            repo: repository.repo,
             title: template.title,
             body: template.body,
             labels: template.labels,
           });
 
-          const task = await storage.createTask(taskData);
+          const task = await databaseStorage.createTask(taskData);
           createdTasks.push(task);
         }
       }
@@ -105,10 +278,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // System controls
-  app.post("/api/system/pause", async (req, res) => {
+  // System controls (user-specific)
+  app.post("/api/system/pause", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      await storage.updateSystemState({ systemRunning: false });
+      await databaseStorage.updateUserSystemState(req.user!.id, { systemRunning: false });
       res.json({ success: true });
     } catch (error) {
       console.error("Error pausing system:", error);
@@ -116,12 +289,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/system/resume", async (req, res) => {
+  app.post("/api/system/resume", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      await storage.updateSystemState({ systemRunning: true });
+      await databaseStorage.updateUserSystemState(req.user!.id, { systemRunning: true });
       // Try to start next task
       setTimeout(() => {
-        startNextIfIdle().catch(console.error);
+        startNextIfIdle(req.user!.id).catch(console.error);
       }, 1000);
       res.json({ success: true });
     } catch (error) {
@@ -130,13 +303,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/tasks/queue", async (req, res) => {
+  app.delete("/api/tasks/queue", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const queuedTasks = await storage.getQueuedTasks();
+      const queuedTasks = await databaseStorage.getQueuedTasks(req.user!.id);
       let deleted = 0;
       
       for (const task of queuedTasks) {
-        await storage.deleteTask(task.id);
+        await databaseStorage.deleteTask(task.id);
         deleted++;
       }
       
@@ -147,15 +320,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/tasks/:id", async (req, res) => {
+  app.delete("/api/tasks/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
-      const success = await storage.deleteTask(id);
       
-      if (!success) {
+      // Verify task belongs to user
+      const userTasks = await databaseStorage.getUserTasks(req.user!.id);
+      const task = userTasks.find(t => t.id === id);
+      
+      if (!task) {
         return res.status(404).json({ error: "Task not found" });
       }
       
+      const success = await databaseStorage.deleteTask(id);
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting task:", error);

@@ -1,24 +1,70 @@
 import { apiRequest } from "./queryClient";
+import type { User } from "@/lib/auth";
 
 export interface AppState {
+  user?: User;
   monthlyDone: number;
   activeTask?: any;
   queue: any[];
   systemRunning: boolean;
+  repositories: any[];
 }
 
 export interface CreateTasksRequest {
-  repo: string;
+  repositoryId: string;
   templates: string[];
   count?: number;
 }
 
+export interface GitHubRepository {
+  id: number;
+  name: string;
+  full_name: string;
+  owner: {
+    login: string;
+  };
+  permissions?: {
+    admin: boolean;
+    push: boolean;
+  };
+}
+
+export interface UserRepository {
+  id: string;
+  userId: string;
+  owner: string;
+  repo: string;
+  webhookId?: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
 export async function getStatus(): Promise<AppState> {
-  const response = await fetch("/api/status");
+  const response = await fetch("/api/status", {
+    credentials: "include",
+  });
   if (!response.ok) {
     throw new Error(`Failed to get status: ${response.statusText}`);
   }
   return response.json();
+}
+
+export async function getGitHubRepositories(): Promise<GitHubRepository[]> {
+  const response = await fetch("/api/repositories", {
+    credentials: "include",
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to get repositories: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function addRepository(owner: string, repo: string): Promise<UserRepository> {
+  return apiRequest("POST", "/api/repositories", { owner, repo });
+}
+
+export async function removeRepository(repositoryId: string): Promise<void> {
+  return apiRequest("DELETE", `/api/repositories/${repositoryId}`);
 }
 
 export async function createTasks(data: CreateTasksRequest) {

@@ -1,19 +1,32 @@
 import { useQuery } from "@tanstack/react-query";
 import { getStatus } from "@/lib/api";
+import { logout } from "@/lib/auth";
+import { useAuth } from "@/hooks/useAuth";
 import StatusOverview from "@/components/StatusOverview";
 import ActiveTaskCard from "@/components/ActiveTaskCard";
 import TaskQueue from "@/components/TaskQueue";
 import TaskCreationForm from "@/components/TaskCreationForm";
+import RepositoryManager from "@/components/RepositoryManager";
 import WebhookStatus from "@/components/WebhookStatus";
 import SystemControls from "@/components/SystemControls";
-import { Github, Settings, Wifi } from "lucide-react";
+import { Github, Settings, LogOut, User } from "lucide-react";
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const { data: appState, isLoading, refetch } = useQuery({
     queryKey: ["/api/status"],
     queryFn: getStatus,
     refetchInterval: 30000, // Refresh every 30 seconds
   });
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      window.location.reload();
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -43,12 +56,30 @@ export default function Dashboard() {
               <div className="w-2 h-2 bg-github-green rounded-full animate-pulse"></div>
               <span className="text-sm text-github-muted">GitHub Connected</span>
             </div>
-            <button 
-              className="p-2 text-github-muted hover:text-github-text transition-colors"
-              data-testid="button-settings"
-            >
-              <Settings size={20} />
-            </button>
+            {user && (
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2">
+                  {user.avatarUrl ? (
+                    <img 
+                      src={user.avatarUrl} 
+                      alt={user.username}
+                      className="w-6 h-6 rounded-full"
+                    />
+                  ) : (
+                    <User className="text-github-muted" size={20} />
+                  )}
+                  <span className="text-sm text-github-text">{user.username}</span>
+                </div>
+                <button 
+                  onClick={handleLogout}
+                  className="p-2 text-github-muted hover:text-github-red transition-colors"
+                  data-testid="button-logout"
+                  title="Logout"
+                >
+                  <LogOut size={20} />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -60,9 +91,17 @@ export default function Dashboard() {
           <ActiveTaskCard activeTask={appState.activeTask} onRefresh={refetch} />
         )}
         
+        <RepositoryManager 
+          userRepositories={appState?.repositories || []} 
+          onRefresh={refetch} 
+        />
+        
         <TaskQueue queue={appState?.queue || []} onRefresh={refetch} />
         
-        <TaskCreationForm onRefresh={refetch} />
+        <TaskCreationForm 
+          repositories={appState?.repositories || []}
+          onRefresh={refetch} 
+        />
         
         <WebhookStatus />
         

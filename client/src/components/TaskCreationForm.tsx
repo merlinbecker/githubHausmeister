@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { createTasks, type CreateTasksRequest } from "@/lib/api";
+import { createTasks, type CreateTasksRequest, type UserRepository } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,11 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface TaskCreationFormProps {
+  repositories: UserRepository[];
   onRefresh: () => void;
 }
 
-export default function TaskCreationForm({ onRefresh }: TaskCreationFormProps) {
-  const [selectedRepo, setSelectedRepo] = useState("");
+export default function TaskCreationForm({ repositories, onRefresh }: TaskCreationFormProps) {
+  const [selectedRepositoryId, setSelectedRepositoryId] = useState("");
   const [taskCount, setTaskCount] = useState(1);
   const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
   const { toast } = useToast();
@@ -26,7 +27,7 @@ export default function TaskCreationForm({ onRefresh }: TaskCreationFormProps) {
         description: "Tasks have been added to the queue successfully.",
       });
       setSelectedTemplates([]);
-      setSelectedRepo("");
+      setSelectedRepositoryId("");
       setTaskCount(1);
       onRefresh();
     },
@@ -39,12 +40,8 @@ export default function TaskCreationForm({ onRefresh }: TaskCreationFormProps) {
     },
   });
 
-  const repositories = [
-    "my-org/frontend-app",
-    "my-org/backend-api", 
-    "my-org/mobile-app",
-    "my-org/docs-site"
-  ];
+  // Use only active repositories
+  const activeRepositories = repositories.filter(repo => repo.isActive);
 
   const templates = [
     { 
@@ -85,7 +82,7 @@ export default function TaskCreationForm({ onRefresh }: TaskCreationFormProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedRepo) {
+    if (!selectedRepositoryId) {
       toast({
         title: "Repository Required",
         description: "Please select a repository.",
@@ -104,7 +101,7 @@ export default function TaskCreationForm({ onRefresh }: TaskCreationFormProps) {
     }
 
     const data: CreateTasksRequest = {
-      repo: selectedRepo,
+      repositoryId: selectedRepositoryId,
       templates: selectedTemplates,
       count: taskCount,
     };
@@ -122,18 +119,26 @@ export default function TaskCreationForm({ onRefresh }: TaskCreationFormProps) {
             <Label htmlFor="repository" className="block text-sm font-medium text-github-text mb-2">
               Repository
             </Label>
-            <select 
-              id="repository"
-              value={selectedRepo}
-              onChange={(e) => setSelectedRepo(e.target.value)}
-              className="w-full bg-github-bg border border-github-border rounded-lg px-3 py-2 text-github-text focus:outline-none focus:ring-2 focus:ring-github-blue focus:border-transparent"
-              data-testid="select-repository"
-            >
-              <option value="">Select repository...</option>
-              {repositories.map(repo => (
-                <option key={repo} value={repo}>{repo}</option>
-              ))}
-            </select>
+            {activeRepositories.length === 0 ? (
+              <div className="p-3 bg-github-bg border border-github-border rounded-lg text-github-muted text-center">
+                No repositories added. Please add repositories first in the Repository Management section.
+              </div>
+            ) : (
+              <select 
+                id="repository"
+                value={selectedRepositoryId}
+                onChange={(e) => setSelectedRepositoryId(e.target.value)}
+                className="w-full bg-github-bg border border-github-border rounded-lg px-3 py-2 text-github-text focus:outline-none focus:ring-2 focus:ring-github-blue focus:border-transparent"
+                data-testid="select-repository"
+              >
+                <option value="">Select repository...</option>
+                {activeRepositories.map(repo => (
+                  <option key={repo.id} value={repo.id}>
+                    {repo.owner}/{repo.repo}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div>
@@ -182,7 +187,7 @@ export default function TaskCreationForm({ onRefresh }: TaskCreationFormProps) {
           </div>
           <Button 
             type="submit" 
-            disabled={createMutation.isPending}
+            disabled={createMutation.isPending || activeRepositories.length === 0}
             className="px-6 py-2 bg-github-blue text-white rounded-lg font-medium hover:bg-github-blue/80 transition-colors disabled:opacity-50"
             data-testid="button-add-tasks"
           >
