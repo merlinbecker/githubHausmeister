@@ -36,11 +36,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }));
 
   // GitHub OAuth setup
+  // Construct the correct redirect URI using Replit's environment variables
+  const replitDomain = process.env.REPLIT_DEV_DOMAIN || 
+                       (process.env.REPL_SLUG && process.env.REPL_OWNER ? 
+                        `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : 
+                        'http://localhost:5000');
+  
   const githubOAuth = new GitHubOAuth({
     clientId: process.env.GITHUB_CLIENT_ID || "",
     clientSecret: process.env.GITHUB_CLIENT_SECRET || "",
-    redirectUri: process.env.GITHUB_REDIRECT_URI || `${process.env.REPLIT_DOMAIN || 'http://localhost:5000'}/api/auth/github/callback`,
+    redirectUri: process.env.GITHUB_REDIRECT_URI || `${replitDomain}/api/auth/github/callback`,
   });
+  
+  console.log(`GitHub OAuth redirect URI: ${process.env.GITHUB_REDIRECT_URI || `${replitDomain}/api/auth/github/callback`}`);
   
   // GitHub OAuth routes
   app.get("/api/auth/github", (req, res) => {
