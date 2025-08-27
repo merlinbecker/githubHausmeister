@@ -53,7 +53,7 @@ export async function startNextIfIdle(userId: string): Promise<void> {
       
       // Try to assign Copilot agent to existing issue
       try {
-        const copilotId = await getCopilotNodeId(user.accessToken);
+        const copilotId = await getCopilotNodeId(user.accessToken, nextTask.owner, nextTask.repo);
         const issueNodeId = await getIssueNodeId(user.accessToken, nextTask.owner, nextTask.repo, duplicateCheck.existingIssue.number);
         await addAssignee(user.accessToken, issueNodeId, copilotId);
         console.log(`Assigned Copilot agent to existing issue #${duplicateCheck.existingIssue.number}`);
@@ -83,7 +83,7 @@ export async function startNextIfIdle(userId: string): Promise<void> {
 
     // Assign Copilot agent
     try {
-      const copilotId = await getCopilotNodeId(user.accessToken);
+      const copilotId = await getCopilotNodeId(user.accessToken, nextTask.owner, nextTask.repo);
       const issueNodeId = await getIssueNodeId(user.accessToken, nextTask.owner, nextTask.repo, issue.number);
       await addAssignee(user.accessToken, issueNodeId, copilotId);
       console.log(`Successfully assigned Copilot agent to issue #${issue.number}`);
