@@ -84,6 +84,112 @@ export async function deleteWebhook(token: string, owner: string, repo: string, 
   });
 }
 
+export async function checkCopilotAvailability(token: string, owner: string, repo: string): Promise<{ available: boolean; username?: string }> {
+  const octokit = new Octokit({ auth: token });
+  
+  // Check if copilot-swe-agent can be assigned to this repository
+  const copilotUsernames = ["copilot-swe-agent", "github-copilot[bot]"];
+  
+  for (const username of copilotUsernames) {
+    try {
+      // Check if user exists and can be assigned to repository
+      const response = await octokit.rest.repos.checkCollaborator({
+        owner,
+        repo,
+        username
+      });
+      
+      if (response.status === 204) {
+        console.log(`Found assignable Copilot agent: ${username}`);
+        return { available: true, username };
+      }
+    } catch (error: any) {
+      // Check if user exists at all
+      try {
+        await octokit.rest.users.getByUsername({ username });
+        console.log(`Copilot agent ${username} exists but not assignable to ${owner}/${repo}`);
+      } catch (userError) {
+        console.log(`Copilot agent ${username} does not exist`);
+      }
+    }
+  }
+  
+  return { available: false };
+}
+
+export async function assignCopilotToIssue(token: string, owner: string, repo: string, issueNumber: number): Promise<{ success: boolean; assignedAgent?: string; error?: string }> {
+  const octokit = new Octokit({ auth: token });
+  
+  // First, check if Copilot is available
+  const copilotCheck = await checkCopilotAvailability(token, owner, repo);
+  
+  if (!copilotCheck.available) {
+    return { 
+      success: false, 
+      error: "Copilot agent not available for this repository. Repository may not have Copilot enabled or agent not configured." 
+    };
+  }
+  
+  try {
+    // Use REST API to assign the issue
+    const response = await octokit.rest.issues.addAssignees({
+      owner,
+      repo,
+      issue_number: issueNumber,
+      assignees: [copilotCheck.username!]
+    });
+    
+    // Verify assignment was successful
+    const assignees = response.data.assignees || [];
+    const copilotAssigned = assignees.some(assignee => 
+      assignee.login === copilotCheck.username
+    );
+    
+    if (copilotAssigned) {
+      console.log(`✓ Successfully assigned ${copilotCheck.username} to issue #${issueNumber}`);
+      return { success: true, assignedAgent: copilotCheck.username };
+    } else {
+      return { 
+        success: false, 
+        error: `Assignment API call succeeded but ${copilotCheck.username} not found in assignees list` 
+      };
+    }
+    
+  } catch (error: any) {
+    console.error("Error assigning Copilot to issue:", error);
+    return { 
+      success: false, 
+      error: `Assignment failed: ${error.message}` 
+    };
+  }
+}
+
+export async function verifyCopilotAssignment(token: string, owner: string, repo: string, issueNumber: number): Promise<{ isAssigned: boolean; assignedCopilot?: string }> {
+  const octokit = new Octokit({ auth: token });
+  
+  try {
+    const { data: issue } = await octokit.rest.issues.get({
+      owner,
+      repo,
+      issue_number: issueNumber
+    });
+    
+    const assignees = issue.assignees || [];
+    const copilotUsernames = ["copilot-swe-agent", "github-copilot[bot]"];
+    
+    for (const assignee of assignees) {
+      if (copilotUsernames.includes(assignee.login)) {
+        return { isAssigned: true, assignedCopilot: assignee.login };
+      }
+    }
+    
+    return { isAssigned: false };
+  } catch (error) {
+    console.error("Error verifying Copilot assignment:", error);
+    return { isAssigned: false };
+  }
+}
+
 export async function findSimilarOpenIssues(token: string, owner: string, repo: string, title: string, labels: string[] = []): Promise<any[]> {
   const octokit = new Octokit({ auth: token });
   

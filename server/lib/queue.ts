@@ -52,13 +52,18 @@ export async function startNextIfIdle(userId: string): Promise<void> {
       console.log(`Duplicate issue found for task ${nextTask.id}: Issue #${duplicateCheck.existingIssue?.number}`);
       
       // Try to assign Copilot agent to existing issue
-      try {
-        const copilotId = await getCopilotNodeId(user.accessToken, nextTask.owner, nextTask.repo);
-        const issueNodeId = await getIssueNodeId(user.accessToken, nextTask.owner, nextTask.repo, duplicateCheck.existingIssue.number);
-        await addAssignee(user.accessToken, issueNodeId, copilotId);
-        console.log(`Assigned Copilot agent to existing issue #${duplicateCheck.existingIssue.number}`);
-      } catch (error) {
-        console.warn("Failed to assign Copilot agent to existing issue:", error);
+      const { assignCopilotToIssue } = await import("./github-rest");
+      const assignmentResult = await assignCopilotToIssue(
+        user.accessToken, 
+        nextTask.owner, 
+        nextTask.repo, 
+        duplicateCheck.existingIssue.number
+      );
+      
+      if (assignmentResult.success) {
+        console.log(`✓ Successfully assigned ${assignmentResult.assignedAgent} to existing issue #${duplicateCheck.existingIssue.number}`);
+      } else {
+        console.warn(`⚠️ Failed to assign Copilot to existing issue #${duplicateCheck.existingIssue.number}: ${assignmentResult.error}`);
       }
       
       // Update task with existing issue info instead of creating new one
@@ -81,15 +86,29 @@ export async function startNextIfIdle(userId: string): Promise<void> {
       nextTask.labels || []
     );
 
-    // Assign Copilot agent
-    try {
-      const copilotId = await getCopilotNodeId(user.accessToken, nextTask.owner, nextTask.repo);
-      const issueNodeId = await getIssueNodeId(user.accessToken, nextTask.owner, nextTask.repo, issue.number);
-      await addAssignee(user.accessToken, issueNodeId, copilotId);
-      console.log(`Successfully assigned Copilot agent to issue #${issue.number}`);
-    } catch (error) {
-      console.error("Failed to assign Copilot agent:", error);
-      // Continue with task even if assignment fails
+    // Assign Copilot agent using improved method
+    const { assignCopilotToIssue, verifyCopilotAssignment } = await import("./github-rest");
+    const assignmentResult = await assignCopilotToIssue(
+      user.accessToken, 
+      nextTask.owner, 
+      nextTask.repo, 
+      issue.number
+    );
+    
+    if (assignmentResult.success) {
+      console.log(`✓ Successfully assigned ${assignmentResult.assignedAgent} to issue #${issue.number}`);
+      
+      // Double-check assignment worked
+      setTimeout(async () => {
+        const verification = await verifyCopilotAssignment(user.accessToken, nextTask.owner, nextTask.repo, issue.number);
+        if (verification.isAssigned) {
+          console.log(`✓ Verification confirmed: ${verification.assignedCopilot} is assigned to issue #${issue.number}`);
+        } else {
+          console.error(`✗ Verification failed: Copilot not found in assignees for issue #${issue.number}`);
+        }
+      }, 2000);
+    } else {
+      console.error(`⚠️ Failed to assign Copilot to issue #${issue.number}: ${assignmentResult.error}`);
     }
 
     // Update task with issue info
