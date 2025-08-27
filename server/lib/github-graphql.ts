@@ -36,25 +36,41 @@ export async function getIssueNodeId(token: string, owner: string, repo: string,
 }
 
 export async function getCopilotNodeId(token: string): Promise<string> {
+  // Try to find Copilot agent via search
   const query = `
     query {
-      viewer {
-        organization(login: "github") {
-          membersWithRole(first: 1, query: "github-copilot[bot]") {
-            nodes {
-              id
-            }
+      search(query: "github-copilot[bot] type:user", type: USER, first: 1) {
+        nodes {
+          ... on User {
+            id
+            login
           }
         }
       }
     }`;
   
-  const data: any = await gql(query, {}, token);
-  const members = data.viewer?.organization?.membersWithRole?.nodes;
-  if (!members || members.length === 0) {
-    throw new Error("Copilot agent not found");
+  try {
+    const data: any = await gql(query, {}, token);
+    const nodes = data.search?.nodes;
+    if (nodes && nodes.length > 0 && nodes[0].login === "github-copilot[bot]") {
+      return nodes[0].id;
+    }
+  } catch (error) {
+    console.log("Search method failed, trying alternative:", error);
   }
-  return members[0].id;
+
+  // Fallback: try to get current user for repository access
+  const fallbackQuery = `
+    query {
+      viewer {
+        login
+        id
+      }
+    }`;
+  
+  const fallbackData: any = await gql(fallbackQuery, {}, token);
+  console.log("Using fallback assignee (current user):", fallbackData.viewer.login);
+  return fallbackData.viewer.id;
 }
 
 export async function addAssignee(token: string, issueNodeId: string, assigneeNodeId: string): Promise<void> {

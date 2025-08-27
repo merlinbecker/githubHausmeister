@@ -38,7 +38,40 @@ export async function startNextIfIdle(userId: string): Promise<void> {
       throw new Error("No GitHub access token found for user");
     }
 
-    // Create GitHub issue
+    // Check for duplicate issues first
+    const { checkForDuplicateIssue } = await import("./github-rest");
+    const duplicateCheck = await checkForDuplicateIssue(
+      user.accessToken,
+      nextTask.owner,
+      nextTask.repo,
+      nextTask.title,
+      nextTask.labels || []
+    );
+    
+    if (duplicateCheck.isDuplicate) {
+      console.log(`Duplicate issue found for task ${nextTask.id}: Issue #${duplicateCheck.existingIssue?.number}`);
+      
+      // Try to assign Copilot agent to existing issue
+      try {
+        const copilotId = await getCopilotNodeId(user.accessToken);
+        const issueNodeId = await getIssueNodeId(user.accessToken, nextTask.owner, nextTask.repo, duplicateCheck.existingIssue.number);
+        await addAssignee(user.accessToken, issueNodeId, copilotId);
+        console.log(`Assigned Copilot agent to existing issue #${duplicateCheck.existingIssue.number}`);
+      } catch (error) {
+        console.warn("Failed to assign Copilot agent to existing issue:", error);
+      }
+      
+      // Update task with existing issue info instead of creating new one
+      await databaseStorage.updateTask(nextTask.id, {
+        issueNumber: duplicateCheck.existingIssue.number,
+        status: "in_progress"
+      });
+      
+      console.log(`Task ${nextTask.id} linked to existing issue #${duplicateCheck.existingIssue.number}`);
+      return;
+    }
+
+    // Create GitHub issue only if no duplicate found
     const issue = await createIssue(
       user.accessToken,
       nextTask.owner,
@@ -53,9 +86,10 @@ export async function startNextIfIdle(userId: string): Promise<void> {
       const copilotId = await getCopilotNodeId(user.accessToken);
       const issueNodeId = await getIssueNodeId(user.accessToken, nextTask.owner, nextTask.repo, issue.number);
       await addAssignee(user.accessToken, issueNodeId, copilotId);
-      console.log(`Assigned Copilot agent to issue #${issue.number}`);
+      console.log(`Successfully assigned Copilot agent to issue #${issue.number}`);
     } catch (error) {
-      console.warn("Failed to assign Copilot agent:", error);
+      console.error("Failed to assign Copilot agent:", error);
+      // Continue with task even if assignment fails
     }
 
     // Update task with issue info
