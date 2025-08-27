@@ -79,12 +79,43 @@ export default function SystemControls({ systemRunning, onRefresh }: SystemContr
     }
   };
 
+  const exportLogsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/logs/export", {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to export logs");
+      }
+      return response.blob();
+    },
+    onSuccess: (blob) => {
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `github-hausmeister-logs-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Export Complete",
+        description: "Your logs have been downloaded successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Export Failed",
+        description: error.message || "Failed to export logs",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleExportLogs = () => {
-    // This would implement log export functionality
-    toast({
-      title: "Export Started",
-      description: "Logs export will be available soon.",
-    });
+    exportLogsMutation.mutate();
   };
 
   return (
@@ -144,7 +175,8 @@ export default function SystemControls({ systemRunning, onRefresh }: SystemContr
 
         <button 
           onClick={handleExportLogs}
-          className="p-4 bg-github-bg border border-github-border rounded-lg hover:border-github-blue transition-colors group"
+          disabled={exportLogsMutation.isPending}
+          className="p-4 bg-github-bg border border-github-border rounded-lg hover:border-github-blue transition-colors group disabled:opacity-50"
           data-testid="button-export-logs"
         >
           <div className="flex flex-col items-center space-y-2">

@@ -100,6 +100,17 @@ export class DatabaseStorage {
     await db.delete(userRepositories).where(eq(userRepositories.id, repositoryId));
   }
 
+  async getUserRepositoryByName(owner: string, repo: string): Promise<UserRepository | undefined> {
+    const [repository] = await db
+      .select()
+      .from(userRepositories)
+      .where(and(
+        eq(userRepositories.owner, owner),
+        eq(userRepositories.repo, repo)
+      ));
+    return repository;
+  }
+
   // Task operations
   async createTask(taskData: InsertTask): Promise<Task> {
     const [task] = await db.insert(tasks).values(taskData).returning();

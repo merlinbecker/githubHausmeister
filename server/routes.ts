@@ -12,6 +12,14 @@ import { isPRGreen } from "./lib/ci";
 import { GitHubOAuth } from "./lib/github-oauth";
 import { requireAuth, optionalAuth, type AuthenticatedRequest } from "./lib/auth-middleware";
 
+// Extend session types
+declare module 'express-session' {
+  interface Session {
+    oauthState?: string;
+    userId?: string;
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Session configuration
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
@@ -272,7 +280,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Try to start next task if system is idle
       setTimeout(() => {
-        startNextIfIdle().catch(console.error);
+        startNextIfIdle(req.user!.id).catch(console.error);
       }, 1000);
 
       res.json({ 
@@ -283,6 +291,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating tasks:", error);
       res.status(500).json({ error: "Failed to create tasks" });
+    }
+  });
+
+  // Stop active task
+  app.post("/api/tasks/stop", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const activeTask = await databaseStorage.getActiveTask(req.user!.id);
+      if (!activeTask) {
+        return res.status(404).json({ error: "No active task found" });
+      }
+
+      await databaseStorage.updateTask(activeTask.id, {
+        status: "failed",
+      });
+
+      console.log(`Task ${activeTask.id} stopped by user ${req.user!.id}`);
+      
+      res.json({ success: true, taskId: activeTask.id });
+    } catch (error) {
+      console.error("Error stopping task:", error);
+      res.status(500).json({ error: "Failed to stop task" });
+    }
+  });
+
+  // Export logs endpoint
+  app.get("/api/logs/export", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Get user's tasks as a simple log export
+      const tasks = await databaseStorage.getUserTasks(req.user!.id);
+      
+      const logs = tasks.map(task => ({
+        timestamp: task.createdAt,
+        taskId: task.id,
+        repository: `${task.owner}/${task.repo}`,
+        title: task.title,
+        status: task.status,
+        issueNumber: task.issueNumber,
+        pullNumber: task.pullNumber,
+        startedAt: task.startedAt,
+        completedAt: task.completedAt,
+        failureReason: task.failureReason
+      }));
+
+      // Set headers for file download
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename=github-hausmeister-logs-${new Date().toISOString().split('T')[0]}.json`);
+      
+      res.json({
+        exportDate: new Date().toISOString(),
+        user: req.user!.username,
+        totalTasks: logs.length,
+        logs: logs
+      });
+    } catch (error) {
+      console.error("Error exporting logs:", error);
+      res.status(500).json({ error: "Failed to export logs" });
     }
   });
 
@@ -371,13 +435,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check for duplicate delivery
-      const isProcessed = await storage.isDeliveryProcessed(delivery);
+      const isProcessed = await databaseStorage.isDeliveryProcessed(delivery);
       if (isProcessed) {
         return res.json({ ok: true, message: "Already processed" });
       }
 
       // Record delivery
-      await storage.recordWebhookDelivery({
+      await databaseStorage.recordWebhookDelivery({
         id: delivery,
         event,
         processed: true,
@@ -408,8 +472,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const owner = payload.repository.owner.login;
     const repo = payload.repository.name;
 
-    // Find active task that matches this PR
-    const activeTask = await storage.getActiveTask();
+    // Find the user who owns this repository to get their active task
+    const userRepo = await databaseStorage.getUserRepositoryByName(owner, repo);
+    if (!userRepo) return;
+    
+    const activeTask = await databaseStorage.getActiveTask(userRepo.userId);
     if (!activeTask || !activeTask.issueNumber) return;
 
     // Check if PR references our issue
@@ -418,18 +485,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     if (action === "opened" || action === "ready_for_review" || action === "synchronize") {
       // Update task with PR info
-      await storage.updateTask(activeTask.id, {
+      await databaseStorage.updateTask(activeTask.id, {
         pullNumber: pr.number,
         headSha: pr.head.sha,
       });
 
       // Check CI status if PR is ready
       if (["ready_for_review", "synchronize"].includes(action) && !pr.draft) {
-        const isGreen = await isPRGreen(owner, repo, pr.head.sha);
+        const user = await databaseStorage.getUserById(userRepo.userId);
+        if (!user?.accessToken) return;
+        
+        const isGreen = await isPRGreen(user.accessToken, owner, repo, pr.head.sha);
         if (isGreen) {
           try {
-            await createReviewApprove(owner, repo, pr.number, "Automatisches Review: CI grün ✔️");
-            await mergePullRequest(owner, repo, pr.number, "squash");
+            await createReviewApprove(user.accessToken, owner, repo, pr.number, "Automatisches Review: CI grün ✔️");
+            await mergePullRequest(user.accessToken, owner, repo, pr.number, "squash");
             await markTaskCompleted(activeTask.id);
           } catch (error) {
             console.error("Error auto-merging PR:", error);
@@ -441,11 +511,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   async function handleCIEvent(payload: any) {
-    const activeTask = await storage.getActiveTask();
+    // Get repository info to find user
+    const repoFullName = payload.repository?.full_name;
+    if (!repoFullName) return;
+    
+    const [owner, repo] = repoFullName.split('/');
+    const userRepo = await databaseStorage.getUserRepositoryByName(owner, repo);
+    if (!userRepo) return;
+    
+    const activeTask = await databaseStorage.getActiveTask(userRepo.userId);
     if (!activeTask || !activeTask.pullNumber || !activeTask.headSha) return;
 
-    const owner = activeTask.owner;
-    const repo = activeTask.repo;
     const headSha = activeTask.headSha;
 
     // Check if this CI event is for our PR
@@ -455,11 +531,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!isForOurPR) return;
 
     // Check if CI is now green
-    const isGreen = await isPRGreen(owner, repo, headSha);
+    const user = await databaseStorage.getUserById(userRepo.userId);
+    if (!user?.accessToken) return;
+    
+    const isGreen = await isPRGreen(user.accessToken, owner, repo, headSha);
     if (isGreen) {
       try {
-        await createReviewApprove(owner, repo, activeTask.pullNumber, "Automatisches Review: CI grün ✔️");
-        await mergePullRequest(owner, repo, activeTask.pullNumber, "squash");
+        await createReviewApprove(user.accessToken, owner, repo, activeTask.pullNumber, "Automatisches Review: CI grün ✔️");
+        await mergePullRequest(user.accessToken, owner, repo, activeTask.pullNumber, "squash");
         await markTaskCompleted(activeTask.id);
       } catch (error) {
         console.error("Error auto-merging PR after CI:", error);

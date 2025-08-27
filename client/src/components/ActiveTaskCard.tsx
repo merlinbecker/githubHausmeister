@@ -1,5 +1,8 @@
 import { Github, Clock, GitBranch, CheckCircle, User, StopCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface ActiveTaskCardProps {
   activeTask: any;
@@ -7,6 +10,8 @@ interface ActiveTaskCardProps {
 }
 
 export default function ActiveTaskCard({ activeTask, onRefresh }: ActiveTaskCardProps) {
+  const { toast } = useToast();
+  
   const formatTimeAgo = (date: string | Date) => {
     try {
       return formatDistanceToNow(new Date(date), { addSuffix: true });
@@ -15,9 +20,31 @@ export default function ActiveTaskCard({ activeTask, onRefresh }: ActiveTaskCard
     }
   };
 
-  const stopTask = async () => {
-    // This would need to be implemented in the API
-    console.log("Stop task clicked");
+  const stopTaskMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/tasks/stop");
+    },
+    onSuccess: () => {
+      toast({
+        title: "Task Stopped",
+        description: "The active task has been stopped successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/status"] });
+      onRefresh();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to stop task",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const stopTask = () => {
+    if (window.confirm("Are you sure you want to stop the current task? This will mark it as failed.")) {
+      stopTaskMutation.mutate();
+    }
   };
 
   if (!activeTask) {
@@ -44,7 +71,8 @@ export default function ActiveTaskCard({ activeTask, onRefresh }: ActiveTaskCard
           </span>
           <button 
             onClick={stopTask}
-            className="px-3 py-1 bg-github-red/20 text-github-red text-xs rounded-full font-medium hover:bg-github-red/30 transition-colors"
+            disabled={stopTaskMutation.isPending}
+            className="px-3 py-1 bg-github-red/20 text-github-red text-xs rounded-full font-medium hover:bg-github-red/30 transition-colors disabled:opacity-50"
             data-testid="button-stop-task"
           >
             <StopCircle size={12} className="mr-1 inline" />
