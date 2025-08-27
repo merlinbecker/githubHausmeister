@@ -1,39 +1,11 @@
 import { GitBranch, CheckCircle, UserPlus, Edit, Wifi } from "lucide-react";
-import { useState, useEffect } from "react";
 
 export default function WebhookStatus() {
-  const [recentEvents, setRecentEvents] = useState([
-    {
-      id: 1,
-      type: "pull_request.opened",
-      description: "my-org/frontend-app #145",
-      time: "2m ago",
-      icon: GitBranch,
-      color: "text-github-blue"
-    },
-    {
-      id: 2,
-      type: "check_suite.completed",
-      description: "CI passed for commit abc123",
-      time: "5m ago", 
-      icon: CheckCircle,
-      color: "text-github-green"
-    },
-    {
-      id: 3,
-      type: "issues.assigned",
-      description: "Issue #142 assigned to copilot",
-      time: "2h ago",
-      icon: UserPlus,
-      color: "text-github-amber"
-    }
-  ]);
-
+  // This component will show webhook configuration info
   const webhookConfig = {
-    url: "https://your-app.replit.dev/api/webhook",
-    token: "ghp_****...****",
-    copilotAgent: "copilot-swe-agent",
-    monitoredRepos: 4
+    url: `${window.location.origin}/api/webhook`,
+    status: "Active",
+    events: ["pull_request", "issues", "check_suite", "workflow_run"],
   };
 
   return (
@@ -42,26 +14,36 @@ export default function WebhookStatus() {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <h3 className="text-sm font-medium text-github-muted mb-3">Recent Events</h3>
+          <h3 className="text-sm font-medium text-github-muted mb-3">Monitored Events</h3>
           <div className="space-y-2">
-            {recentEvents.map(event => {
-              const IconComponent = event.icon;
+            {webhookConfig.events.map((eventType, index) => {
+              const getEventIcon = (type: string) => {
+                switch (type) {
+                  case "pull_request": return GitBranch;
+                  case "issues": return UserPlus;
+                  case "check_suite": return CheckCircle;
+                  case "workflow_run": return CheckCircle;
+                  default: return Edit;
+                }
+              };
+              
+              const IconComponent = getEventIcon(eventType);
               return (
                 <div 
-                  key={event.id}
+                  key={index}
                   className="flex items-center justify-between p-3 bg-github-bg rounded-lg border border-github-border"
-                  data-testid={`event-${event.id}`}
+                  data-testid={`event-type-${eventType}`}
                 >
                   <div className="flex items-center space-x-3">
-                    <IconComponent className={event.color} size={16} />
+                    <IconComponent className="text-github-blue" size={16} />
                     <div>
                       <span className="text-sm font-medium text-github-text">
-                        {event.type}
+                        {eventType}
                       </span>
-                      <p className="text-xs text-github-muted">{event.description}</p>
+                      <p className="text-xs text-github-muted">Webhook event enabled</p>
                     </div>
                   </div>
-                  <span className="text-xs text-github-muted">{event.time}</span>
+                  <span className="text-xs text-github-green">Active</span>
                 </div>
               );
             })}

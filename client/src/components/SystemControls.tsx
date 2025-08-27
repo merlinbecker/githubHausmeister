@@ -1,7 +1,8 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { pauseSystem, resumeSystem, clearQueue } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Pause, Play, Trash2, Download } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface SystemControlsProps {
   systemRunning: boolean;
@@ -10,6 +11,11 @@ interface SystemControlsProps {
 
 export default function SystemControls({ systemRunning, onRefresh }: SystemControlsProps) {
   const { toast } = useToast();
+  
+  const { data: stats } = useQuery({
+    queryKey: ["/api/stats"],
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
 
   const pauseMutation = useMutation({
     mutationFn: pauseSystem,
@@ -191,19 +197,19 @@ export default function SystemControls({ systemRunning, onRefresh }: SystemContr
         <h3 className="text-sm font-medium text-github-text mb-2">Quick Stats</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
           <div>
-            <div className="text-lg font-bold text-github-text" data-testid="text-total-tasks">127</div>
+            <div className="text-lg font-bold text-github-text" data-testid="text-total-tasks">{stats?.totalTasks || 0}</div>
             <div className="text-xs text-github-muted">Total Tasks</div>
           </div>
           <div>
-            <div className="text-lg font-bold text-github-green" data-testid="text-successful-tasks">119</div>
+            <div className="text-lg font-bold text-github-green" data-testid="text-successful-tasks">{stats?.successfulTasks || 0}</div>
             <div className="text-xs text-github-muted">Successful</div>
           </div>
           <div>
-            <div className="text-lg font-bold text-github-red" data-testid="text-failed-tasks">8</div>
+            <div className="text-lg font-bold text-github-red" data-testid="text-failed-tasks">{stats?.failedTasks || 0}</div>
             <div className="text-xs text-github-muted">Failed</div>
           </div>
           <div>
-            <div className="text-lg font-bold text-github-text" data-testid="text-avg-time">2.3h</div>
+            <div className="text-lg font-bold text-github-text" data-testid="text-avg-time">{stats?.avgTimeHours || 0}h</div>
             <div className="text-xs text-github-muted">Avg Time</div>
           </div>
         </div>

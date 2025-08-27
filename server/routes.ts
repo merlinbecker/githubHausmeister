@@ -412,6 +412,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get user statistics
+  app.get("/api/stats", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const tasks = await databaseStorage.getUserTasks(userId);
+      
+      const totalTasks = tasks.length;
+      const successfulTasks = tasks.filter(t => t.status === "completed").length;
+      const failedTasks = tasks.filter(t => t.status === "failed").length;
+      const inProgressTasks = tasks.filter(t => t.status === "in_progress").length;
+      
+      // Calculate success rate
+      const completedTasks = successfulTasks + failedTasks;
+      const successRate = completedTasks > 0 ? Math.round((successfulTasks / completedTasks) * 100) : 0;
+      
+      // Calculate average completion time
+      const completedTasksWithTimes = tasks.filter(t => 
+        (t.status === "completed" || t.status === "failed") && 
+        t.startedAt && 
+        t.completedAt
+      );
+      
+      let avgTimeHours = 0;
+      if (completedTasksWithTimes.length > 0) {
+        const totalMinutes = completedTasksWithTimes.reduce((sum, task) => {
+          const startTime = new Date(task.startedAt!).getTime();
+          const endTime = new Date(task.completedAt!).getTime();
+          return sum + (endTime - startTime);
+        }, 0);
+        avgTimeHours = Math.round((totalMinutes / completedTasksWithTimes.length) / (1000 * 60 * 60) * 10) / 10;
+      }
+
+      res.json({
+        totalTasks,
+        successfulTasks,
+        failedTasks,
+        inProgressTasks,
+        successRate,
+        avgTimeHours,
+        maxMonthlyTasks: Number(process.env.MAX_MONTHLY_TASKS || 50)
+      });
+    } catch (error) {
+      console.error("Error getting stats:", error);
+      res.status(500).json({ error: "Failed to get statistics" });
+    }
+  });
+
   // GitHub webhook endpoint
   app.post("/api/webhook", async (req, res) => {
     try {

@@ -1,4 +1,5 @@
 import { ListChecks, List, TrendingUp, CheckCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import type { AppState } from "@/lib/api";
 
 interface StatusOverviewProps {
@@ -6,7 +7,12 @@ interface StatusOverviewProps {
 }
 
 export default function StatusOverview({ appState }: StatusOverviewProps) {
-  const maxTasks = 50; // Should come from env or config
+  const { data: stats } = useQuery({
+    queryKey: ["/api/stats"],
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+  
+  const maxTasks = stats?.maxMonthlyTasks || 50;
   const usagePercentage = appState ? (appState.monthlyDone / maxTasks) * 100 : 0;
   
   return (
@@ -57,7 +63,7 @@ export default function StatusOverview({ appState }: StatusOverviewProps) {
           <CheckCircle className="text-github-green" size={20} />
         </div>
         <div className="text-2xl font-bold text-github-text" data-testid="text-success-rate">
-          94%
+          {stats?.successRate || 0}%
         </div>
         <p className="text-xs text-github-muted">last 30 days</p>
       </div>
