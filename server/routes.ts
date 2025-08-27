@@ -467,10 +467,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const httpServer = createServer(app);
 
-  // Start processing queue on server start
-  setTimeout(() => {
-    startNextIfIdle().catch(console.error);
-  }, 2000);
+  // Note: In multi-user system, tasks are started when users make requests
+  // No need to start tasks globally on server startup
 
   return httpServer;
 }
