@@ -130,6 +130,14 @@ export class DatabaseStorage {
     return task;
   }
 
+  async getTaskById(taskId: string): Promise<Task | undefined> {
+    const [task] = await db
+      .select()
+      .from(tasks)
+      .where(eq(tasks.id, taskId));
+    return task;
+  }
+
   async updateTask(taskId: string, updates: Partial<Task>): Promise<Task | undefined> {
     const [task] = await db
       .update(tasks)

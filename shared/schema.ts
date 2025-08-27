@@ -40,9 +40,13 @@ export const tasks = pgTable("tasks", {
   body: text("body").notNull(),
   labels: json("labels").$type<string[]>().default([]),
   issueNumber: integer("issue_number"),
+  issueUrl: text("issue_url"),
   pullNumber: integer("pull_number"),
   headSha: text("head_sha"),
-  status: text("status").notNull().default("queued"), // queued, active, completed, failed
+  status: text("status").notNull().default("queued"), // queued, in_progress, completed, failed
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  failureReason: text("failure_reason"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [

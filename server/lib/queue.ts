@@ -28,7 +28,6 @@ export async function startNextIfIdle(userId: string): Promise<void> {
     // Mark task as in progress
     await databaseStorage.updateTask(nextTask.id, {
       status: "in_progress",
-      startedAt: new Date(),
     });
 
     console.log(`Starting task ${nextTask.id}: ${nextTask.title}`);
@@ -62,7 +61,6 @@ export async function startNextIfIdle(userId: string): Promise<void> {
     // Update task with issue info
     await databaseStorage.updateTask(nextTask.id, {
       issueNumber: issue.number,
-      issueUrl: issue.html_url,
     });
 
     console.log(`Task ${nextTask.id} started successfully`);
@@ -81,13 +79,12 @@ export async function markTaskCompleted(taskId: string): Promise<void> {
 
     await databaseStorage.updateTask(taskId, {
       status: "completed",
-      completedAt: new Date(),
     });
 
     // Update monthly counter
     const systemState = await databaseStorage.getUserSystemState(task.userId);
     await databaseStorage.updateUserSystemState(task.userId, {
-      monthlyDone: systemState.monthlyDone + 1,
+      monthlyDone: (systemState.monthlyDone || 0) + 1,
     });
 
     console.log(`Task ${taskId} marked as completed`);
@@ -111,8 +108,6 @@ export async function markTaskFailed(taskId: string, reason?: string): Promise<v
 
     await databaseStorage.updateTask(taskId, {
       status: "failed",
-      failureReason: reason,
-      completedAt: new Date(),
     });
 
     console.log(`Task ${taskId} marked as failed: ${reason || 'Unknown error'}`);
