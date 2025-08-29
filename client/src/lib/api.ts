@@ -60,11 +60,12 @@ export async function getGitHubRepositories(): Promise<GitHubRepository[]> {
 }
 
 export async function addRepository(owner: string, repo: string): Promise<UserRepository> {
-  return apiRequest("POST", "/api/repositories", { owner, repo });
+  const response = await apiRequest("POST", "/api/repositories", { owner, repo });
+  return response.json();
 }
 
 export async function removeRepository(repositoryId: string): Promise<void> {
-  return apiRequest("DELETE", `/api/repositories/${repositoryId}`);
+  await apiRequest("DELETE", `/api/repositories/${repositoryId}`);
 }
 
 export async function createTasks(data: CreateTasksRequest) {
