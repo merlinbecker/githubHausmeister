@@ -168,6 +168,19 @@ export interface AppState {
   repositories: UserRepository[];
 }
 
+export interface TaskStats {
+  totalTasks: number;
+  successfulTasks: number;
+  failedTasks: number;
+  inProgressTasks: number;
+  successRate: number;
+  avgTimeHours: number;
+  maxMonthlyTasks: number;
+}
+
+// For backward compatibility
+export type SystemState = UserSystemState;
+
 export interface GitHubUser {
   id: string;
   login: string;
