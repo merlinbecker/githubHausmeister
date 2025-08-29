@@ -52,6 +52,7 @@ export async function startNextIfIdle(userId: string): Promise<void> {
       console.log(`Duplicate issue found for task ${nextTask.id}: Issue #${duplicateCheck.existingIssue?.number}`);
       
       // Try to assign Copilot agent to existing issue
+      console.log(`🔄 [QUEUE] Attempting Copilot assignment to EXISTING issue #${duplicateCheck.existingIssue.number}`);
       const { assignCopilotToIssue } = await import("./github-rest");
       const assignmentResult = await assignCopilotToIssue(
         user.accessToken, 
@@ -61,9 +62,11 @@ export async function startNextIfIdle(userId: string): Promise<void> {
       );
       
       if (assignmentResult.success) {
-        console.log(`✓ Successfully assigned ${assignmentResult.assignedAgent} to existing issue #${duplicateCheck.existingIssue.number}`);
+        console.log(`✅ [QUEUE] SUCCESS: Assigned ${assignmentResult.assignedAgent} to existing issue #${duplicateCheck.existingIssue.number}`);
       } else {
-        console.warn(`⚠️ Failed to assign Copilot to existing issue #${duplicateCheck.existingIssue.number}: ${assignmentResult.error}`);
+        console.warn(`❌ [QUEUE] FAILED: Could not assign Copilot to existing issue #${duplicateCheck.existingIssue.number}`);
+        console.warn(`❌ [QUEUE] Reason: ${assignmentResult.error}`);
+        console.warn(`❌ [QUEUE] FALLBACK: Task will proceed without Copilot assignment`);
       }
       
       // Update task with existing issue info instead of creating new one
@@ -87,6 +90,7 @@ export async function startNextIfIdle(userId: string): Promise<void> {
     );
 
     // Assign Copilot agent using improved method
+    console.log(`🔄 [QUEUE] Attempting Copilot assignment to NEW issue #${issue.number}`);
     const { assignCopilotToIssue, verifyCopilotAssignment } = await import("./github-rest");
     const assignmentResult = await assignCopilotToIssue(
       user.accessToken, 
@@ -96,19 +100,23 @@ export async function startNextIfIdle(userId: string): Promise<void> {
     );
     
     if (assignmentResult.success) {
-      console.log(`✓ Successfully assigned ${assignmentResult.assignedAgent} to issue #${issue.number}`);
+      console.log(`✅ [QUEUE] SUCCESS: Assigned ${assignmentResult.assignedAgent} to new issue #${issue.number}`);
       
       // Double-check assignment worked
       setTimeout(async () => {
+        console.log(`🔍 [QUEUE] Starting delayed verification for issue #${issue.number}...`);
         const verification = await verifyCopilotAssignment(user.accessToken, nextTask.owner, nextTask.repo, issue.number);
         if (verification.isAssigned) {
-          console.log(`✓ Verification confirmed: ${verification.assignedCopilot} is assigned to issue #${issue.number}`);
+          console.log(`✅ [QUEUE] VERIFICATION SUCCESS: ${verification.assignedCopilot} confirmed assigned to issue #${issue.number}`);
         } else {
-          console.error(`✗ Verification failed: Copilot not found in assignees for issue #${issue.number}`);
+          console.error(`❌ [QUEUE] VERIFICATION FAILED: Copilot not found in assignees for issue #${issue.number}`);
+          console.error(`❌ [QUEUE] This indicates the assignment did not persist - possible GitHub API issue`);
         }
       }, 2000);
     } else {
-      console.error(`⚠️ Failed to assign Copilot to issue #${issue.number}: ${assignmentResult.error}`);
+      console.error(`❌ [QUEUE] ASSIGNMENT FAILED for issue #${issue.number}`);
+      console.error(`❌ [QUEUE] Reason: ${assignmentResult.error}`);
+      console.error(`❌ [QUEUE] FALLBACK: Task will proceed without Copilot assignment`);
     }
 
     // Update task with issue info
