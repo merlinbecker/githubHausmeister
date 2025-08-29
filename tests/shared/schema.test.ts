@@ -1,5 +1,9 @@
-import { describe, it, expect } from 'vitest'
-import { insertUserSchema, insertUserRepositorySchema, insertTaskSchema } from '../../shared/schema'
+import { describe, it, expect } from 'vitest';
+import {
+  insertUserSchema,
+  insertUserRepositorySchema,
+  insertTaskSchema,
+} from '../../shared/schema';
 
 describe('Schema Validation', () => {
   describe('insertUserSchema', () => {
@@ -11,21 +15,21 @@ describe('Schema Validation', () => {
         avatarUrl: 'https://example.com/avatar.jpg',
         accessToken: 'token123',
         refreshToken: 'refresh123',
-        tokenExpiresAt: new Date('2024-12-31T23:59:59Z')
-      }
+        tokenExpiresAt: new Date('2024-12-31T23:59:59Z'),
+      };
 
-      const result = insertUserSchema.parse(validUser)
-      expect(result).toEqual(validUser)
-    })
+      const result = insertUserSchema.parse(validUser);
+      expect(result).toEqual(validUser);
+    });
 
     it('should require id and username', () => {
       const invalidUser = {
-        email: 'test@example.com'
-      }
+        email: 'test@example.com',
+      };
 
-      expect(() => insertUserSchema.parse(invalidUser)).toThrow()
-    })
-  })
+      expect(() => insertUserSchema.parse(invalidUser)).toThrow();
+    });
+  });
 
   describe('insertUserRepositorySchema', () => {
     it('should validate a valid repository object', () => {
@@ -34,21 +38,21 @@ describe('Schema Validation', () => {
         owner: 'testowner',
         repo: 'testrepo',
         webhookId: 12345,
-        isActive: true
-      }
+        isActive: true,
+      };
 
-      const result = insertUserRepositorySchema.parse(validRepo)
-      expect(result).toEqual(validRepo)
-    })
+      const result = insertUserRepositorySchema.parse(validRepo);
+      expect(result).toEqual(validRepo);
+    });
 
     it('should require userId, owner, and repo', () => {
       const invalidRepo = {
-        webhookId: 12345
-      }
+        webhookId: 12345,
+      };
 
-      expect(() => insertUserRepositorySchema.parse(invalidRepo)).toThrow()
-    })
-  })
+      expect(() => insertUserRepositorySchema.parse(invalidRepo)).toThrow();
+    });
+  });
 
   describe('insertTaskSchema', () => {
     it('should validate a valid task object', () => {
@@ -59,12 +63,12 @@ describe('Schema Validation', () => {
         repo: 'testrepo',
         title: 'Test task',
         body: 'Task description',
-        labels: ['bug', 'feature']
-      }
+        labels: ['bug', 'feature'],
+      };
 
-      const result = insertTaskSchema.parse(validTask)
-      expect(result).toEqual(validTask)
-    })
+      const result = insertTaskSchema.parse(validTask);
+      expect(result).toEqual(validTask);
+    });
 
     it('should work without optional labels', () => {
       const taskWithoutLabels = {
@@ -73,19 +77,19 @@ describe('Schema Validation', () => {
         owner: 'testowner',
         repo: 'testrepo',
         title: 'Test task',
-        body: 'Task description'
-      }
+        body: 'Task description',
+      };
 
-      const result = insertTaskSchema.parse(taskWithoutLabels)
-      expect(result).toEqual(taskWithoutLabels)
-    })
+      const result = insertTaskSchema.parse(taskWithoutLabels);
+      expect(result).toEqual(taskWithoutLabels);
+    });
 
     it('should require all mandatory fields', () => {
       const invalidTask = {
-        title: 'Test task'
-      }
+        title: 'Test task',
+      };
 
-      expect(() => insertTaskSchema.parse(invalidTask)).toThrow()
-    })
-  })
-})
+      expect(() => insertTaskSchema.parse(invalidTask)).toThrow();
+    });
+  });
+});

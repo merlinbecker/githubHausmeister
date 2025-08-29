@@ -1,10 +1,10 @@
-import { eq, and, desc } from "drizzle-orm";
-import { db } from "../db";
-import { 
-  users, 
-  userRepositories, 
-  tasks, 
-  webhookDeliveries, 
+import { eq, and, desc } from 'drizzle-orm';
+import { db } from '../db';
+import {
+  users,
+  userRepositories,
+  tasks,
+  webhookDeliveries,
   userSystemState,
   type User,
   type InsertUser,
@@ -14,8 +14,8 @@ import {
   type InsertTask,
   type WebhookDelivery,
   type UserSystemState,
-  type AppState
-} from "@shared/schema";
+  type AppState,
+} from '@shared/schema';
 
 export class DatabaseStorage {
   // User operations
@@ -44,7 +44,11 @@ export class DatabaseStorage {
     return user;
   }
 
-  async updateUserToken(userId: string, accessToken: string, refreshToken?: string): Promise<void> {
+  async updateUserToken(
+    userId: string,
+    accessToken: string,
+    refreshToken?: string
+  ): Promise<void> {
     await db
       .update(users)
       .set({
@@ -64,13 +68,15 @@ export class DatabaseStorage {
       .orderBy(desc(userRepositories.createdAt));
   }
 
-  async addUserRepository(repositoryData: InsertUserRepository): Promise<UserRepository> {
+  async addUserRepository(
+    repositoryData: InsertUserRepository
+  ): Promise<UserRepository> {
     const [repository] = await db
       .insert(userRepositories)
       .values(repositoryData)
       .onConflictDoNothing()
       .returning();
-    
+
     if (!repository) {
       // Repository already exists, return it
       const [existing] = await db
@@ -85,11 +91,14 @@ export class DatabaseStorage {
         );
       return existing;
     }
-    
+
     return repository;
   }
 
-  async updateRepositoryWebhook(repositoryId: string, webhookId: number): Promise<void> {
+  async updateRepositoryWebhook(
+    repositoryId: string,
+    webhookId: number
+  ): Promise<void> {
     await db
       .update(userRepositories)
       .set({ webhookId })
@@ -97,23 +106,31 @@ export class DatabaseStorage {
   }
 
   async removeUserRepository(repositoryId: string): Promise<void> {
-    await db.delete(userRepositories).where(eq(userRepositories.id, repositoryId));
+    await db
+      .delete(userRepositories)
+      .where(eq(userRepositories.id, repositoryId));
   }
 
-  async getUserRepositoryByName(owner: string, repo: string): Promise<UserRepository | undefined> {
+  async getUserRepositoryByName(
+    owner: string,
+    repo: string
+  ): Promise<UserRepository | undefined> {
     const [repository] = await db
       .select()
       .from(userRepositories)
-      .where(and(
-        eq(userRepositories.owner, owner),
-        eq(userRepositories.repo, repo)
-      ));
+      .where(
+        and(eq(userRepositories.owner, owner), eq(userRepositories.repo, repo))
+      );
     return repository;
   }
 
   // Task operations
   async createTask(taskData: InsertTask): Promise<Task> {
-    const [task] = await db.insert(tasks).values(taskData).returning();
+    const dataToInsert = {
+      ...taskData,
+      labels: taskData.labels as string[] | null,
+    };
+    const [task] = await db.insert(tasks).values(dataToInsert).returning();
     return task;
   }
 
@@ -129,7 +146,7 @@ export class DatabaseStorage {
     return db
       .select()
       .from(tasks)
-      .where(and(eq(tasks.userId, userId), eq(tasks.status, "queued")))
+      .where(and(eq(tasks.userId, userId), eq(tasks.status, 'queued')))
       .orderBy(tasks.createdAt);
   }
 
@@ -137,19 +154,19 @@ export class DatabaseStorage {
     const [task] = await db
       .select()
       .from(tasks)
-      .where(and(eq(tasks.userId, userId), eq(tasks.status, "active")));
+      .where(and(eq(tasks.userId, userId), eq(tasks.status, 'active')));
     return task;
   }
 
   async getTaskById(taskId: string): Promise<Task | undefined> {
-    const [task] = await db
-      .select()
-      .from(tasks)
-      .where(eq(tasks.id, taskId));
+    const [task] = await db.select().from(tasks).where(eq(tasks.id, taskId));
     return task;
   }
 
-  async updateTask(taskId: string, updates: Partial<Task>): Promise<Task | undefined> {
+  async updateTask(
+    taskId: string,
+    updates: Partial<Task>
+  ): Promise<Task | undefined> {
     const [task] = await db
       .update(tasks)
       .set({ ...updates, updatedAt: new Date() })
@@ -164,7 +181,9 @@ export class DatabaseStorage {
   }
 
   // Webhook delivery operations
-  async recordWebhookDelivery(delivery: WebhookDelivery): Promise<WebhookDelivery> {
+  async recordWebhookDelivery(
+    delivery: WebhookDelivery
+  ): Promise<WebhookDelivery> {
     const [recorded] = await db
       .insert(webhookDeliveries)
       .values(delivery)
@@ -187,7 +206,7 @@ export class DatabaseStorage {
       .select()
       .from(userSystemState)
       .where(eq(userSystemState.userId, userId));
-    
+
     if (!state) {
       // Create default state for user
       const [newState] = await db
@@ -201,11 +220,14 @@ export class DatabaseStorage {
         .returning();
       return newState;
     }
-    
+
     return state;
   }
 
-  async updateUserSystemState(userId: string, updates: Partial<UserSystemState>): Promise<UserSystemState> {
+  async updateUserSystemState(
+    userId: string,
+    updates: Partial<UserSystemState>
+  ): Promise<UserSystemState> {
     const [state] = await db
       .update(userSystemState)
       .set(updates)
@@ -216,13 +238,14 @@ export class DatabaseStorage {
 
   // Application state (user-specific)
   async getUserAppState(userId: string): Promise<AppState> {
-    const [user, repositories, systemState, activeTask, queuedTasks] = await Promise.all([
-      this.getUserById(userId),
-      this.getUserRepositories(userId),
-      this.getUserSystemState(userId),
-      this.getActiveTask(userId),
-      this.getQueuedTasks(userId),
-    ]);
+    const [user, repositories, systemState, activeTask, queuedTasks] =
+      await Promise.all([
+        this.getUserById(userId),
+        this.getUserRepositories(userId),
+        this.getUserSystemState(userId),
+        this.getActiveTask(userId),
+        this.getQueuedTasks(userId),
+      ]);
 
     return {
       user,

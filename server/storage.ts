@@ -1,5 +1,17 @@
-import { type Task, type InsertTask, type WebhookDelivery, type SystemState, type AppState } from "@shared/schema";
-import { randomUUID } from "crypto";
+import {
+  type Task,
+  type InsertTask,
+  type WebhookDelivery,
+  type AppState,
+} from '@shared/schema';
+import { randomUUID } from 'crypto';
+
+interface SystemState {
+  id: string;
+  monthlyDone: number;
+  systemRunning: boolean;
+  lastReset: Date;
+}
 
 export interface IStorage {
   // Task management
@@ -9,15 +21,15 @@ export interface IStorage {
   deleteTask(id: string): Promise<boolean>;
   getQueuedTasks(): Promise<Task[]>;
   getActiveTask(): Promise<Task | undefined>;
-  
+
   // Webhook deliveries
   recordWebhookDelivery(delivery: WebhookDelivery): Promise<WebhookDelivery>;
   isDeliveryProcessed(deliveryId: string): Promise<boolean>;
-  
+
   // System state
   getSystemState(): Promise<SystemState>;
   updateSystemState(updates: Partial<SystemState>): Promise<SystemState>;
-  
+
   // Application state
   getAppState(): Promise<AppState>;
 }
@@ -31,7 +43,7 @@ export class MemStorage implements IStorage {
     this.tasks = new Map();
     this.webhookDeliveries = new Map();
     this.systemState = {
-      id: "singleton",
+      id: 'singleton',
       monthlyDone: 0,
       systemRunning: true,
       lastReset: new Date(),
@@ -40,15 +52,21 @@ export class MemStorage implements IStorage {
 
   async createTask(insertTask: InsertTask): Promise<Task> {
     const id = randomUUID();
+    const now = new Date();
     const task: Task = {
       ...insertTask,
       id,
-      status: "queued",
+      status: 'queued',
       issueNumber: null,
+      issueUrl: null,
       pullNumber: null,
       headSha: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      failureReason: null,
+      startedAt: null,
+      completedAt: null,
+      createdAt: now,
+      updatedAt: now,
+      labels: insertTask.labels as string[] | null,
     };
     this.tasks.set(id, task);
     return task;
@@ -58,10 +76,13 @@ export class MemStorage implements IStorage {
     return this.tasks.get(id);
   }
 
-  async updateTask(id: string, updates: Partial<Task>): Promise<Task | undefined> {
+  async updateTask(
+    id: string,
+    updates: Partial<Task>
+  ): Promise<Task | undefined> {
     const task = this.tasks.get(id);
     if (!task) return undefined;
-    
+
     const updatedTask = { ...task, ...updates, updatedAt: new Date() };
     this.tasks.set(id, updatedTask);
     return updatedTask;
@@ -73,15 +94,23 @@ export class MemStorage implements IStorage {
 
   async getQueuedTasks(): Promise<Task[]> {
     return Array.from(this.tasks.values())
-      .filter(task => task.status === "queued")
-      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+      .filter((task) => task.status === 'queued')
+      .sort((a, b) => {
+        const aTime = a.createdAt?.getTime() || 0;
+        const bTime = b.createdAt?.getTime() || 0;
+        return aTime - bTime;
+      });
   }
 
   async getActiveTask(): Promise<Task | undefined> {
-    return Array.from(this.tasks.values()).find(task => task.status === "active");
+    return Array.from(this.tasks.values()).find(
+      (task) => task.status === 'active'
+    );
   }
 
-  async recordWebhookDelivery(delivery: WebhookDelivery): Promise<WebhookDelivery> {
+  async recordWebhookDelivery(
+    delivery: WebhookDelivery
+  ): Promise<WebhookDelivery> {
     this.webhookDeliveries.set(delivery.id, delivery);
     return delivery;
   }
@@ -103,12 +132,13 @@ export class MemStorage implements IStorage {
   async getAppState(): Promise<AppState> {
     const activeTask = await this.getActiveTask();
     const queue = await this.getQueuedTasks();
-    
+
     return {
       monthlyDone: this.systemState.monthlyDone,
       activeTask,
       queue,
       systemRunning: this.systemState.systemRunning,
+      repositories: [], // TODO: Implement repository management
     };
   }
 }

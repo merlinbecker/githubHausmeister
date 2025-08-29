@@ -27,54 +27,54 @@ GitHub Hausmeister ist eine automatisierte GitHub-Wartungsanwendung, die Reposit
 
 ## Qualitätsziele
 
-| Priorität | Qualitätsziel | Szenario |
-|-----------|---------------|----------|
-| 1 | **Zuverlässigkeit** | System muss GitHub Webhooks ohne Verlust verarbeiten |
-| 2 | **Skalierbarkeit** | Unterstützung mehrerer Benutzer und Repositories |
-| 3 | **Benutzerfreundlichkeit** | Mobile-first responsive Design |
-| 4 | **Sicherheit** | Sichere GitHub Token-Authentifizierung und Webhook-Verifikation |
-| 5 | **Wartbarkeit** | Modulare Architektur mit klarer Trennung der Concerns |
+| Priorität | Qualitätsziel              | Szenario                                                        |
+| --------- | -------------------------- | --------------------------------------------------------------- |
+| 1         | **Zuverlässigkeit**        | System muss GitHub Webhooks ohne Verlust verarbeiten            |
+| 2         | **Skalierbarkeit**         | Unterstützung mehrerer Benutzer und Repositories                |
+| 3         | **Benutzerfreundlichkeit** | Mobile-first responsive Design                                  |
+| 4         | **Sicherheit**             | Sichere GitHub Token-Authentifizierung und Webhook-Verifikation |
+| 5         | **Wartbarkeit**            | Modulare Architektur mit klarer Trennung der Concerns           |
 
 ## Stakeholder
 
-| Rolle | Kontakt | Erwartungshaltung |
-|-------|---------|-------------------|
-| **Entwickler** | Repository Owner | Automatisierung von Repository-Wartungsaufgaben |
-| **GitHub Copilot** | AI Agent | Empfang und Bearbeitung zugewiesener Issues |
-| **CI/CD System** | GitHub Actions | Bereitstellung von Build-Status für automatische Merge-Entscheidungen |
-| **System Administrator** | DevOps Team | Überwachung der Anwendungsleistung und -integrität |
+| Rolle                    | Kontakt          | Erwartungshaltung                                                     |
+| ------------------------ | ---------------- | --------------------------------------------------------------------- |
+| **Entwickler**           | Repository Owner | Automatisierung von Repository-Wartungsaufgaben                       |
+| **GitHub Copilot**       | AI Agent         | Empfang und Bearbeitung zugewiesener Issues                           |
+| **CI/CD System**         | GitHub Actions   | Bereitstellung von Build-Status für automatische Merge-Entscheidungen |
+| **System Administrator** | DevOps Team      | Überwachung der Anwendungsleistung und -integrität                    |
 
 # Randbedingungen
 
 ## Technische Randbedingungen
 
-| Constraint | Beschreibung |
-|------------|--------------|
-| **Deployment Platform** | Replit mit integriertem Secrets Management |
-| **Database** | PostgreSQL (Neon Serverless) |
-| **GitHub API Limits** | Rate Limiting durch GitHub REST/GraphQL APIs |
-| **Node.js Runtime** | ES Modules, TypeScript-first Entwicklung |
+| Constraint              | Beschreibung                                 |
+| ----------------------- | -------------------------------------------- |
+| **Deployment Platform** | Replit mit integriertem Secrets Management   |
+| **Database**            | PostgreSQL (Neon Serverless)                 |
+| **GitHub API Limits**   | Rate Limiting durch GitHub REST/GraphQL APIs |
+| **Node.js Runtime**     | ES Modules, TypeScript-first Entwicklung     |
 
 ## Organisatorische Randbedingungen
 
-| Constraint | Beschreibung |
-|------------|--------------|
-| **Repository Access** | Erfordert GitHub Personal Access Tokens mit spezifischen Berechtigungen |
-| **Monthly Task Limits** | Konfigurierbare Limits zur Verhinderung von API Rate Limiting |
-| **Single Task Concurrency** | Nur eine aktive Aufgabe gleichzeitig zur Konfliktverhinderung |
+| Constraint                  | Beschreibung                                                            |
+| --------------------------- | ----------------------------------------------------------------------- |
+| **Repository Access**       | Erfordert GitHub Personal Access Tokens mit spezifischen Berechtigungen |
+| **Monthly Task Limits**     | Konfigurierbare Limits zur Verhinderung von API Rate Limiting           |
+| **Single Task Concurrency** | Nur eine aktive Aufgabe gleichzeitig zur Konfliktverhinderung           |
 
 ## Konfiguration und Umgebungsvariablen
 
 ### Erforderliche Environment Variables (Replit Secrets)
 
-| Variable | Beschreibung | Beispielwert | Erforderlich |
-|----------|-------------|-------------|--------------|
-| `GITHUB_TOKEN` | GitHub Personal Access Token mit repo, workflow, admin:repo_hook, read:org Berechtigungen | `ghp_xxxxxxxxxxxxx` | ✅ |
-| `GITHUB_WEBHOOK_SECRET` | Secret für GitHub Webhook-Signatur-Verifikation | `super_secret_webhook_key` | ✅ |
-| `COPILOT_ACTOR_ID` | NodeID des GitHub Copilot Coding Agents (optional) | `MDQ6VXNlcjxxxxxxxxx` | ❌ |
-| `OWNER` | GitHub Benutzer oder Organisation | `mein-github-user-oder-org` | ✅ |
-| `REPOSITORIES` | Komma-getrennte Liste der zu verwaltenden Repositories | `repo1,repo2,repo3` | ✅ |
-| `MAX_MONTHLY_TASKS` | Maximale Anzahl Tasks pro Monat | `50` | ❌ (Standard: 50) |
+| Variable                | Beschreibung                                                                              | Beispielwert                | Erforderlich      |
+| ----------------------- | ----------------------------------------------------------------------------------------- | --------------------------- | ----------------- |
+| `GITHUB_TOKEN`          | GitHub Personal Access Token mit repo, workflow, admin:repo_hook, read:org Berechtigungen | `ghp_xxxxxxxxxxxxx`         | ✅                |
+| `GITHUB_WEBHOOK_SECRET` | Secret für GitHub Webhook-Signatur-Verifikation                                           | `super_secret_webhook_key`  | ✅                |
+| `COPILOT_ACTOR_ID`      | NodeID des GitHub Copilot Coding Agents (optional)                                        | `MDQ6VXNlcjxxxxxxxxx`       | ❌                |
+| `OWNER`                 | GitHub Benutzer oder Organisation                                                         | `mein-github-user-oder-org` | ✅                |
+| `REPOSITORIES`          | Komma-getrennte Liste der zu verwaltenden Repositories                                    | `repo1,repo2,repo3`         | ✅                |
+| `MAX_MONTHLY_TASKS`     | Maximale Anzahl Tasks pro Monat                                                           | `50`                        | ❌ (Standard: 50) |
 
 ### Dateisystem-Struktur
 
@@ -126,7 +126,7 @@ graph TB
     Webhooks --> GH
     GH --> CI[GitHub Actions CI]
     CI --> GitHub
-    
+
     Developer -.- |"Repository Management,<br/>Task Creation"| GH
     GH -.- |"Issue Creation,<br/>PR Management,<br/>Webhook Registration"| GitHub
     GH -.- |"Agent Assignment<br/>via GraphQL"| Copilot
@@ -149,18 +149,18 @@ graph TB
         API[Express.js API<br/>Backend]
         DB[(PostgreSQL<br/>Database)]
     end
-    
+
     subgraph "GitHub Platform"
         REST[GitHub REST API v3]
         GraphQL[GitHub GraphQL API v4]
         Webhooks[GitHub Webhooks]
         Actions[GitHub Actions]
     end
-    
+
     subgraph "External Services"
         Neon[(Neon PostgreSQL<br/>Serverless)]
     end
-    
+
     WebUI <--> API
     API <--> DB
     API <--> REST
@@ -168,7 +168,7 @@ graph TB
     Webhooks --> API
     API --> Actions
     DB <--> Neon
-    
+
     WebUI -.- |"HTTPS/JSON"| API
     API -.- |"HTTPS/JSON<br/>Authentication: Bearer Token"| REST
     API -.- |"HTTPS/GraphQL<br/>Authentication: Bearer Token"| GraphQL
@@ -187,23 +187,23 @@ graph TB
 
 ## Architekturmuster
 
-| Aspekt | Entscheidung | Begründung |
-|--------|-------------|------------|
-| **Frontend-Architektur** | React + TypeScript + Vite | Schnelle Entwicklungserfahrung, optimiertes Bundling |
-| **Backend-Architektur** | Express.js RESTful API | Bewährtes Node.js Framework mit klarer API-Struktur |
-| **Daten-Persistierung** | Hybrid: PostgreSQL + In-Memory + File-State | PostgreSQL für dauerhafte Daten, In-Memory für Queue, JSON-Files für kritischen State |
-| **GitHub Integration** | REST + GraphQL APIs | REST für Standard-Operationen, GraphQL für Copilot-spezifische Features |
-| **Task Management** | Single-Task Queue mit Persistierung | Verhindert Konflikte, einfache Implementierung |
+| Aspekt                   | Entscheidung                                | Begründung                                                                            |
+| ------------------------ | ------------------------------------------- | ------------------------------------------------------------------------------------- |
+| **Frontend-Architektur** | React + TypeScript + Vite                   | Schnelle Entwicklungserfahrung, optimiertes Bundling                                  |
+| **Backend-Architektur**  | Express.js RESTful API                      | Bewährtes Node.js Framework mit klarer API-Struktur                                   |
+| **Daten-Persistierung**  | Hybrid: PostgreSQL + In-Memory + File-State | PostgreSQL für dauerhafte Daten, In-Memory für Queue, JSON-Files für kritischen State |
+| **GitHub Integration**   | REST + GraphQL APIs                         | REST für Standard-Operationen, GraphQL für Copilot-spezifische Features               |
+| **Task Management**      | Single-Task Queue mit Persistierung         | Verhindert Konflikte, einfache Implementierung                                        |
 
 ## Technologie-Entscheidungen
 
-| Bereich | Technologie | Begründung |
-|---------|-------------|------------|
-| **UI Framework** | shadcn/ui + Radix UI | Zugänglichkeit, konsistentes Design System |
-| **State Management** | TanStack Query | Server State Management, Caching, Data Fetching |
-| **Routing** | Wouter | Leichtgewichtige Alternative zu React Router |
-| **Styling** | Tailwind CSS | Utility-first, mobile-first responsive Design |
-| **ORM** | Drizzle ORM | Type-safe, schema-first Datenbankoperationen |
+| Bereich              | Technologie          | Begründung                                      |
+| -------------------- | -------------------- | ----------------------------------------------- |
+| **UI Framework**     | shadcn/ui + Radix UI | Zugänglichkeit, konsistentes Design System      |
+| **State Management** | TanStack Query       | Server State Management, Caching, Data Fetching |
+| **Routing**          | Wouter               | Leichtgewichtige Alternative zu React Router    |
+| **Styling**          | Tailwind CSS         | Utility-first, mobile-first responsive Design   |
+| **ORM**              | Drizzle ORM          | Type-safe, schema-first Datenbankoperationen    |
 
 ## Implementierungsdetails
 
@@ -217,23 +217,28 @@ Das System verwendet eine spezielle Strategie für die Copilot-Agent-Zuweisung:
 
 ```typescript
 // lib/github-graphql.ts (Referenzimplementierung)
-import fetch from "node-fetch";
+import fetch from 'node-fetch';
 
-const GQL = "https://api.github.com/graphql";
+const GQL = 'https://api.github.com/graphql';
 const TOKEN = process.env.GITHUB_TOKEN!;
 
-export async function gql<T>(query: string, variables: Record<string, any> = {}): Promise<T> {
+export async function gql<T>(
+  query: string,
+  variables: Record<string, any> = {}
+): Promise<T> {
   const res = await fetch(GQL, {
-    method: "POST",
+    method: 'POST',
     headers: {
-      "Authorization": `Bearer ${TOKEN}`,
-      "Content-Type": "application/json",
+      Authorization: `Bearer ${TOKEN}`,
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({ query, variables }),
   });
-  if (!res.ok) throw new Error(`GraphQL HTTP ${res.status}: ${await res.text()}`);
+  if (!res.ok)
+    throw new Error(`GraphQL HTTP ${res.status}: ${await res.text()}`);
   const json = await res.json();
-  if (json.errors) throw new Error(`GraphQL errors: ${JSON.stringify(json.errors)}`);
+  if (json.errors)
+    throw new Error(`GraphQL errors: ${JSON.stringify(json.errors)}`);
   return json.data as T;
 }
 ```
@@ -242,7 +247,7 @@ export async function gql<T>(query: string, variables: Record<string, any> = {})
 
 ```typescript
 // lib/copilot.ts (Referenzimplementierung)
-import { gql } from "./github-graphql";
+import { gql } from './github-graphql';
 
 export async function getCopilotNodeId(): Promise<string> {
   const configured = process.env.COPILOT_ACTOR_ID;
@@ -254,8 +259,8 @@ export async function getCopilotNodeId(): Promise<string> {
       user(login: $login) { id login }
       organization(login: $login) { id login }
     }`;
-  
-  const candidates = ["copilot", "github-copilot", "copilot-swe-agent"];
+
+  const candidates = ['copilot', 'github-copilot', 'copilot-swe-agent'];
   for (const login of candidates) {
     try {
       const data: any = await gql(query, { login });
@@ -263,7 +268,9 @@ export async function getCopilotNodeId(): Promise<string> {
       if (data?.organization?.id) return data.organization.id;
     } catch {}
   }
-  throw new Error("COPILOT_ACTOR_ID nicht konfiguriert und Copilot-Agent-ID nicht auffindbar. Bitte .env setzen.");
+  throw new Error(
+    'COPILOT_ACTOR_ID nicht konfiguriert und Copilot-Agent-ID nicht auffindbar. Bitte .env setzen.'
+  );
 }
 
 export async function addAssignee(issueNodeId: string, assigneeNodeId: string) {
@@ -273,7 +280,10 @@ export async function addAssignee(issueNodeId: string, assigneeNodeId: string) {
         assignable { ... on Issue { id number title } }
       }
     }`;
-  return gql(mutation, { assignableId: issueNodeId, assigneeIds: [assigneeNodeId] });
+  return gql(mutation, {
+    assignableId: issueNodeId,
+    assigneeIds: [assigneeNodeId],
+  });
 }
 ```
 
@@ -281,7 +291,7 @@ export async function addAssignee(issueNodeId: string, assigneeNodeId: string) {
 
 ```typescript
 // lib/ci.ts (Referenzimplementierung)
-import { octokit } from "./github-rest";
+import { octokit } from './github-rest';
 
 export async function isPRGreen(owner: string, repo: string, sha: string) {
   // Kombiniert Status Checks und Check Runs für vollständige CI-Validierung
@@ -290,8 +300,10 @@ export async function isPRGreen(owner: string, repo: string, sha: string) {
     octokit.rest.checks.listForRef({ owner, repo, ref: sha }),
   ]);
 
-  const allStatusesOk = statusRes.data.state === "success";
-  const allChecksOk = checksRes.data.check_runs.every(cr => cr.conclusion === "success");
+  const allStatusesOk = statusRes.data.state === 'success';
+  const allChecksOk = checksRes.data.check_runs.every(
+    (cr) => cr.conclusion === 'success'
+  );
   return allStatusesOk && allChecksOk;
 }
 ```
@@ -302,28 +314,69 @@ export async function isPRGreen(owner: string, repo: string, sha: string) {
 
 ```typescript
 // lib/github-rest.ts (Referenzimplementierung)
-import { Octokit } from "octokit";
+import { Octokit } from 'octokit';
 
 export const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
 
-export async function createIssue(owner: string, repo: string, title: string, body: string, labels: string[] = []) {
-  const { data } = await octokit.rest.issues.create({ owner, repo, title, body, labels });
+export async function createIssue(
+  owner: string,
+  repo: string,
+  title: string,
+  body: string,
+  labels: string[] = []
+) {
+  const { data } = await octokit.rest.issues.create({
+    owner,
+    repo,
+    title,
+    body,
+    labels,
+  });
   return data; // includes number, id, node_id
 }
 
-export async function getIssue(owner: string, repo: string, issue_number: number) {
+export async function getIssue(
+  owner: string,
+  repo: string,
+  issue_number: number
+) {
   return (await octokit.rest.issues.get({ owner, repo, issue_number })).data;
 }
 
-export async function createReviewApprove(owner: string, repo: string, pull_number: number, body = "LGTM (auto)") {
-  return octokit.rest.pulls.createReview({ owner, repo, pull_number, event: "APPROVE", body });
+export async function createReviewApprove(
+  owner: string,
+  repo: string,
+  pull_number: number,
+  body = 'LGTM (auto)'
+) {
+  return octokit.rest.pulls.createReview({
+    owner,
+    repo,
+    pull_number,
+    event: 'APPROVE',
+    body,
+  });
 }
 
-export async function mergePullRequest(owner: string, repo: string, pull_number: number, method: "merge"|"squash"|"rebase" = "squash") {
-  return octokit.rest.pulls.merge({ owner, repo, pull_number, merge_method: method });
+export async function mergePullRequest(
+  owner: string,
+  repo: string,
+  pull_number: number,
+  method: 'merge' | 'squash' | 'rebase' = 'squash'
+) {
+  return octokit.rest.pulls.merge({
+    owner,
+    repo,
+    pull_number,
+    merge_method: method,
+  });
 }
 
-export async function listPRsForIssue(owner: string, repo: string, issue_number: number) {
+export async function listPRsForIssue(
+  owner: string,
+  repo: string,
+  issue_number: number
+) {
   // PRs referenzieren das Issue per „Closes #<nr>"; alternativ: search
   const { data } = await octokit.rest.search.issuesAndPullRequests({
     q: `repo:${owner}/${repo} type:pr in:body is:open "${`#${issue_number}`}"`,
@@ -338,33 +391,37 @@ export async function listPRsForIssue(owner: string, repo: string, issue_number:
 
 ```typescript
 // lib/state.ts (Referenzimplementierung)
-import fs from "fs";
-import path from "path";
+import fs from 'fs';
+import path from 'path';
 
-const p = path.join(process.cwd(), "data/state.json");
+const p = path.join(process.cwd(), 'data/state.json');
 
 type State = {
   monthlyDone: number;
   activeTask?: {
-    owner: string; 
-    repo: string; 
-    issueNumber: number; 
-    pullNumber?: number; 
+    owner: string;
+    repo: string;
+    issueNumber: number;
+    pullNumber?: number;
     headSha?: string;
   };
-  queue: Array<{ 
-    owner: string; 
-    repo: string; 
-    title: string; 
-    body: string; 
-    labels: string[] 
+  queue: Array<{
+    owner: string;
+    repo: string;
+    title: string;
+    body: string;
+    labels: string[];
   }>;
 };
 
 const DEFAULT_STATE: State = { monthlyDone: 0, queue: [] };
 
 export function loadState(): State {
-  try { return JSON.parse(fs.readFileSync(p, "utf8")); } catch { return DEFAULT_STATE; }
+  try {
+    return JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch {
+    return DEFAULT_STATE;
+  }
 }
 
 export function saveState(s: State) {
@@ -377,9 +434,9 @@ export function saveState(s: State) {
 
 ```typescript
 // lib/queue.ts (Referenzimplementierung)
-import { loadState, saveState } from "./state";
-import { createIssue } from "./github-rest";
-import { getCopilotNodeId, addAssignee } from "./copilot";
+import { loadState, saveState } from './state';
+import { createIssue } from './github-rest';
+import { getCopilotNodeId, addAssignee } from './copilot';
 
 export async function startNextIfIdle() {
   const s = loadState();
@@ -390,12 +447,22 @@ export async function startNextIfIdle() {
 
   const job = s.queue.shift()!;
   // 1) Issue erstellen
-  const issue = await createIssue(job.owner, job.repo, job.title, job.body, job.labels);
+  const issue = await createIssue(
+    job.owner,
+    job.repo,
+    job.title,
+    job.body,
+    job.labels
+  );
   // 2) Copilot zuweisen (GraphQL)
   const copilotId = await getCopilotNodeId();
   await addAssignee(issue.node_id, copilotId);
 
-  s.activeTask = { owner: job.owner, repo: job.repo, issueNumber: issue.number };
+  s.activeTask = {
+    owner: job.owner,
+    repo: job.repo,
+    issueNumber: issue.number,
+  };
   saveState(s);
 }
 
@@ -405,7 +472,9 @@ export function markDoneAndContinue() {
   s.monthlyDone += 1;
   saveState(s);
   // Nächster Start asynchron
-  setTimeout(() => { startNextIfIdle().catch(console.error); }, 1000);
+  setTimeout(() => {
+    startNextIfIdle().catch(console.error);
+  }, 1000);
 }
 ```
 
@@ -415,23 +484,29 @@ export function markDoneAndContinue() {
 
 ```typescript
 // lib/webhook-verify.ts (Referenzimplementierung)
-import crypto from "crypto";
+import crypto from 'crypto';
 
-export function verifySignature(secret: string, payload: string, sig256: string | undefined) {
-  const hmac = crypto.createHmac("sha256", secret);
-  const digest = `sha256=${hmac.update(payload).digest("hex")}`;
-  return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(sig256 || ""));
+export function verifySignature(
+  secret: string,
+  payload: string,
+  sig256: string | undefined
+) {
+  const hmac = crypto.createHmac('sha256', secret);
+  const digest = `sha256=${hmac.update(payload).digest('hex')}`;
+  return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(sig256 || ''));
 }
 ```
 
 #### Webhook-Handler-Struktur
 
 Das System verarbeitet folgende GitHub-Events:
+
 - **`issues`** (assigned): Wenn Issues zugewiesen werden
-- **`pull_request`** (opened, ready_for_review, reopened): PR-Lifecycle-Events  
+- **`pull_request`** (opened, ready_for_review, reopened): PR-Lifecycle-Events
 - **`check_suite.completed`** / **`workflow_run.completed`**: CI-Abschluss-Events
 
 **Grundlegendes Webhook-Processing-Pattern**:
+
 1. Signatur-Verifikation mit `GITHUB_WEBHOOK_SECRET`
 2. Duplikat-Erkennung via `X-GitHub-Delivery` Header
 3. Event-spezifische Verarbeitung basierend auf `X-GitHub-Event`
@@ -444,20 +519,20 @@ Das System verwendet vordefinierte Templates für verschiedene Wartungsaufgaben:
 
 ```typescript
 const templates = [
-  { 
-    title: "Tests nachziehen (kritische Pfade)", 
-    body: "Bitte Unit Tests für Kernfunktionen ergänzen. Ziel: Abdeckung +10%. Closes after CI green.", 
-    labels: ["chore", "tests"] 
+  {
+    title: 'Tests nachziehen (kritische Pfade)',
+    body: 'Bitte Unit Tests für Kernfunktionen ergänzen. Ziel: Abdeckung +10%. Closes after CI green.',
+    labels: ['chore', 'tests'],
   },
-  { 
-    title: "Lint/Format Fehler beheben", 
-    body: "Bitte eslint/prettier-Probleme lösen und CI grün machen.", 
-    labels: ["chore", "lint"] 
+  {
+    title: 'Lint/Format Fehler beheben',
+    body: 'Bitte eslint/prettier-Probleme lösen und CI grün machen.',
+    labels: ['chore', 'lint'],
   },
-  { 
-    title: "Types härten (strict/tsconfig)", 
-    body: "Bitte TypeScript-Fehler reduzieren; keine suppressions. CI muss grün sein.", 
-    labels: ["chore", "types"] 
+  {
+    title: 'Types härten (strict/tsconfig)',
+    body: 'Bitte TypeScript-Fehler reduzieren; keine suppressions. CI muss grün sein.',
+    labels: ['chore', 'types'],
   },
 ];
 ```
@@ -471,7 +546,7 @@ Jedes verwaltete Repository benötigt folgenden CI-Workflow:
 name: CI
 on:
   pull_request:
-    branches: [ main ]
+    branches: [main]
 jobs:
   node:
     runs-on: ubuntu-latest
@@ -495,32 +570,32 @@ graph TB
             UI[React Web UI]
             Components[UI Components]
         end
-        
+
         subgraph "Backend Layer"
             API[Express.js API]
             Routes[Route Handlers]
             Auth[Authentication]
         end
-        
+
         subgraph "Business Logic Layer"
             TaskQueue[Task Queue Manager]
             GitHub[GitHub Integration]
             Webhook[Webhook Processor]
             Storage[Data Storage]
         end
-        
+
         subgraph "Data Layer"
             PostgreSQL[(PostgreSQL DB)]
             FileState[JSON State Files]
             Memory[In-Memory Cache]
         end
     end
-    
+
     subgraph "External Systems"
         GitHubAPI[GitHub APIs]
         Copilot[GitHub Copilot]
     end
-    
+
     UI --> API
     API --> Routes
     Routes --> Auth
@@ -528,12 +603,12 @@ graph TB
     Routes --> GitHub
     Routes --> Webhook
     Routes --> Storage
-    
+
     TaskQueue --> Storage
     GitHub --> GitHubAPI
     GitHub --> Copilot
     Webhook --> TaskQueue
-    
+
     Storage --> PostgreSQL
     Storage --> FileState
     Storage --> Memory
@@ -559,10 +634,12 @@ graph TB
 **Zweck/Verantwortung**: Bereitstellung einer responsiven Web-Oberfläche für Repository-Management, Task-Überwachung und Systemkontrolle.
 
 **Schnittstelle(n)**:
+
 - REST API Client über `/api/*` Endpoints
 - WebSocket-Verbindung für Real-time Updates (geplant)
 
 **Qualitäts-/Leistungsmerkmale**:
+
 - Mobile-first responsive Design
 - Dark Theme entsprechend GitHub-Styling
 - Client-side Routing mit Wouter
@@ -575,11 +652,13 @@ graph TB
 **Zweck/Verantwortung**: Bereitstellung einer RESTful API für Frontend-Kommunikation, Authentifizierung und Request-Routing.
 
 **Schnittstelle(n)**:
+
 - HTTP REST API auf Port 3000
 - Session-basierte Authentifizierung
 - GitHub OAuth Integration
 
 **Qualitäts-/Leistungsmerkmale**:
+
 - Express.js mit TypeScript
 - Session Management über PostgreSQL
 - Request/Response Logging
@@ -592,6 +671,7 @@ graph TB
 **Zweck/Verantwortung**: Implementierung der Kerngeschäftslogik für Task Management, GitHub Integration und Webhook-Verarbeitung.
 
 **Schnittstelle(n)**:
+
 - Task Queue Interface
 - GitHub REST/GraphQL Client
 - Webhook Event Handler
@@ -604,6 +684,7 @@ graph TB
 **Zweck/Verantwortung**: Persistierung und Verwaltung von Anwendungsdaten über verschiedene Speichermedien.
 
 **Schnittstelle(n)**:
+
 - Drizzle ORM für PostgreSQL
 - File System für JSON State
 - In-Memory Storage für Queues
@@ -622,20 +703,20 @@ graph TB
         State[State Manager]
         Limiter[Monthly Limiter]
     end
-    
+
     subgraph "Storage"
         DB[(Database)]
         JSON[JSON Files]
         Memory[In-Memory Queue]
     end
-    
+
     QueueAPI --> Processor
     Processor --> State
     Processor --> Limiter
     State --> DB
     State --> JSON
     QueueAPI --> Memory
-    
+
     Processor --> GitHubOps[GitHub Operations]
     Processor --> WebhookHandler[Webhook Handler]
 ```
@@ -643,6 +724,7 @@ graph TB
 **Zweck**: Zentrale Verwaltung der Task-Warteschlange mit Einzelaufgaben-Nebenläufigkeit und monatlichen Limits.
 
 **Schnittstellen**:
+
 - `createTask()`: Neue Tasks zur Queue hinzufügen
 - `processNext()`: Nächste Task aus der Queue verarbeiten
 - `updateTaskStatus()`: Task-Status aktualisieren
@@ -659,14 +741,14 @@ graph TB
         Copilot[Copilot Manager]
         Webhook[Webhook Verifier]
     end
-    
+
     RestClient --> Issues[Issue Management]
     RestClient --> PRs[PR Management]
     RestClient --> Repos[Repository Ops]
-    
+
     GraphQLClient --> Copilot
     Copilot --> Assignment[Agent Assignment]
-    
+
     Webhook --> Verification[Signature Verification]
     Webhook --> Processing[Event Processing]
 ```
@@ -674,6 +756,7 @@ graph TB
 **Zweck**: Abstraktion und Management aller GitHub API-Interaktionen.
 
 **Schnittstellen**:
+
 - REST API für CRUD-Operationen
 - GraphQL API für Copilot-Features
 - Webhook-Verarbeitung mit Signatur-Verifikation
@@ -697,7 +780,7 @@ sequenceDiagram
     User->>UI: Repository auswählen + Tasks erstellen
     UI->>API: POST /api/tasks
     API->>Queue: createTasks(templates)
-    
+
     loop Für jede Task
         Queue->>GitHub: createIssue()
         GitHub-->>Queue: Issue created
@@ -705,13 +788,13 @@ sequenceDiagram
         Copilot-->>Queue: Agent assigned
         Queue->>Queue: updateStatus('in_progress')
     end
-    
+
     Note over GitHub,Copilot: Copilot arbeitet an Issue
-    
+
     GitHub->>Webhook: PR created (webhook)
     Webhook->>API: POST /api/webhook
     API->>Queue: handlePREvent()
-    
+
     GitHub->>Webhook: CI completed (webhook)
     Webhook->>API: POST /api/webhook
     API->>GitHub: approvePR() + mergePR()
@@ -719,6 +802,7 @@ sequenceDiagram
 ```
 
 **Besonderheiten**:
+
 - Einzelaufgaben-Verarbeitung verhindert Konflikte
 - Webhook-Events triggern automatische Weiterverarbeitung
 - Persistente Zustandsverfolgung über alle Schritte
@@ -736,16 +820,16 @@ sequenceDiagram
 
     GitHub->>Webhook: Webhook Event (HMAC signed)
     Webhook->>Verifier: verifySignature()
-    
+
     alt Signature Valid
         Verifier-->>Webhook: Valid
         Webhook->>DB: checkDuplicateDelivery()
-        
+
         alt Not Duplicate
             DB-->>Webhook: New delivery
             Webhook->>DB: recordDelivery()
             Webhook->>Handler: processEvent()
-            
+
             alt Pull Request Event
                 Handler->>Queue: handlePREvent()
             else CI Event
@@ -753,7 +837,7 @@ sequenceDiagram
             else Issues Event
                 Handler->>Queue: handleIssuesEvent()
             end
-            
+
             Handler-->>Webhook: Success
         else Duplicate
             DB-->>Webhook: Already processed
@@ -766,6 +850,7 @@ sequenceDiagram
 ```
 
 **Besonderheiten**:
+
 - HMAC-SHA256 Signatur-Verifikation für Sicherheit
 - Duplikat-Erkennung verhindert Mehrfachverarbeitung
 - Event-spezifische Handler für verschiedene GitHub-Events
@@ -781,41 +866,43 @@ graph TB
             Frontend[React Frontend<br/>Vite Build]
             Backend[Express.js Backend<br/>Node.js Runtime]
         end
-        
+
         subgraph "Environment"
             Secrets[Replit Secrets<br/>Environment Variables]
             Storage[File System<br/>JSON State Files]
         end
     end
-    
+
     subgraph "External Services"
         NeonDB[(Neon PostgreSQL<br/>Serverless Database)]
         GitHub[GitHub Platform<br/>REST + GraphQL APIs]
     end
-    
+
     subgraph "Client Devices"
         Browser[Web Browser<br/>Mobile + Desktop]
     end
-    
+
     Browser <-->|HTTPS| Frontend
     Frontend <-->|HTTP/JSON| Backend
     Backend <-->|TLS| NeonDB
     Backend <-->|HTTPS/Bearer| GitHub
     Backend --> Secrets
     Backend --> Storage
-    
+
     GitHub -->|Webhooks/HTTPS| Backend
 ```
 
 **Begründung**: Single-Container Deployment auf Replit reduziert Komplexität und Deployment-Overhead. Externe Services für Skalierbarkeit und Zuverlässigkeit.
 
 **Qualitäts- und/oder Leistungsmerkmale**:
+
 - **Verfügbarkeit**: Replit-Platform mit automatischem Neustart
 - **Skalierbarkeit**: Serverless PostgreSQL über Neon
 - **Sicherheit**: Environment Variables über Replit Secrets
 - **Performance**: Client-side Caching, optimierte Builds
 
 **Zuordnung von Bausteinen zu Infrastruktur**:
+
 - **Frontend**: Statische Assets served von Express.js
 - **Backend**: Node.js Express.js Server
 - **Database**: Neon PostgreSQL mit Drizzle ORM
@@ -837,6 +924,7 @@ graph LR
 ```
 
 **Implementierung**:
+
 - GitHub Personal Access Tokens für API-Zugriff
 - Express Session Middleware mit PostgreSQL-Speicherung
 - Route-spezifische Authentifizierung über Middleware
@@ -846,6 +934,7 @@ graph LR
 **Konzept**: Zentrale Fehlerbehandlung mit strukturiertem Logging.
 
 **Implementierung**:
+
 - Try-catch Blocks in allen async Operationen
 - Express Error Handling Middleware
 - Console-basiertes Logging (Replit-optimiert)
@@ -862,13 +951,14 @@ graph TB
         StateFile[JSON Files<br/>Monthly Counters]
         Memory[In-Memory<br/>Active Queues]
     end
-    
+
     TaskDB --> Persistent[Persistent Data]
     StateFile --> Critical[Critical State]
     Memory --> Transient[Transient Data]
 ```
 
 **Implementierung**:
+
 - PostgreSQL für langfristige Datenpersistierung
 - JSON Files für kritische System-State (monatliche Zähler)
 - In-Memory Storage für temporäre Queue-Verwaltung
@@ -878,6 +968,7 @@ graph TB
 **Konzept**: Proaktive GitHub API Rate Limit-Verwaltung.
 
 **Implementierung**:
+
 - Monatliche Task-Limits (konfigurierbar, Standard: 50)
 - Einzelaufgaben-Verarbeitung zur Konfliktvermeidung
 - Exponential Backoff bei API-Fehlern
@@ -890,22 +981,26 @@ graph TB
 Jedes Repository, das von GitHub Hausmeister verwaltet werden soll, benötigt eine einmalige Konfiguration:
 
 #### 1. Webhook-Konfiguration
+
 - **URL**: `https://[replit-app-url]/api/webhook`
 - **Events**: `issues`, `pull_request`, `workflow_run`, `check_suite`
 - **Secret**: Identisch mit `GITHUB_WEBHOOK_SECRET` Environment Variable
 - **Content Type**: `application/json`
 
 #### 2. CI-Workflow einrichten
+
 - Datei: `.github/workflows/ci.yml` (siehe Implementierungsdetails)
 - Läuft auf allen Pull Requests gegen main Branch
 - Führt `npm ci`, `npm run build`, `npm test` aus
 
 #### 3. Branch-Schutz (optional)
+
 - **Regel**: "Require status checks before merging"
 - **Status Checks**: CI Workflow als erforderlich markieren
 - Ermöglicht automatische Merge-Entscheidungen basierend auf CI-Ergebnissen
 
 #### 4. GitHub Copilot aktivieren
+
 - Copilot Coding Agent im Repository aktivieren (über GitHub UI)
 - Sicherstellen, dass der Agent Pull Requests öffnen darf
 - Optional: Spezifische Agent-Konfiguration für das Repository
@@ -924,15 +1019,15 @@ Jedes Repository, das von GitHub Hausmeister verwaltet werden soll, benötigt ei
 
 # Architekturentscheidungen
 
-| Entscheidung | Status | Begründung | Konsequenzen |
-|-------------|--------|------------|---------------|
-| **React + TypeScript für Frontend** | ✅ Umgesetzt | Type Safety, Component-basierte Architektur, große Community | Komplexere Build-Pipeline, Lernkurve für neue Entwickler |
-| **Express.js für Backend** | ✅ Umgesetzt | Bewährtes Framework, große Middleware-Auswahl, RESTful APIs | Weniger strukturiert als andere Frameworks |
-| **Drizzle ORM statt Prisma** | ✅ Umgesetzt | Bessere TypeScript Integration, Schema-first Approach | Kleinere Community, weniger Resources |
-| **Hybrid Storage Strategy** | ✅ Umgesetzt | Optimiert verschiedene Datentypen, Performance vs. Persistierung | Komplexere Datenverwaltung, Konsistenz-Herausforderungen |
-| **Single Task Concurrency** | ✅ Umgesetzt | Verhindert GitHub API Konflikte, einfache Implementierung | Reduzierte Durchsatzleistung, Queue-Delays |
-| **Replit als Deployment Platform** | ✅ Umgesetzt | Integrierte Entwicklungsumgebung, Secrets Management | Vendor Lock-in, begrenzte Skalierungsoptionen |
-| **Wouter statt React Router** | ✅ Umgesetzt | Reduzierte Bundle-Größe, einfache API | Weniger Features, kleinere Community |
+| Entscheidung                        | Status       | Begründung                                                       | Konsequenzen                                             |
+| ----------------------------------- | ------------ | ---------------------------------------------------------------- | -------------------------------------------------------- |
+| **React + TypeScript für Frontend** | ✅ Umgesetzt | Type Safety, Component-basierte Architektur, große Community     | Komplexere Build-Pipeline, Lernkurve für neue Entwickler |
+| **Express.js für Backend**          | ✅ Umgesetzt | Bewährtes Framework, große Middleware-Auswahl, RESTful APIs      | Weniger strukturiert als andere Frameworks               |
+| **Drizzle ORM statt Prisma**        | ✅ Umgesetzt | Bessere TypeScript Integration, Schema-first Approach            | Kleinere Community, weniger Resources                    |
+| **Hybrid Storage Strategy**         | ✅ Umgesetzt | Optimiert verschiedene Datentypen, Performance vs. Persistierung | Komplexere Datenverwaltung, Konsistenz-Herausforderungen |
+| **Single Task Concurrency**         | ✅ Umgesetzt | Verhindert GitHub API Konflikte, einfache Implementierung        | Reduzierte Durchsatzleistung, Queue-Delays               |
+| **Replit als Deployment Platform**  | ✅ Umgesetzt | Integrierte Entwicklungsumgebung, Secrets Management             | Vendor Lock-in, begrenzte Skalierungsoptionen            |
+| **Wouter statt React Router**       | ✅ Umgesetzt | Reduzierte Bundle-Größe, einfache API                            | Weniger Features, kleinere Community                     |
 
 # Qualitätsanforderungen
 
@@ -945,53 +1040,53 @@ graph TB
     Quality --> Security[Sicherheit]
     Quality --> Maintainability[Wartbarkeit]
     Quality --> Performance[Performance]
-    
+
     Reliability --> WebhookProcessing[Webhook Verarbeitung]
     Reliability --> StateConsistency[Zustandskonsistenz]
-    
+
     Usability --> MobileFirst[Mobile-First Design]
     Usability --> DarkTheme[GitHub Dark Theme]
-    
+
     Security --> TokenSecurity[Token-Sicherheit]
     Security --> WebhookVerification[Webhook-Verifikation]
-    
+
     Maintainability --> Modularity[Modulare Architektur]
     Maintainability --> TypeSafety[Type Safety]
-    
+
     Performance --> APIRateLimiting[API Rate Limiting]
     Performance --> ClientCaching[Client-side Caching]
 ```
 
 ## Qualitätsszenarien
 
-| Szenario | Qualitätsmerkmal | Stimulus | Umgebung | Antwort | Messbare Größe |
-|----------|------------------|----------|-----------|---------|----------------|
-| **Webhook-Verarbeitung** | Zuverlässigkeit | GitHub sendet Webhook | Produktionsumgebung | Event wird verarbeitet und Task aktualisiert | 99.9% Webhook Success Rate |
-| **Mobile Nutzung** | Benutzerfreundlichkeit | Benutzer öffnet App auf Smartphone | Mobile Browser | UI ist vollständig nutzbar und responsive | Alle Features nutzbar <480px Bildschirmbreite |
-| **Token-Kompromittierung** | Sicherheit | GitHub Token wird kompromittiert | Produktionsumgebung | System erkennt ungültige Tokens und blockiert Zugriff | <1 Sekunde Reaktionszeit auf ungültige Tokens |
-| **Code-Änderungen** | Wartbarkeit | Entwickler fügt neues Feature hinzu | Entwicklungsumgebung | Änderung isoliert in spezifischem Modul | <5 Dateien pro Feature-Änderung |
-| **API Rate Limit** | Performance | Monatliches Limit erreicht | Produktionsumgebung | Neue Tasks werden blockiert bis zum nächsten Monat | Automatischer Stop bei 50 Tasks/Monat |
+| Szenario                   | Qualitätsmerkmal       | Stimulus                            | Umgebung             | Antwort                                               | Messbare Größe                                |
+| -------------------------- | ---------------------- | ----------------------------------- | -------------------- | ----------------------------------------------------- | --------------------------------------------- |
+| **Webhook-Verarbeitung**   | Zuverlässigkeit        | GitHub sendet Webhook               | Produktionsumgebung  | Event wird verarbeitet und Task aktualisiert          | 99.9% Webhook Success Rate                    |
+| **Mobile Nutzung**         | Benutzerfreundlichkeit | Benutzer öffnet App auf Smartphone  | Mobile Browser       | UI ist vollständig nutzbar und responsive             | Alle Features nutzbar <480px Bildschirmbreite |
+| **Token-Kompromittierung** | Sicherheit             | GitHub Token wird kompromittiert    | Produktionsumgebung  | System erkennt ungültige Tokens und blockiert Zugriff | <1 Sekunde Reaktionszeit auf ungültige Tokens |
+| **Code-Änderungen**        | Wartbarkeit            | Entwickler fügt neues Feature hinzu | Entwicklungsumgebung | Änderung isoliert in spezifischem Modul               | <5 Dateien pro Feature-Änderung               |
+| **API Rate Limit**         | Performance            | Monatliches Limit erreicht          | Produktionsumgebung  | Neue Tasks werden blockiert bis zum nächsten Monat    | Automatischer Stop bei 50 Tasks/Monat         |
 
 # Risiken und technische Schulden
 
 ## Risiken
 
-| Risiko | Wahrscheinlichkeit | Auswirkung | Mitigation |
-|--------|-------------------|------------|------------|
-| **GitHub API Rate Limiting** | Hoch | System-Ausfall | Monatliche Limits, Exponential Backoff |
-| **Webhook-Ausfall** | Mittel | Verpasste Events | Retry-Mechanismus, Event-Polling als Fallback |
-| **PostgreSQL Verbindungsabbruch** | Mittel | Datenverlust | Connection Pooling, Retry-Logic |
-| **Replit Platform Ausfall** | Niedrig | Kompletter Service-Ausfall | Backup Deployment Strategy |
+| Risiko                            | Wahrscheinlichkeit | Auswirkung                 | Mitigation                                    |
+| --------------------------------- | ------------------ | -------------------------- | --------------------------------------------- |
+| **GitHub API Rate Limiting**      | Hoch               | System-Ausfall             | Monatliche Limits, Exponential Backoff        |
+| **Webhook-Ausfall**               | Mittel             | Verpasste Events           | Retry-Mechanismus, Event-Polling als Fallback |
+| **PostgreSQL Verbindungsabbruch** | Mittel             | Datenverlust               | Connection Pooling, Retry-Logic               |
+| **Replit Platform Ausfall**       | Niedrig            | Kompletter Service-Ausfall | Backup Deployment Strategy                    |
 
 ## Technische Schulden
 
-| Bereich | Beschreibung | Priorität | Geplante Lösung |
-|---------|--------------|-----------|-----------------|
-| **Testing Coverage** | Keine automatisierten Tests vorhanden | Hoch | Vitest Framework implementieren |
-| **CI/CD Pipeline** | Keine automatisierte Build/Deploy Pipeline | Hoch | GitHub Actions einrichten |
-| **Error Monitoring** | Nur Console-Logging vorhanden | Mittel | Strukturiertes Logging + Monitoring |
-| **WebSocket Integration** | Real-time Updates nur über Polling | Niedrig | WebSocket für Live-Updates |
-| **Backup Strategy** | Keine automatisierte Backups | Mittel | Neon PostgreSQL Backup + State File Backup |
+| Bereich                   | Beschreibung                               | Priorität | Geplante Lösung                            |
+| ------------------------- | ------------------------------------------ | --------- | ------------------------------------------ |
+| **Testing Coverage**      | Keine automatisierten Tests vorhanden      | Hoch      | Vitest Framework implementieren            |
+| **CI/CD Pipeline**        | Keine automatisierte Build/Deploy Pipeline | Hoch      | GitHub Actions einrichten                  |
+| **Error Monitoring**      | Nur Console-Logging vorhanden              | Mittel    | Strukturiertes Logging + Monitoring        |
+| **WebSocket Integration** | Real-time Updates nur über Polling         | Niedrig   | WebSocket für Live-Updates                 |
+| **Backup Strategy**       | Keine automatisierte Backups               | Mittel    | Neon PostgreSQL Backup + State File Backup |
 
 ## Bekannte Limitationen
 
@@ -1002,20 +1097,20 @@ graph TB
 
 # Glossar
 
-| Begriff | Definition |
-|---------|------------|
-| **GitHub Hausmeister** | Automatisierte Anwendung für GitHub Repository-Wartung |
-| **Chore Issue** | Wartungsaufgabe (Tests, Linting, Dependencies) als GitHub Issue |
-| **Copilot Agent** | GitHub AI-Agent, der Issues automatisch bearbeitet |
-| **Task Queue** | Warteschlange für die sequenzielle Abarbeitung von Wartungsaufgaben |
-| **Webhook** | HTTP-Callback von GitHub bei Repository-Events |
-| **Single Task Concurrency** | Verarbeitung jeweils nur einer Aufgabe zur Konfliktvermeidung |
-| **Monthly Limit** | Monatliches Kontingent für erstellte Tasks pro Benutzer |
-| **Auto-Merge** | Automatisches Mergen von Pull Requests nach erfolgreichem CI |
-| **Rate Limiting** | Begrenzung der API-Anfragen zur Einhaltung von GitHub-Limits |
-| **HMAC Verification** | Kryptographische Verifikation von Webhook-Signaturen |
-| **Express Session** | Server-seitige Session-Verwaltung für Benutzer-Authentifizierung |
-| **Drizzle ORM** | Type-safe Object-Relational Mapping für PostgreSQL |
-| **shadcn/ui** | React Component Library basierend auf Radix UI |
-| **TanStack Query** | Library für Server State Management und Caching |
-| **Replit Secrets** | Environment Variable Management in der Replit Platform |
+| Begriff                     | Definition                                                          |
+| --------------------------- | ------------------------------------------------------------------- |
+| **GitHub Hausmeister**      | Automatisierte Anwendung für GitHub Repository-Wartung              |
+| **Chore Issue**             | Wartungsaufgabe (Tests, Linting, Dependencies) als GitHub Issue     |
+| **Copilot Agent**           | GitHub AI-Agent, der Issues automatisch bearbeitet                  |
+| **Task Queue**              | Warteschlange für die sequenzielle Abarbeitung von Wartungsaufgaben |
+| **Webhook**                 | HTTP-Callback von GitHub bei Repository-Events                      |
+| **Single Task Concurrency** | Verarbeitung jeweils nur einer Aufgabe zur Konfliktvermeidung       |
+| **Monthly Limit**           | Monatliches Kontingent für erstellte Tasks pro Benutzer             |
+| **Auto-Merge**              | Automatisches Mergen von Pull Requests nach erfolgreichem CI        |
+| **Rate Limiting**           | Begrenzung der API-Anfragen zur Einhaltung von GitHub-Limits        |
+| **HMAC Verification**       | Kryptographische Verifikation von Webhook-Signaturen                |
+| **Express Session**         | Server-seitige Session-Verwaltung für Benutzer-Authentifizierung    |
+| **Drizzle ORM**             | Type-safe Object-Relational Mapping für PostgreSQL                  |
+| **shadcn/ui**               | React Component Library basierend auf Radix UI                      |
+| **TanStack Query**          | Library für Server State Management und Caching                     |
+| **Replit Secrets**          | Environment Variable Management in der Replit Platform              |

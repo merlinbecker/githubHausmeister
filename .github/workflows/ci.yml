@@ -34,6 +34,12 @@ jobs:
       - name: Run TypeScript check
         run: npm run check
         
+      - name: Run linting
+        run: npm run lint
+        
+      - name: Check formatting
+        run: npm run format:check
+        
       - name: Run tests with coverage
         run: npm run test:coverage
         

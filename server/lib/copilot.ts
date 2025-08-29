@@ -1,7 +1,8 @@
-import { gql } from "./github-graphql";
+import { gql } from './github-graphql';
 
-export async function getCopilotNodeId(): Promise<string> {
-  const configured = process.env.COPILOT_ACTOR_ID || process.env.COPILOT_ACTOR_ID_ENV_VAR;
+export async function getCopilotNodeId(token: string): Promise<string> {
+  const configured =
+    process.env.COPILOT_ACTOR_ID || process.env.COPILOT_ACTOR_ID_ENV_VAR;
   if (configured && configured.trim()) {
     return configured.trim();
   }
@@ -12,23 +13,29 @@ export async function getCopilotNodeId(): Promise<string> {
       user(login: $login) { id login }
       organization(login: $login) { id login }
     }`;
-  
-  const candidates = ["copilot", "github-copilot", "copilot-swe-agent"];
-  
+
+  const candidates = ['copilot', 'github-copilot', 'copilot-swe-agent'];
+
   for (const login of candidates) {
     try {
-      const data: any = await gql(query, { login });
+      const data: any = await gql(query, { login }, token);
       if (data?.user?.id) return data.user.id;
       if (data?.organization?.id) return data.organization.id;
-    } catch (error) {
+    } catch (_error) {
       // Continue to next candidate
     }
   }
-  
-  throw new Error("COPILOT_ACTOR_ID not configured and Copilot agent ID not found. Please set environment variable.");
+
+  throw new Error(
+    'COPILOT_ACTOR_ID not configured and Copilot agent ID not found. Please set environment variable.'
+  );
 }
 
-export async function addAssignee(issueNodeId: string, assigneeNodeId: string) {
+export async function addAssignee(
+  issueNodeId: string,
+  assigneeNodeId: string,
+  token: string
+) {
   const mutation = `
     mutation($assignableId: ID!, $assigneeIds: [ID!]!) {
       addAssigneesToAssignable(input: {assignableId: $assignableId, assigneeIds: $assigneeIds}) {
@@ -41,9 +48,13 @@ export async function addAssignee(issueNodeId: string, assigneeNodeId: string) {
         }
       }
     }`;
-  
-  return gql(mutation, { 
-    assignableId: issueNodeId, 
-    assigneeIds: [assigneeNodeId] 
-  });
+
+  return gql(
+    mutation,
+    {
+      assignableId: issueNodeId,
+      assigneeIds: [assigneeNodeId],
+    },
+    token
+  );
 }

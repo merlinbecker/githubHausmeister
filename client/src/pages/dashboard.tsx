@@ -1,20 +1,24 @@
-import { useQuery } from "@tanstack/react-query";
-import { getStatus } from "@/lib/api";
-import { logout } from "@/lib/auth";
-import { useAuth } from "@/hooks/useAuth";
-import StatusOverview from "@/components/StatusOverview";
-import ActiveTaskCard from "@/components/ActiveTaskCard";
-import TaskQueue from "@/components/TaskQueue";
-import TaskCreationForm from "@/components/TaskCreationForm";
-import RepositoryManager from "@/components/RepositoryManager";
-import WebhookStatus from "@/components/WebhookStatus";
-import SystemControls from "@/components/SystemControls";
-import { Github, Settings, LogOut, User } from "lucide-react";
+import { useQuery } from '@tanstack/react-query';
+import { getStatus } from '@/lib/api';
+import { logout } from '@/lib/auth';
+import { useAuth } from '@/hooks/useAuth';
+import StatusOverview from '@/components/StatusOverview';
+import ActiveTaskCard from '@/components/ActiveTaskCard';
+import TaskQueue from '@/components/TaskQueue';
+import TaskCreationForm from '@/components/TaskCreationForm';
+import RepositoryManager from '@/components/RepositoryManager';
+import WebhookStatus from '@/components/WebhookStatus';
+import SystemControls from '@/components/SystemControls';
+import { Github, LogOut, User } from 'lucide-react';
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { data: appState, isLoading, refetch } = useQuery({
-    queryKey: ["/api/status"],
+  const {
+    data: appState,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ['/api/status'],
     queryFn: getStatus,
     refetchInterval: 30000, // Refresh every 30 seconds
   });
@@ -24,7 +28,7 @@ export default function Dashboard() {
       await logout();
       window.location.reload();
     } catch (error) {
-      console.error("Logout error:", error);
+      console.error('Logout error:', error);
     }
   };
 
@@ -46,7 +50,9 @@ export default function Dashboard() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <Github className="text-2xl text-github-blue" size={32} />
-            <h1 className="text-xl font-bold text-github-text">GitHub Hausmeister</h1>
+            <h1 className="text-xl font-bold text-github-text">
+              GitHub Hausmeister
+            </h1>
             <span className="px-2 py-1 bg-github-blue/20 text-github-blue text-xs rounded-full font-medium">
               v1.0
             </span>
@@ -54,23 +60,27 @@ export default function Dashboard() {
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
               <div className="w-2 h-2 bg-github-green rounded-full animate-pulse"></div>
-              <span className="text-sm text-github-muted">GitHub Connected</span>
+              <span className="text-sm text-github-muted">
+                GitHub Connected
+              </span>
             </div>
             {user && (
               <div className="flex items-center space-x-3">
                 <div className="flex items-center space-x-2">
                   {user.avatarUrl ? (
-                    <img 
-                      src={user.avatarUrl} 
+                    <img
+                      src={user.avatarUrl}
                       alt={user.username}
                       className="w-6 h-6 rounded-full"
                     />
                   ) : (
                     <User className="text-github-muted" size={20} />
                   )}
-                  <span className="text-sm text-github-text">{user.username}</span>
+                  <span className="text-sm text-github-text">
+                    {user.username}
+                  </span>
                 </div>
-                <button 
+                <button
                   onClick={handleLogout}
                   className="p-2 text-github-muted hover:text-github-red transition-colors"
                   data-testid="button-logout"
@@ -86,28 +96,31 @@ export default function Dashboard() {
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         <StatusOverview appState={appState} />
-        
+
         {appState?.activeTask && (
-          <ActiveTaskCard activeTask={appState.activeTask} onRefresh={refetch} />
+          <ActiveTaskCard
+            activeTask={appState.activeTask}
+            onRefresh={refetch}
+          />
         )}
-        
-        <RepositoryManager 
-          userRepositories={appState?.repositories || []} 
-          onRefresh={refetch} 
+
+        <RepositoryManager
+          userRepositories={appState?.repositories || []}
+          onRefresh={refetch}
         />
-        
+
         <TaskQueue queue={appState?.queue || []} onRefresh={refetch} />
-        
-        <TaskCreationForm 
+
+        <TaskCreationForm
           repositories={appState?.repositories || []}
-          onRefresh={refetch} 
+          onRefresh={refetch}
         />
-        
+
         <WebhookStatus />
-        
-        <SystemControls 
-          systemRunning={appState?.systemRunning || false} 
-          onRefresh={refetch} 
+
+        <SystemControls
+          systemRunning={appState?.systemRunning || false}
+          onRefresh={refetch}
         />
       </main>
 
@@ -115,9 +128,14 @@ export default function Dashboard() {
       <footer className="bg-github-surface border-t border-github-border mt-12 py-6">
         <div className="max-w-7xl mx-auto px-4 text-center">
           <p className="text-sm text-github-muted">
-            GitHub Hausmeister • Automated Repository Maintenance • 
-            <a href="#" className="text-github-blue hover:underline ml-1">Documentation</a> • 
-            <a href="#" className="text-github-blue hover:underline ml-1">Support</a>
+            GitHub Hausmeister • Automated Repository Maintenance •
+            <a href="#" className="text-github-blue hover:underline ml-1">
+              Documentation
+            </a>{' '}
+            •
+            <a href="#" className="text-github-blue hover:underline ml-1">
+              Support
+            </a>
           </p>
         </div>
       </footer>

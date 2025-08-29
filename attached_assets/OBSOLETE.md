@@ -9,7 +9,8 @@
 Diese Datei wurde erfolgreich in die `documentation/arc42.md` konsolidiert. Alle technischen Details, Implementierungsbeispiele und Konfigurationsanweisungen sind jetzt strukturiert in der arc42-Architekturdokumentation verfügbar.
 
 **Konsolidierte Bereiche**:
-- ✅ Umgebungsvariablen und Konfiguration 
+
+- ✅ Umgebungsvariablen und Konfiguration
 - ✅ GitHub GraphQL/REST API Implementierungsdetails
 - ✅ Copilot-Agent Zuweisung und Ermittlung
 - ✅ CI-Status-Überprüfung und Webhook-Verarbeitung
@@ -18,7 +19,8 @@ Diese Datei wurde erfolgreich in die `documentation/arc42.md` konsolidiert. Alle
 - ✅ End-to-End Workflow-Dokumentation
 
 **Neuer Standort**: `documentation/arc42.md` - Abschnitte:
-- "Konfiguration und Umgebungsvariablen" 
+
+- "Konfiguration und Umgebungsvariablen"
 - "Implementierungsdetails"
 - "Repository-Setup und Workflow-Konfiguration"
 

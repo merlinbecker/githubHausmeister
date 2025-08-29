@@ -1,11 +1,10 @@
-import { databaseStorage } from "./database-storage";
-import { createIssue } from "./github-rest";
-import { getCopilotNodeId, addAssignee, getIssueNodeId } from "./github-graphql";
+import { databaseStorage } from './database-storage';
+import { createIssue } from './github-rest';
 
 export async function startNextIfIdle(userId: string): Promise<void> {
   try {
     const appState = await databaseStorage.getUserAppState(userId);
-    
+
     // Check if system is running and no active task
     if (!appState.systemRunning || appState.activeTask) {
       return;
@@ -19,15 +18,17 @@ export async function startNextIfIdle(userId: string): Promise<void> {
 
     const maxTasks = Number(process.env.MAX_MONTHLY_TASKS || 50);
     if (appState.monthlyDone >= maxTasks) {
-      console.log(`Monthly limit reached for user ${userId}: ${appState.monthlyDone}/${maxTasks}`);
+      console.log(
+        `Monthly limit reached for user ${userId}: ${appState.monthlyDone}/${maxTasks}`
+      );
       return;
     }
 
     const nextTask = queuedTasks[0];
-    
+
     // Mark task as in progress
     await databaseStorage.updateTask(nextTask.id, {
-      status: "in_progress",
+      status: 'in_progress',
     });
 
     console.log(`Starting task ${nextTask.id}: ${nextTask.title}`);
@@ -35,11 +36,11 @@ export async function startNextIfIdle(userId: string): Promise<void> {
     // Get user's GitHub token
     const user = await databaseStorage.getUserById(userId);
     if (!user?.accessToken) {
-      throw new Error("No GitHub access token found for user");
+      throw new Error('No GitHub access token found for user');
     }
 
     // Check for duplicate issues first
-    const { checkForDuplicateIssue } = await import("./github-rest");
+    const { checkForDuplicateIssue } = await import('./github-rest');
     const duplicateCheck = await checkForDuplicateIssue(
       user.accessToken,
       nextTask.owner,
@@ -47,35 +48,47 @@ export async function startNextIfIdle(userId: string): Promise<void> {
       nextTask.title,
       nextTask.labels || []
     );
-    
+
     if (duplicateCheck.isDuplicate) {
-      console.log(`Duplicate issue found for task ${nextTask.id}: Issue #${duplicateCheck.existingIssue?.number}`);
-      
+      console.log(
+        `Duplicate issue found for task ${nextTask.id}: Issue #${duplicateCheck.existingIssue?.number}`
+      );
+
       // Try to assign Copilot agent to existing issue
-      console.log(`🔄 [QUEUE] Attempting Copilot assignment to EXISTING issue #${duplicateCheck.existingIssue.number}`);
-      const { assignCopilotToIssue } = await import("./github-rest");
+      console.log(
+        `🔄 [QUEUE] Attempting Copilot assignment to EXISTING issue #${duplicateCheck.existingIssue.number}`
+      );
+      const { assignCopilotToIssue } = await import('./github-rest');
       const assignmentResult = await assignCopilotToIssue(
-        user.accessToken, 
-        nextTask.owner, 
-        nextTask.repo, 
+        user.accessToken,
+        nextTask.owner,
+        nextTask.repo,
         duplicateCheck.existingIssue.number
       );
-      
+
       if (assignmentResult.success) {
-        console.log(`✅ [QUEUE] SUCCESS: Assigned ${assignmentResult.assignedAgent} to existing issue #${duplicateCheck.existingIssue.number}`);
+        console.log(
+          `✅ [QUEUE] SUCCESS: Assigned ${assignmentResult.assignedAgent} to existing issue #${duplicateCheck.existingIssue.number}`
+        );
       } else {
-        console.warn(`❌ [QUEUE] FAILED: Could not assign Copilot to existing issue #${duplicateCheck.existingIssue.number}`);
+        console.warn(
+          `❌ [QUEUE] FAILED: Could not assign Copilot to existing issue #${duplicateCheck.existingIssue.number}`
+        );
         console.warn(`❌ [QUEUE] Reason: ${assignmentResult.error}`);
-        console.warn(`❌ [QUEUE] FALLBACK: Task will proceed without Copilot assignment`);
+        console.warn(
+          `❌ [QUEUE] FALLBACK: Task will proceed without Copilot assignment`
+        );
       }
-      
+
       // Update task with existing issue info instead of creating new one
       await databaseStorage.updateTask(nextTask.id, {
         issueNumber: duplicateCheck.existingIssue.number,
-        status: "in_progress"
+        status: 'in_progress',
       });
-      
-      console.log(`Task ${nextTask.id} linked to existing issue #${duplicateCheck.existingIssue.number}`);
+
+      console.log(
+        `Task ${nextTask.id} linked to existing issue #${duplicateCheck.existingIssue.number}`
+      );
       return;
     }
 
@@ -90,33 +103,54 @@ export async function startNextIfIdle(userId: string): Promise<void> {
     );
 
     // Assign Copilot agent using improved method
-    console.log(`🔄 [QUEUE] Attempting Copilot assignment to NEW issue #${issue.number}`);
-    const { assignCopilotToIssue, verifyCopilotAssignment } = await import("./github-rest");
+    console.log(
+      `🔄 [QUEUE] Attempting Copilot assignment to NEW issue #${issue.number}`
+    );
+    const { assignCopilotToIssue, verifyCopilotAssignment } = await import(
+      './github-rest'
+    );
     const assignmentResult = await assignCopilotToIssue(
-      user.accessToken, 
-      nextTask.owner, 
-      nextTask.repo, 
+      user.accessToken,
+      nextTask.owner,
+      nextTask.repo,
       issue.number
     );
-    
+
     if (assignmentResult.success) {
-      console.log(`✅ [QUEUE] SUCCESS: Assigned ${assignmentResult.assignedAgent} to new issue #${issue.number}`);
-      
+      console.log(
+        `✅ [QUEUE] SUCCESS: Assigned ${assignmentResult.assignedAgent} to new issue #${issue.number}`
+      );
+
       // Double-check assignment worked
       setTimeout(async () => {
-        console.log(`🔍 [QUEUE] Starting delayed verification for issue #${issue.number}...`);
-        const verification = await verifyCopilotAssignment(user.accessToken, nextTask.owner, nextTask.repo, issue.number);
+        console.log(
+          `🔍 [QUEUE] Starting delayed verification for issue #${issue.number}...`
+        );
+        const verification = await verifyCopilotAssignment(
+          user.accessToken,
+          nextTask.owner,
+          nextTask.repo,
+          issue.number
+        );
         if (verification.isAssigned) {
-          console.log(`✅ [QUEUE] VERIFICATION SUCCESS: ${verification.assignedCopilot} confirmed assigned to issue #${issue.number}`);
+          console.log(
+            `✅ [QUEUE] VERIFICATION SUCCESS: ${verification.assignedCopilot} confirmed assigned to issue #${issue.number}`
+          );
         } else {
-          console.error(`❌ [QUEUE] VERIFICATION FAILED: Copilot not found in assignees for issue #${issue.number}`);
-          console.error(`❌ [QUEUE] This indicates the assignment did not persist - possible GitHub API issue`);
+          console.error(
+            `❌ [QUEUE] VERIFICATION FAILED: Copilot not found in assignees for issue #${issue.number}`
+          );
+          console.error(
+            `❌ [QUEUE] This indicates the assignment did not persist - possible GitHub API issue`
+          );
         }
       }, 2000);
     } else {
       console.error(`❌ [QUEUE] ASSIGNMENT FAILED for issue #${issue.number}`);
       console.error(`❌ [QUEUE] Reason: ${assignmentResult.error}`);
-      console.error(`❌ [QUEUE] FALLBACK: Task will proceed without Copilot assignment`);
+      console.error(
+        `❌ [QUEUE] FALLBACK: Task will proceed without Copilot assignment`
+      );
     }
 
     // Update task with issue info
@@ -126,7 +160,7 @@ export async function startNextIfIdle(userId: string): Promise<void> {
 
     console.log(`Task ${nextTask.id} started successfully`);
   } catch (error) {
-    console.error("Error starting next task:", error);
+    console.error('Error starting next task:', error);
   }
 }
 
@@ -139,7 +173,7 @@ export async function markTaskCompleted(taskId: string): Promise<void> {
     }
 
     await databaseStorage.updateTask(taskId, {
-      status: "completed",
+      status: 'completed',
     });
 
     // Update monthly counter
@@ -155,11 +189,14 @@ export async function markTaskCompleted(taskId: string): Promise<void> {
       startNextIfIdle(task.userId).catch(console.error);
     }, 2000);
   } catch (error) {
-    console.error("Error marking task as completed:", error);
+    console.error('Error marking task as completed:', error);
   }
 }
 
-export async function markTaskFailed(taskId: string, reason?: string): Promise<void> {
+export async function markTaskFailed(
+  taskId: string,
+  reason?: string
+): Promise<void> {
   try {
     const task = await databaseStorage.getTaskById(taskId);
     if (!task) {
@@ -168,16 +205,18 @@ export async function markTaskFailed(taskId: string, reason?: string): Promise<v
     }
 
     await databaseStorage.updateTask(taskId, {
-      status: "failed",
+      status: 'failed',
     });
 
-    console.log(`Task ${taskId} marked as failed: ${reason || 'Unknown error'}`);
+    console.log(
+      `Task ${taskId} marked as failed: ${reason || 'Unknown error'}`
+    );
 
     // Start next task if available
     setTimeout(() => {
       startNextIfIdle(task.userId).catch(console.error);
     }, 2000);
   } catch (error) {
-    console.error("Error marking task as failed:", error);
+    console.error('Error marking task as failed:', error);
   }
 }

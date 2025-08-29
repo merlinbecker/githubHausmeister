@@ -1,5 +1,5 @@
-import { defineConfig } from 'vitest/config'
-import path from 'path'
+import { defineConfig } from 'vitest/config';
+import path from 'path';
 
 export default defineConfig({
   test: {
@@ -17,9 +17,9 @@ export default defineConfig({
         'dist/',
         'build/',
         'coverage/',
-        'vitest.setup.ts'
-      ]
-    }
+        'vitest.setup.ts',
+      ],
+    },
   },
   resolve: {
     alias: {
@@ -28,4 +28,4 @@ export default defineConfig({
       '@assets': path.resolve(__dirname, 'attached_assets'),
     },
   },
-})
+});
