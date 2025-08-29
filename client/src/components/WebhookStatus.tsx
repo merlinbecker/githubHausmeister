@@ -5,7 +5,7 @@ export default function WebhookStatus() {
   const webhookConfig = {
     url: `${window.location.origin}/api/webhook`,
     status: "Active",
-    events: ["pull_request", "issues", "check_suite", "workflow_run"],
+    events: ["pull_request", "issues", "check_suite", "workflow_run", "check_run"],
   };
 
   return (
@@ -23,6 +23,7 @@ export default function WebhookStatus() {
                   case "issues": return UserPlus;
                   case "check_suite": return CheckCircle;
                   case "workflow_run": return CheckCircle;
+                  case "check_run": return CheckCircle;
                   default: return Edit;
                 }
               };

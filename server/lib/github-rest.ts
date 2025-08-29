@@ -38,6 +38,31 @@ export async function mergePullRequest(token: string, owner: string, repo: strin
   });
 }
 
+export async function markPRReadyForReview(token: string, owner: string, repo: string, pull_number: number) {
+  const octokit = new Octokit({ auth: token });
+  return octokit.rest.pulls.update({
+    owner,
+    repo,
+    pull_number,
+    draft: false
+  });
+}
+
+export async function commentOnPR(token: string, owner: string, repo: string, pull_number: number, body: string) {
+  const octokit = new Octokit({ auth: token });
+  return octokit.rest.issues.createComment({
+    owner,
+    repo,
+    issue_number: pull_number,
+    body
+  });
+}
+
+export async function getPullRequest(token: string, owner: string, repo: string, pull_number: number) {
+  const octokit = new Octokit({ auth: token });
+  return (await octokit.rest.pulls.get({ owner, repo, pull_number })).data;
+}
+
 export async function listPRsForIssue(token: string, owner: string, repo: string, issue_number: number) {
   const octokit = new Octokit({ auth: token });
   const { data } = await octokit.rest.search.issuesAndPullRequests({
@@ -48,7 +73,7 @@ export async function listPRsForIssue(token: string, owner: string, repo: string
 
 export async function registerWebhook(token: string, owner: string, repo: string, webhookUrl: string, secret: string) {
   const octokit = new Octokit({ auth: token });
-  const events = ["issues", "pull_request", "workflow_run", "check_suite"];
+  const events = ["issues", "pull_request", "workflow_run", "check_suite", "check_run"];
   
   try {
     const { data } = await octokit.rest.repos.createWebhook({
