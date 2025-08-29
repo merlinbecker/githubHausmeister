@@ -137,7 +137,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/auth/user', optionalAuth, (req: AuthenticatedRequest, res) => {
     if (req.user) {
-      const { accessToken, ...userWithoutToken } = req.user;
+      const { accessToken: _, ...userWithoutToken } = req.user;
       res.json(userWithoutToken);
     } else {
       res.status(401).json({ error: 'Not authenticated' });

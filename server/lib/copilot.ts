@@ -21,7 +21,7 @@ export async function getCopilotNodeId(token: string): Promise<string> {
       const data: any = await gql(query, { login }, token);
       if (data?.user?.id) return data.user.id;
       if (data?.organization?.id) return data.organization.id;
-    } catch (_error) {
+    } catch {
       // Continue to next candidate
     }
   }
