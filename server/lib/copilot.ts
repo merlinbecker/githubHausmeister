@@ -1,6 +1,7 @@
 import { gql } from "./github-graphql";
 
-export async function getCopilotNodeId(token: string): Promise<string> {
+export async function findCopilotNodeId(token: string): Promise<string> {
+
   const configured = process.env.COPILOT_ACTOR_ID || process.env.COPILOT_ACTOR_ID_ENV_VAR;
   if (configured && configured.trim()) {
     return configured.trim();

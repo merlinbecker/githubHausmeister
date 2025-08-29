@@ -7,9 +7,10 @@ export default function WebhookStatus() {
     url: `${window.location.origin}/api/webhook`,
     status: "Active",
     events: ["pull_request", "issues", "check_suite", "workflow_run", "check_run"],
-    token: "••••••••••••••••",
-    copilotAgent: "copilot-swe-agent",
-    monitoredRepos: 3,
+
+    token: "ghp_****...****",
+    copilotAgent: "@github-copilot",
+    monitoredRepos: 5,
   };
 
   return (

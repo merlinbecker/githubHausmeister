@@ -1,5 +1,9 @@
 import { apiRequest } from "./queryClient";
 import type { User } from "@/lib/auth";
+import type { UserRepository } from "@shared/schema";
+
+// Re-export UserRepository for components
+export type { UserRepository };
 
 export interface AppState {
   user?: User;
@@ -27,16 +31,6 @@ export interface GitHubRepository {
     admin: boolean;
     push: boolean;
   };
-}
-
-export interface UserRepository {
-  id: string;
-  userId: string;
-  owner: string;
-  repo: string;
-  webhookId?: number;
-  isActive: boolean;
-  createdAt: string;
 }
 
 export async function getStatus(): Promise<AppState> {
