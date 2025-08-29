@@ -200,3 +200,24 @@ export interface WebhookEvent {
   event: string;
   payload: any;
 }
+
+export interface Stats {
+  maxMonthlyTasks: number;
+  successRate: number;
+  totalTasks: number;
+  successfulTasks: number;
+  failedTasks: number;
+  avgTimeHours: number;
+}
+
+export interface WebhookConfig {
+  url: string;
+  status: string;
+  events: string[];
+  token?: string;
+  copilotAgent?: string;
+  monitoredRepos?: number;
+}
+
+// Type alias for compatibility with storage.ts
+export type SystemState = UserSystemState;

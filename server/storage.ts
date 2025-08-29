@@ -32,6 +32,7 @@ export class MemStorage implements IStorage {
     this.webhookDeliveries = new Map();
     this.systemState = {
       id: "singleton",
+      userId: "system", // Default system user ID
       monthlyDone: 0,
       systemRunning: true,
       lastReset: new Date(),
@@ -45,10 +46,15 @@ export class MemStorage implements IStorage {
       id,
       status: "queued",
       issueNumber: null,
+      issueUrl: null,
       pullNumber: null,
       headSha: null,
+      startedAt: null,
+      completedAt: null,
+      failureReason: null,
       createdAt: new Date(),
       updatedAt: new Date(),
+      labels: Array.isArray(insertTask.labels) ? [...insertTask.labels] : [],
     };
     this.tasks.set(id, task);
     return task;
@@ -74,7 +80,11 @@ export class MemStorage implements IStorage {
   async getQueuedTasks(): Promise<Task[]> {
     return Array.from(this.tasks.values())
       .filter(task => task.status === "queued")
-      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+      .sort((a, b) => {
+        const aTime = a.createdAt?.getTime() || 0;
+        const bTime = b.createdAt?.getTime() || 0;
+        return aTime - bTime;
+      });
   }
 
   async getActiveTask(): Promise<Task | undefined> {
@@ -105,10 +115,11 @@ export class MemStorage implements IStorage {
     const queue = await this.getQueuedTasks();
     
     return {
-      monthlyDone: this.systemState.monthlyDone,
+      monthlyDone: this.systemState.monthlyDone || 0,
       activeTask,
       queue,
-      systemRunning: this.systemState.systemRunning,
+      systemRunning: this.systemState.systemRunning ?? true,
+      repositories: [], // Empty array as this is in-memory storage without user repos
     };
   }
 }

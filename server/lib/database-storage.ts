@@ -113,7 +113,12 @@ export class DatabaseStorage {
 
   // Task operations
   async createTask(taskData: InsertTask): Promise<Task> {
-    const [task] = await db.insert(tasks).values(taskData).returning();
+    // Ensure labels is properly typed as string array
+    const properTaskData: any = {
+      ...taskData,
+      labels: Array.isArray(taskData.labels) ? taskData.labels : (taskData.labels ? [taskData.labels] : [])
+    };
+    const [task] = await db.insert(tasks).values(properTaskData).returning();
     return task;
   }
 
