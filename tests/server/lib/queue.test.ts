@@ -48,9 +48,10 @@ describe('Queue Management Functions', () => {
     it('should return early if system is not running', async () => {
       vi.mocked(databaseStorage.getUserAppState).mockResolvedValue({
         systemRunning: false,
-        activeTask: null,
+        activeTask: undefined,
         queue: [],
-        monthlyDone: 0
+        monthlyDone: 0,
+        repositories: []
       })
 
       await startNextIfIdle('user-123')
@@ -62,9 +63,48 @@ describe('Queue Management Functions', () => {
     it('should return early if there is an active task', async () => {
       vi.mocked(databaseStorage.getUserAppState).mockResolvedValue({
         systemRunning: true,
-        activeTask: { id: 'active-task', owner: 'owner', repo: 'repo' },
-        queue: [{ id: 'queued-task' }],
-        monthlyDone: 0
+        activeTask: { 
+          id: 'active-task', 
+          owner: 'owner', 
+          repo: 'repo',
+          title: 'Active Task',
+          body: 'Active task body',
+          status: 'in_progress',
+          userId: 'user-123',
+          repositoryId: 'repo-id',
+          labels: [],
+          issueNumber: null,
+          issueUrl: null,
+          pullNumber: null,
+          headSha: null,
+          startedAt: null,
+          completedAt: null,
+          failureReason: null,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        queue: [{
+          id: 'queued-task',
+          title: 'Queued Task',
+          body: 'Queued task body',
+          status: 'queued',
+          userId: 'user-123',
+          repositoryId: 'repo-id',
+          owner: 'owner',
+          repo: 'repo',
+          labels: [],
+          issueNumber: null,
+          issueUrl: null,
+          pullNumber: null,
+          headSha: null,
+          startedAt: null,
+          completedAt: null,
+          failureReason: null,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }],
+        monthlyDone: 0,
+        repositories: []
       })
 
       await startNextIfIdle('user-123')
@@ -76,9 +116,10 @@ describe('Queue Management Functions', () => {
     it('should return early if queue is empty', async () => {
       vi.mocked(databaseStorage.getUserAppState).mockResolvedValue({
         systemRunning: true,
-        activeTask: null,
+        activeTask: undefined,
         queue: [],
-        monthlyDone: 0
+        monthlyDone: 0,
+        repositories: []
       })
 
       await startNextIfIdle('user-123')
@@ -90,9 +131,29 @@ describe('Queue Management Functions', () => {
     it('should return early if monthly limit reached', async () => {
       vi.mocked(databaseStorage.getUserAppState).mockResolvedValue({
         systemRunning: true,
-        activeTask: null,
-        queue: [{ id: 'task-1' }],
-        monthlyDone: 50
+        activeTask: undefined,
+        queue: [{
+          id: 'task-1',
+          title: 'Test Task',
+          body: 'Test body',
+          status: 'queued',
+          userId: 'user-123',
+          repositoryId: 'repo-id',
+          owner: 'owner',
+          repo: 'repo',
+          labels: [],
+          issueNumber: null,
+          issueUrl: null,
+          pullNumber: null,
+          headSha: null,
+          startedAt: null,
+          completedAt: null,
+          failureReason: null,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }],
+        monthlyDone: 50,
+        repositories: []
       })
 
       await startNextIfIdle('user-123')
@@ -109,19 +170,39 @@ describe('Queue Management Functions', () => {
         body: 'Test body',
         labels: ['test'],
         owner: 'test-owner',
-        repo: 'test-repo'
+        repo: 'test-repo',
+        status: 'queued',
+        userId: 'user-123',
+        repositoryId: 'repo-id',
+        issueNumber: null,
+        issueUrl: null,
+        pullNumber: null,
+        headSha: null,
+        startedAt: null,
+        completedAt: null,
+        failureReason: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
       }
 
       vi.mocked(databaseStorage.getUserAppState).mockResolvedValue({
         systemRunning: true,
-        activeTask: null,
+        activeTask: undefined,
         queue: [mockTask],
-        monthlyDone: 0
+        monthlyDone: 0,
+        repositories: []
       })
 
       vi.mocked(databaseStorage.getUserById).mockResolvedValue({
         id: 'user-123',
-        accessToken: null
+        username: 'testuser',
+        email: null,
+        avatarUrl: null,
+        accessToken: '',
+        refreshToken: null,
+        tokenExpiresAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
       })
 
       await startNextIfIdle('user-123')
@@ -139,19 +220,39 @@ describe('Queue Management Functions', () => {
         body: 'Test body',
         labels: ['test'],
         owner: 'test-owner',
-        repo: 'test-repo'
+        repo: 'test-repo',
+        status: 'queued',
+        userId: 'user-123',
+        repositoryId: 'repo-id',
+        issueNumber: null,
+        issueUrl: null,
+        pullNumber: null,
+        headSha: null,
+        startedAt: null,
+        completedAt: null,
+        failureReason: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
       }
 
       vi.mocked(databaseStorage.getUserAppState).mockResolvedValue({
         systemRunning: true,
-        activeTask: null,
+        activeTask: undefined,
         queue: [mockTask],
-        monthlyDone: 0
+        monthlyDone: 0,
+        repositories: []
       })
 
       vi.mocked(databaseStorage.getUserById).mockResolvedValue({
         id: 'user-123',
-        accessToken: 'test-token'
+        username: 'testuser',
+        email: null,
+        avatarUrl: null,
+        accessToken: 'test-token',
+        refreshToken: null,
+        tokenExpiresAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
       })
 
       // Mock dynamic import for checkForDuplicateIssue
@@ -188,12 +289,31 @@ describe('Queue Management Functions', () => {
       const mockTask = {
         id: 'task-1',
         userId: 'user-123',
-        status: 'in_progress'
+        status: 'in_progress',
+        title: 'Test Task',
+        body: 'Test body',
+        owner: 'owner',
+        repo: 'repo',
+        repositoryId: 'repo-id',
+        labels: [],
+        issueNumber: null,
+        issueUrl: null,
+        pullNumber: null,
+        headSha: null,
+        startedAt: null,
+        completedAt: null,
+        failureReason: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
       }
 
       vi.mocked(databaseStorage.getTaskById).mockResolvedValue(mockTask)
       vi.mocked(databaseStorage.getUserSystemState).mockResolvedValue({
-        monthlyDone: 5
+        id: 'state-id',
+        userId: 'user-123',
+        monthlyDone: 5,
+        systemRunning: true,
+        lastReset: new Date()
       })
 
       await markTaskCompleted('task-1')
@@ -210,7 +330,7 @@ describe('Queue Management Functions', () => {
     })
 
     it('should handle task not found', async () => {
-      vi.mocked(databaseStorage.getTaskById).mockResolvedValue(null)
+      vi.mocked(databaseStorage.getTaskById).mockResolvedValue(undefined)
 
       await markTaskCompleted('non-existent-task')
 
@@ -233,7 +353,22 @@ describe('Queue Management Functions', () => {
       const mockTask = {
         id: 'task-1',
         userId: 'user-123',
-        status: 'in_progress'
+        status: 'in_progress',
+        title: 'Test Task',
+        body: 'Test body',
+        owner: 'owner',
+        repo: 'repo',
+        repositoryId: 'repo-id',
+        labels: [],
+        issueNumber: null,
+        issueUrl: null,
+        pullNumber: null,
+        headSha: null,
+        startedAt: null,
+        completedAt: null,
+        failureReason: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
       }
 
       vi.mocked(databaseStorage.getTaskById).mockResolvedValue(mockTask)
@@ -251,7 +386,22 @@ describe('Queue Management Functions', () => {
       const mockTask = {
         id: 'task-1',
         userId: 'user-123',
-        status: 'in_progress'
+        status: 'in_progress',
+        title: 'Test Task',
+        body: 'Test body',
+        owner: 'owner',
+        repo: 'repo',
+        repositoryId: 'repo-id',
+        labels: [],
+        issueNumber: null,
+        issueUrl: null,
+        pullNumber: null,
+        headSha: null,
+        startedAt: null,
+        completedAt: null,
+        failureReason: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
       }
 
       vi.mocked(databaseStorage.getTaskById).mockResolvedValue(mockTask)
@@ -265,7 +415,7 @@ describe('Queue Management Functions', () => {
     })
 
     it('should handle task not found', async () => {
-      vi.mocked(databaseStorage.getTaskById).mockResolvedValue(null)
+      vi.mocked(databaseStorage.getTaskById).mockResolvedValue(undefined)
 
       await markTaskFailed('non-existent-task')
 
