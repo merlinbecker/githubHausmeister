@@ -84,10 +84,50 @@ export async function deleteWebhook(token: string, owner: string, repo: string, 
   });
 }
 
+export async function listAllCollaborators(token: string, owner: string, repo: string): Promise<void> {
+  const octokit = new Octokit({ auth: token });
+  
+  console.log(`📋 [COLLABORATORS] Listing all collaborators for ${owner}/${repo}:`);
+  
+  try {
+    const { data: collaborators } = await octokit.rest.repos.listCollaborators({
+      owner,
+      repo,
+      per_page: 100
+    });
+    
+    console.log(`📋 [COLLABORATORS] Found ${collaborators.length} collaborators:`);
+    
+    collaborators.forEach((collaborator, index) => {
+      const type = collaborator.type === 'Bot' ? '🤖 BOT' : '👤 USER';
+      const permissions = collaborator.permissions ? 
+        Object.entries(collaborator.permissions)
+          .filter(([_, value]) => value)
+          .map(([key, _]) => key)
+          .join(', ') : 'unknown';
+      
+      console.log(`📋 [COLLABORATORS] ${index + 1}. ${type} ${collaborator.login} (ID: ${collaborator.id}) - Permissions: ${permissions}`);
+      
+      // Check if this looks like a Copilot bot
+      if (collaborator.login.toLowerCase().includes('copilot') || 
+          collaborator.login.toLowerCase().includes('bot') ||
+          collaborator.type === 'Bot') {
+        console.log(`   🔍 [COLLABORATORS] *** POTENTIAL COPILOT BOT FOUND: ${collaborator.login} ***`);
+      }
+    });
+    
+  } catch (error: any) {
+    console.log(`❌ [COLLABORATORS] Error listing collaborators: ${error.status} ${error.message}`);
+  }
+}
+
 export async function checkCopilotAvailability(token: string, owner: string, repo: string): Promise<{ available: boolean; username?: string }> {
   const octokit = new Octokit({ auth: token });
   
   console.log(`🔍 [COPILOT CHECK] Starting availability check for repository ${owner}/${repo}`);
+  
+  // First, list all collaborators to see what's available
+  await listAllCollaborators(token, owner, repo);
   
   // Check if copilot-swe-agent can be assigned to this repository
   const copilotUsernames = ["copilot-swe-agent", "github-copilot[bot]"];
