@@ -63,6 +63,56 @@ GitHub Hausmeister ist eine automatisierte GitHub-Wartungsanwendung, die Reposit
 | **Monthly Task Limits** | Konfigurierbare Limits zur Verhinderung von API Rate Limiting |
 | **Single Task Concurrency** | Nur eine aktive Aufgabe gleichzeitig zur Konfliktverhinderung |
 
+## Konfiguration und Umgebungsvariablen
+
+### Erforderliche Environment Variables (Replit Secrets)
+
+| Variable | Beschreibung | Beispielwert | Erforderlich |
+|----------|-------------|-------------|--------------|
+| `GITHUB_TOKEN` | GitHub Personal Access Token mit repo, workflow, admin:repo_hook, read:org Berechtigungen | `ghp_xxxxxxxxxxxxx` | ✅ |
+| `GITHUB_WEBHOOK_SECRET` | Secret für GitHub Webhook-Signatur-Verifikation | `super_secret_webhook_key` | ✅ |
+| `COPILOT_ACTOR_ID` | NodeID des GitHub Copilot Coding Agents (optional) | `MDQ6VXNlcjxxxxxxxxx` | ❌ |
+| `OWNER` | GitHub Benutzer oder Organisation | `mein-github-user-oder-org` | ✅ |
+| `REPOSITORIES` | Komma-getrennte Liste der zu verwaltenden Repositories | `repo1,repo2,repo3` | ✅ |
+| `MAX_MONTHLY_TASKS` | Maximale Anzahl Tasks pro Monat | `50` | ❌ (Standard: 50) |
+
+### Dateisystem-Struktur
+
+Das System verwendet eine spezifische Verzeichnisstruktur, die sowohl die ursprünglich geplante Next.js Struktur als auch die aktuelle React + Express.js Implementierung widerspiegelt:
+
+```
+Geplante Struktur (aus ursprünglichem Design):
+/app
+  /ui
+    page.tsx
+    components/StatusCard.tsx
+    components/RepoPicker.tsx
+/app/api
+  /webhook/route.ts
+  /issues/create/route.ts
+  /tasks/start/route.ts
+  /tasks/status/route.ts
+  /tasks/approve-merge/route.ts
+/lib
+  github-rest.ts
+  github-graphql.ts
+  queue.ts
+  state.ts
+  ci.ts
+  copilot.ts
+  webhook-verify.ts
+
+Aktuelle Implementierung:
+/client/src/           # React Frontend
+/server/              # Express.js Backend
+  /lib/               # Business Logic Module
+  /routes.ts          # API Route Handlers
+/shared/              # Gemeinsame TypeScript Types
+/data/                # Persistente State Files
+  state.json
+  deliveries.json
+```
+
 # Kontextabgrenzung
 
 ## Fachlicher Kontext
@@ -154,6 +204,285 @@ graph TB
 | **Routing** | Wouter | Leichtgewichtige Alternative zu React Router |
 | **Styling** | Tailwind CSS | Utility-first, mobile-first responsive Design |
 | **ORM** | Drizzle ORM | Type-safe, schema-first Datenbankoperationen |
+
+## Implementierungsdetails
+
+### GitHub GraphQL Integration für Copilot-Zuweisung
+
+Das System verwendet eine spezielle Strategie für die Copilot-Agent-Zuweisung:
+
+**Strategie**: Wenn `COPILOT_ACTOR_ID` in den Umgebungsvariablen gesetzt ist, wird diese direkt verwendet. Andernfalls versucht das System, die Copilot-Agent-ID via GraphQL zu ermitteln. Bei Fehlschlag wird ein klarer Fehlerhinweis ausgegeben.
+
+#### GraphQL Client Implementation
+
+```typescript
+// lib/github-graphql.ts (Referenzimplementierung)
+import fetch from "node-fetch";
+
+const GQL = "https://api.github.com/graphql";
+const TOKEN = process.env.GITHUB_TOKEN!;
+
+export async function gql<T>(query: string, variables: Record<string, any> = {}): Promise<T> {
+  const res = await fetch(GQL, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+  if (!res.ok) throw new Error(`GraphQL HTTP ${res.status}: ${await res.text()}`);
+  const json = await res.json();
+  if (json.errors) throw new Error(`GraphQL errors: ${JSON.stringify(json.errors)}`);
+  return json.data as T;
+}
+```
+
+#### Copilot-Agent-Ermittlung und Zuweisung
+
+```typescript
+// lib/copilot.ts (Referenzimplementierung)
+import { gql } from "./github-graphql";
+
+export async function getCopilotNodeId(): Promise<string> {
+  const configured = process.env.COPILOT_ACTOR_ID;
+  if (configured && configured.trim()) return configured.trim();
+
+  // Fallback: GraphQL-Suche nach Copilot-Agenten
+  const query = `
+    query($login: String!) {
+      user(login: $login) { id login }
+      organization(login: $login) { id login }
+    }`;
+  
+  const candidates = ["copilot", "github-copilot", "copilot-swe-agent"];
+  for (const login of candidates) {
+    try {
+      const data: any = await gql(query, { login });
+      if (data?.user?.id) return data.user.id;
+      if (data?.organization?.id) return data.organization.id;
+    } catch {}
+  }
+  throw new Error("COPILOT_ACTOR_ID nicht konfiguriert und Copilot-Agent-ID nicht auffindbar. Bitte .env setzen.");
+}
+
+export async function addAssignee(issueNodeId: string, assigneeNodeId: string) {
+  const mutation = `
+    mutation($assignableId: ID!, $assigneeIds: [ID!]!) {
+      addAssigneesToAssignable(input: {assignableId: $assignableId, assigneeIds: $assigneeIds}) {
+        assignable { ... on Issue { id number title } }
+      }
+    }`;
+  return gql(mutation, { assignableId: issueNodeId, assigneeIds: [assigneeNodeId] });
+}
+```
+
+### CI-Status-Überprüfung
+
+```typescript
+// lib/ci.ts (Referenzimplementierung)
+import { octokit } from "./github-rest";
+
+export async function isPRGreen(owner: string, repo: string, sha: string) {
+  // Kombiniert Status Checks und Check Runs für vollständige CI-Validierung
+  const [statusRes, checksRes] = await Promise.all([
+    octokit.rest.repos.getCombinedStatusForRef({ owner, repo, ref: sha }),
+    octokit.rest.checks.listForRef({ owner, repo, ref: sha }),
+  ]);
+
+  const allStatusesOk = statusRes.data.state === "success";
+  const allChecksOk = checksRes.data.check_runs.every(cr => cr.conclusion === "success");
+  return allStatusesOk && allChecksOk;
+}
+```
+
+### REST API Operationen
+
+#### GitHub REST Client (Octokit-basiert)
+
+```typescript
+// lib/github-rest.ts (Referenzimplementierung)
+import { Octokit } from "octokit";
+
+export const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+
+export async function createIssue(owner: string, repo: string, title: string, body: string, labels: string[] = []) {
+  const { data } = await octokit.rest.issues.create({ owner, repo, title, body, labels });
+  return data; // includes number, id, node_id
+}
+
+export async function getIssue(owner: string, repo: string, issue_number: number) {
+  return (await octokit.rest.issues.get({ owner, repo, issue_number })).data;
+}
+
+export async function createReviewApprove(owner: string, repo: string, pull_number: number, body = "LGTM (auto)") {
+  return octokit.rest.pulls.createReview({ owner, repo, pull_number, event: "APPROVE", body });
+}
+
+export async function mergePullRequest(owner: string, repo: string, pull_number: number, method: "merge"|"squash"|"rebase" = "squash") {
+  return octokit.rest.pulls.merge({ owner, repo, pull_number, merge_method: method });
+}
+
+export async function listPRsForIssue(owner: string, repo: string, issue_number: number) {
+  // PRs referenzieren das Issue per „Closes #<nr>"; alternativ: search
+  const { data } = await octokit.rest.search.issuesAndPullRequests({
+    q: `repo:${owner}/${repo} type:pr in:body is:open "${`#${issue_number}`}"`,
+  });
+  return data.items;
+}
+```
+
+### State Management und Queue-System
+
+#### State-Datenstruktur
+
+```typescript
+// lib/state.ts (Referenzimplementierung)
+import fs from "fs";
+import path from "path";
+
+const p = path.join(process.cwd(), "data/state.json");
+
+type State = {
+  monthlyDone: number;
+  activeTask?: {
+    owner: string; 
+    repo: string; 
+    issueNumber: number; 
+    pullNumber?: number; 
+    headSha?: string;
+  };
+  queue: Array<{ 
+    owner: string; 
+    repo: string; 
+    title: string; 
+    body: string; 
+    labels: string[] 
+  }>;
+};
+
+const DEFAULT_STATE: State = { monthlyDone: 0, queue: [] };
+
+export function loadState(): State {
+  try { return JSON.parse(fs.readFileSync(p, "utf8")); } catch { return DEFAULT_STATE; }
+}
+
+export function saveState(s: State) {
+  fs.mkdirSync(path.dirname(p), { recursive: true });
+  fs.writeFileSync(p, JSON.stringify(s, null, 2));
+}
+```
+
+#### Single-Task Queue Management
+
+```typescript
+// lib/queue.ts (Referenzimplementierung)
+import { loadState, saveState } from "./state";
+import { createIssue } from "./github-rest";
+import { getCopilotNodeId, addAssignee } from "./copilot";
+
+export async function startNextIfIdle() {
+  const s = loadState();
+  if (s.activeTask || s.queue.length === 0) return;
+
+  const max = Number(process.env.MAX_MONTHLY_TASKS || 50);
+  if (s.monthlyDone >= max) return;
+
+  const job = s.queue.shift()!;
+  // 1) Issue erstellen
+  const issue = await createIssue(job.owner, job.repo, job.title, job.body, job.labels);
+  // 2) Copilot zuweisen (GraphQL)
+  const copilotId = await getCopilotNodeId();
+  await addAssignee(issue.node_id, copilotId);
+
+  s.activeTask = { owner: job.owner, repo: job.repo, issueNumber: issue.number };
+  saveState(s);
+}
+
+export function markDoneAndContinue() {
+  const s = loadState();
+  s.activeTask = undefined;
+  s.monthlyDone += 1;
+  saveState(s);
+  // Nächster Start asynchron
+  setTimeout(() => { startNextIfIdle().catch(console.error); }, 1000);
+}
+```
+
+### Webhook-Verarbeitung und Signatur-Verifikation
+
+#### HMAC-SHA256 Signatur-Verifikation
+
+```typescript
+// lib/webhook-verify.ts (Referenzimplementierung)
+import crypto from "crypto";
+
+export function verifySignature(secret: string, payload: string, sig256: string | undefined) {
+  const hmac = crypto.createHmac("sha256", secret);
+  const digest = `sha256=${hmac.update(payload).digest("hex")}`;
+  return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(sig256 || ""));
+}
+```
+
+#### Webhook-Handler-Struktur
+
+Das System verarbeitet folgende GitHub-Events:
+- **`issues`** (assigned): Wenn Issues zugewiesen werden
+- **`pull_request`** (opened, ready_for_review, reopened): PR-Lifecycle-Events  
+- **`check_suite.completed`** / **`workflow_run.completed`**: CI-Abschluss-Events
+
+**Grundlegendes Webhook-Processing-Pattern**:
+1. Signatur-Verifikation mit `GITHUB_WEBHOOK_SECRET`
+2. Duplikat-Erkennung via `X-GitHub-Delivery` Header
+3. Event-spezifische Verarbeitung basierend auf `X-GitHub-Event`
+4. State-Update und Queue-Management
+5. Automatische Weiterverarbeitung (Issue → PR → CI → Merge)
+
+### Chore-Task-Templates
+
+Das System verwendet vordefinierte Templates für verschiedene Wartungsaufgaben:
+
+```typescript
+const templates = [
+  { 
+    title: "Tests nachziehen (kritische Pfade)", 
+    body: "Bitte Unit Tests für Kernfunktionen ergänzen. Ziel: Abdeckung +10%. Closes after CI green.", 
+    labels: ["chore", "tests"] 
+  },
+  { 
+    title: "Lint/Format Fehler beheben", 
+    body: "Bitte eslint/prettier-Probleme lösen und CI grün machen.", 
+    labels: ["chore", "lint"] 
+  },
+  { 
+    title: "Types härten (strict/tsconfig)", 
+    body: "Bitte TypeScript-Fehler reduzieren; keine suppressions. CI muss grün sein.", 
+    labels: ["chore", "types"] 
+  },
+];
+```
+
+### GitHub Actions CI-Workflow (Ziel-Repository)
+
+Jedes verwaltete Repository benötigt folgenden CI-Workflow:
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+on:
+  pull_request:
+    branches: [ main ]
+jobs:
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: 'npm' }
+      - run: npm ci
+      - run: npm run build
+      - run: npm test --if-present
+```
 
 # Bausteinsicht
 
@@ -553,6 +882,45 @@ graph TB
 - Einzelaufgaben-Verarbeitung zur Konfliktvermeidung
 - Exponential Backoff bei API-Fehlern
 - Automatisches Reset der monatlichen Zähler
+
+## Repository-Setup und Workflow-Konfiguration
+
+### Einmalige Vorbereitung für verwaltete Repositories
+
+Jedes Repository, das von GitHub Hausmeister verwaltet werden soll, benötigt eine einmalige Konfiguration:
+
+#### 1. Webhook-Konfiguration
+- **URL**: `https://[replit-app-url]/api/webhook`
+- **Events**: `issues`, `pull_request`, `workflow_run`, `check_suite`
+- **Secret**: Identisch mit `GITHUB_WEBHOOK_SECRET` Environment Variable
+- **Content Type**: `application/json`
+
+#### 2. CI-Workflow einrichten
+- Datei: `.github/workflows/ci.yml` (siehe Implementierungsdetails)
+- Läuft auf allen Pull Requests gegen main Branch
+- Führt `npm ci`, `npm run build`, `npm test` aus
+
+#### 3. Branch-Schutz (optional)
+- **Regel**: "Require status checks before merging"
+- **Status Checks**: CI Workflow als erforderlich markieren
+- Ermöglicht automatische Merge-Entscheidungen basierend auf CI-Ergebnissen
+
+#### 4. GitHub Copilot aktivieren
+- Copilot Coding Agent im Repository aktivieren (über GitHub UI)
+- Sicherstellen, dass der Agent Pull Requests öffnen darf
+- Optional: Spezifische Agent-Konfiguration für das Repository
+
+### Vollständiger End-to-End Workflow
+
+1. **Task-Erstellung**: Benutzer startet "Chore-Schleife" → App füllt Queue → `startNextIfIdle()`
+2. **Issue-Erstellung**: App erstellt GitHub Issue → GraphQL weist Copilot zu
+3. **Copilot-Bearbeitung**: Copilot analysiert Issue und beginnt Implementierung
+4. **PR-Erstellung**: Copilot öffnet Pull Request (Draft) → Webhook speichert PR-Details
+5. **CI-Ausführung**: GitHub Actions startet automatisch auf PR
+6. **Status-Überwachung**: Copilot markiert "ready for review" → Webhook prüft CI-Status via `isPRGreen()`
+7. **Auto-Merge**: Bei grünem CI → App approved und merged PR automatisch
+8. **Task-Abschluss**: `markDoneAndContinue()` startet nächste Task in der Queue
+9. **Fehlerbehandlung**: Bei rotem CI → App kommentiert PR, optionale manuelle Intervention
 
 # Architekturentscheidungen
 
