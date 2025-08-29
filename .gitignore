@@ -6,4 +6,4 @@ vite.config.ts.*
 *.tar.gz
 
 # test coverage reports
-coverage
+coverage/
