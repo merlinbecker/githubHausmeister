@@ -3,7 +3,9 @@ import { pauseSystem, resumeSystem, clearQueue } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Pause, Play, Trash2, Download } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+
 import type { TaskStats } from "@shared/schema";
+import type { Stats } from "@shared/schema";
 
 interface SystemControlsProps {
   systemRunning: boolean;

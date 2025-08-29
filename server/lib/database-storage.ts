@@ -119,6 +119,7 @@ export class DatabaseStorage {
       labels: taskData.labels ? (taskData.labels as string[]) : null
     };
     const [task] = await db.insert(tasks).values(normalizedTaskData).returning();
+
     return task;
   }
 

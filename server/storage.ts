@@ -56,6 +56,7 @@ export class MemStorage implements IStorage {
       updatedAt: new Date(),
       // Ensure labels is a proper array
       labels: insertTask.labels ? (insertTask.labels as string[]) : null,
+
     };
     this.tasks.set(id, task);
     return task;
@@ -82,6 +83,7 @@ export class MemStorage implements IStorage {
     return Array.from(this.tasks.values())
       .filter(task => task.status === "queued")
       .sort((a, b) => (a.createdAt?.getTime() || 0) - (b.createdAt?.getTime() || 0));
+
   }
 
   async getActiveTask(): Promise<Task | undefined> {
@@ -117,6 +119,7 @@ export class MemStorage implements IStorage {
       queue,
       systemRunning: this.systemState.systemRunning !== false,
       repositories: [], // TODO: Implement repository storage if needed
+
     };
   }
 }
