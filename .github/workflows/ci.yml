@@ -10,8 +10,8 @@ jobs:
   test-and-build:
     runs-on: ubuntu-latest
     
-    # Skip draft PRs
-    if: github.event.pull_request.draft == false || github.event_name == 'push'
+    # Run on all PRs including drafts, and on push events
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
     
     steps:
       - name: Checkout code

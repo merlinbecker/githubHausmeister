@@ -7,7 +7,7 @@ import { databaseStorage } from "./lib/database-storage";
 import { insertTaskSchema, insertWebhookDeliverySchema, type TaskTemplate } from "@shared/schema";
 import { verifySignature, parseWebhookPayload } from "./lib/webhook-verify";
 import { startNextIfIdle, markTaskCompleted, markTaskFailed } from "./lib/queue";
-import { createReviewApprove, mergePullRequest } from "./lib/github-rest";
+import { createReviewApprove, mergePullRequest, markPRReadyForReview, commentOnPR, getPullRequest } from "./lib/github-rest";
 import { isPRGreen } from "./lib/ci";
 import { GitHubOAuth } from "./lib/github-oauth";
 import { requireAuth, optionalAuth, type AuthenticatedRequest } from "./lib/auth-middleware";
@@ -500,7 +500,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Handle different webhook events
       if (event === "pull_request") {
         await handlePullRequestEvent(payload);
-      } else if (event === "workflow_run" || event === "check_suite") {
+      } else if (event === "workflow_run" || event === "check_suite" || event === "check_run") {
         await handleCIEvent(payload);
       } else if (event === "issues") {
         await handleIssuesEvent(payload);
@@ -537,23 +537,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         headSha: pr.head.sha,
       });
 
-      // Check CI status if PR is ready
-      if (["ready_for_review", "synchronize"].includes(action) && !pr.draft) {
-        const user = await databaseStorage.getUserById(userRepo.userId);
-        if (!user?.accessToken) return;
-        
-        const isGreen = await isPRGreen(user.accessToken, owner, repo, pr.head.sha);
-        if (isGreen) {
-          try {
-            await createReviewApprove(user.accessToken, owner, repo, pr.number, "Automatisches Review: CI grün ✔️");
-            await mergePullRequest(user.accessToken, owner, repo, pr.number, "squash");
-            await markTaskCompleted(activeTask.id);
-          } catch (error) {
-            console.error("Error auto-merging PR:", error);
-            await markTaskFailed(activeTask.id);
-          }
-        }
+      const user = await databaseStorage.getUserById(userRepo.userId);
+      if (!user?.accessToken) return;
+
+      // For draft PRs that were just opened, wait for CI to complete
+      if (action === "opened" && pr.draft) {
+        console.log(`📝 Draft PR #${pr.number} opened, waiting for CI...`);
+        return;
       }
+
+      // Check CI status if PR is ready or if it's a synchronize event
+      if (["ready_for_review", "synchronize"].includes(action) || 
+          (action === "opened" && !pr.draft)) {
+        await tryAutoMergePR(user.accessToken, owner, repo, pr.number, pr.head.sha, activeTask.id, pr.draft);
+      }
+    }
+  }
+
+  async function tryAutoMergePR(token: string, owner: string, repo: string, pullNumber: number, headSha: string, taskId: string, isDraft: boolean = false) {
+    try {
+      // If it's a draft PR, convert it to ready for review first
+      if (isDraft) {
+        console.log(`🔄 Converting draft PR #${pullNumber} to ready for review...`);
+        await markPRReadyForReview(token, owner, repo, pullNumber);
+        console.log(`✅ PR #${pullNumber} marked as ready for review`);
+      }
+
+      const isGreen = await isPRGreen(token, owner, repo, headSha);
+      if (isGreen) {
+        console.log(`🟢 CI is green for PR #${pullNumber}, proceeding with auto-merge...`);
+        await createReviewApprove(token, owner, repo, pullNumber, "Automatisches Review: CI grün ✔️");
+        await mergePullRequest(token, owner, repo, pullNumber, "squash");
+        await markTaskCompleted(taskId);
+        console.log(`✅ PR #${pullNumber} auto-merged successfully`);
+      } else {
+        console.log(`🟡 CI not yet green for PR #${pullNumber}, will retry on CI completion`);
+      }
+    } catch (error) {
+      console.error(`❌ Error in auto-merge process for PR #${pullNumber}:`, error);
+      await commentOnPR(token, owner, repo, pullNumber, 
+        `❌ **Auto-merge failed**: ${error instanceof Error ? error.message : 'Unknown error'}\n\n` +
+        `The PR has been converted to ready for review but could not be automatically merged. ` +
+        `Please check the CI status and merge manually if appropriate.`
+      );
+      await markTaskFailed(taskId);
     }
   }
 
@@ -573,25 +600,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // Check if this CI event is for our PR
     const isForOurPR = payload.check_suite?.head_sha === headSha || 
-                       payload.workflow_run?.head_sha === headSha;
+                       payload.workflow_run?.head_sha === headSha ||
+                       payload.check_run?.head_sha === headSha;
     
     if (!isForOurPR) return;
 
-    // Check if CI is now green
+    // Only proceed if CI event indicates completion
+    const isCompleted = payload.check_suite?.status === 'completed' ||
+                       payload.workflow_run?.status === 'completed' ||
+                       payload.check_run?.status === 'completed';
+    
+    if (!isCompleted) return;
+
+    console.log(`🔄 CI completed for PR #${activeTask.pullNumber}, checking if auto-merge is possible...`);
+
     const user = await databaseStorage.getUserById(userRepo.userId);
     if (!user?.accessToken) return;
     
-    const isGreen = await isPRGreen(user.accessToken, owner, repo, headSha);
-    if (isGreen) {
-      try {
-        await createReviewApprove(user.accessToken, owner, repo, activeTask.pullNumber, "Automatisches Review: CI grün ✔️");
-        await mergePullRequest(user.accessToken, owner, repo, activeTask.pullNumber, "squash");
-        await markTaskCompleted(activeTask.id);
-      } catch (error) {
-        console.error("Error auto-merging PR after CI:", error);
-        await markTaskFailed(activeTask.id);
-      }
-    }
+    // Get current PR status to check if it's still a draft
+    const pr = await getPullRequest(user.accessToken, owner, repo, activeTask.pullNumber);
+    
+    // Try to auto-merge, including converting from draft if necessary
+    await tryAutoMergePR(user.accessToken, owner, repo, activeTask.pullNumber, headSha, activeTask.id, pr.draft);
   }
 
   async function handleIssuesEvent(payload: any) {
