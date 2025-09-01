@@ -6,6 +6,8 @@ import {
   tasks,
   webhookDeliveries,
   userSystemState,
+  pushSubscriptions,
+  notificationSettings,
   type User,
   type InsertUser,
   type UserRepository,
@@ -14,6 +16,10 @@ import {
   type InsertTask,
   type WebhookDelivery,
   type UserSystemState,
+  type PushSubscription,
+  type InsertPushSubscription,
+  type NotificationSettings,
+  type InsertNotificationSettings,
   type AppState,
 } from '@shared/schema';
 
@@ -257,6 +263,74 @@ export class DatabaseStorage {
       queue: queuedTasks,
       systemRunning: systemState.systemRunning ?? true,
     };
+  }
+
+  // Push subscription operations
+  async addPushSubscription(
+    subscription: InsertPushSubscription
+  ): Promise<PushSubscription> {
+    const [inserted] = await db
+      .insert(pushSubscriptions)
+      .values(subscription)
+      .onConflictDoUpdate({
+        target: pushSubscriptions.endpoint,
+        set: {
+          isActive: true,
+          lastUsed: new Date(),
+        },
+      })
+      .returning();
+    return inserted;
+  }
+
+  async getUserPushSubscriptions(userId: string): Promise<PushSubscription[]> {
+    return db
+      .select()
+      .from(pushSubscriptions)
+      .where(
+        and(
+          eq(pushSubscriptions.userId, userId),
+          eq(pushSubscriptions.isActive, true)
+        )
+      );
+  }
+
+  async removePushSubscription(endpoint: string): Promise<boolean> {
+    const result = await db
+      .update(pushSubscriptions)
+      .set({ isActive: false })
+      .where(eq(pushSubscriptions.endpoint, endpoint));
+    return result.rowCount > 0;
+  }
+
+  // Notification settings operations
+  async getUserNotificationSettings(userId: string): Promise<NotificationSettings> {
+    const [settings] = await db
+      .select()
+      .from(notificationSettings)
+      .where(eq(notificationSettings.userId, userId));
+
+    if (!settings) {
+      const [newSettings] = await db
+        .insert(notificationSettings)
+        .values({ userId })
+        .returning();
+      return newSettings;
+    }
+
+    return settings;
+  }
+
+  async updateNotificationSettings(
+    userId: string,
+    updates: Partial<NotificationSettings>
+  ): Promise<NotificationSettings> {
+    const [updated] = await db
+      .update(notificationSettings)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(notificationSettings.userId, userId))
+      .returning();
+    return updated;
   }
 }
 
