@@ -25,6 +25,8 @@ import {
   optionalAuth,
   type AuthenticatedRequest,
 } from './lib/auth-middleware';
+import { NotificationService, NotificationType } from './lib/notificationService';
+import { initializeWebPush } from './lib/webPush';
 
 // Extend session types
 declare module 'express-session' {
@@ -35,6 +37,15 @@ declare module 'express-session' {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Initialize web-push with VAPID keys
+  try {
+    initializeWebPush();
+    console.log('✅ Web-push initialized with VAPID keys');
+  } catch (error) {
+    console.warn('⚠️ Web-push initialization failed:', error);
+    console.warn('Push notifications will not be available');
+  }
+
   // Session configuration
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
   const pgStore = connectPg(session);
@@ -802,6 +813,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = await databaseStorage.getUserById(userRepo.userId);
       if (!user?.accessToken) return;
+
+      // Send PR created notification if this is the first time we see this PR
+      if (action === 'opened') {
+        await NotificationService.sendNotification(NotificationType.PR_CREATED, {
+          userId: userRepo.userId,
+          repositoryName: `${owner}/${repo}`,
+          pullNumber: pr.number,
+          issueNumber: activeTask.issueNumber,
+          url: pr.html_url,
+        });
+      }
 
       // For draft PRs that were just opened, wait for CI to complete
       if (action === 'opened' && pr.draft) {

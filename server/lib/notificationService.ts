@@ -163,7 +163,7 @@ export class NotificationService {
         `Sent ${type} notification to user ${context.userId}: ${results.successful} successful, ${results.failed} failed`
       );
 
-      return results;
+      return { sent: results.successful, failed: results.failed };
     } catch (error) {
       console.error(`Error sending ${type} notification:`, error);
       return { sent: 0, failed: 1 };

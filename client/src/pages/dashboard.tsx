@@ -9,6 +9,8 @@ import TaskCreationForm from '@/components/TaskCreationForm';
 import RepositoryManager from '@/components/RepositoryManager';
 import WebhookStatus from '@/components/WebhookStatus';
 import SystemControls from '@/components/SystemControls';
+import { NotificationSettings } from '@/components/NotificationSettings';
+import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
 import { Github, LogOut, User } from 'lucide-react';
 
 export default function Dashboard() {
@@ -95,6 +97,8 @@ export default function Dashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+        <PWAInstallPrompt />
+        
         <StatusOverview appState={appState} />
 
         {appState?.activeTask && (
@@ -122,6 +126,8 @@ export default function Dashboard() {
           systemRunning={appState?.systemRunning || false}
           onRefresh={refetch}
         />
+
+        <NotificationSettings />
       </main>
 
       {/* Footer */}

@@ -300,7 +300,7 @@ export class DatabaseStorage {
       .update(pushSubscriptions)
       .set({ isActive: false })
       .where(eq(pushSubscriptions.endpoint, endpoint));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Notification settings operations
