@@ -61,7 +61,13 @@ export class MemStorage implements IStorage {
       completedAt: null,
       createdAt: now,
       updatedAt: now,
-      labels: insertTask.labels as string[] | null,
+      labels:
+        insertTask.labels === null
+          ? null
+          : Array.isArray(insertTask.labels) &&
+            insertTask.labels.every((lbl) => typeof lbl === "string")
+          ? insertTask.labels
+          : null,
 
     };
     this.tasks.set(id, task);
