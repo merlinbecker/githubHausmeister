@@ -1,8 +1,8 @@
 
 import { ListChecks, List, TrendingUp, CheckCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import type { TaskStats } from "@shared/schema";
-import type { Stats } from "@shared/schema";
+import type { AppState } from "@/lib/api";
+import type { StatsData } from "@/lib/api";
 
 interface StatusOverviewProps {
   appState?: AppState;

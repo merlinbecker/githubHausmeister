@@ -38,7 +38,7 @@ export class MemStorage implements IStorage {
     this.webhookDeliveries = new Map();
     this.systemState = {
       id: 'singleton',
-
+      userId: 'system', // Default system user for in-memory storage
       monthlyDone: 0,
       systemRunning: true,
       lastReset: new Date(),
@@ -141,7 +141,7 @@ export class MemStorage implements IStorage {
       monthlyDone: this.systemState.monthlyDone || 0,
       activeTask,
       queue,
-      systemRunning: this.systemState.systemRunning,
+      systemRunning: this.systemState.systemRunning || false,
       repositories: [], // TODO: Implement repository management
 
     };

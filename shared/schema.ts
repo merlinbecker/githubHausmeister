@@ -221,7 +221,7 @@ export interface TaskStats {
   maxMonthlyTasks: number;
 }
 
-// For backward compatibility
+// For backward compatibility and storage.ts
 export type SystemState = UserSystemState;
 
 export interface GitHubUser {
@@ -274,6 +274,3 @@ export interface WebhookConfig {
   copilotAgent?: string;
   monitoredRepos?: number;
 }
-
-// Type alias for compatibility with storage.ts
-export type SystemState = UserSystemState;

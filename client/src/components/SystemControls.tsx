@@ -8,9 +8,6 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Pause, Play, Trash2, Download } from 'lucide-react';
 
-import type { TaskStats } from "@shared/schema";
-import type { Stats } from "@shared/schema";
-
 interface SystemControlsProps {
   systemRunning: boolean;
   onRefresh: () => void;
