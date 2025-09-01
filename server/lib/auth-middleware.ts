@@ -1,5 +1,5 @@
-import { Request, Response, NextFunction } from "express";
-import { databaseStorage } from "./database-storage";
+import { Request, Response, NextFunction } from 'express';
+import { databaseStorage } from './database-storage';
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -11,17 +11,21 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
-export async function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+export async function requireAuth(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
   const userId = req.session?.userId;
-  
+
   if (!userId) {
-    return res.status(401).json({ error: "Authentication required" });
+    return res.status(401).json({ error: 'Authentication required' });
   }
 
   try {
     const user = await databaseStorage.getUserById(userId);
     if (!user) {
-      return res.status(401).json({ error: "User not found" });
+      return res.status(401).json({ error: 'User not found' });
     }
 
     req.user = {
@@ -31,20 +35,25 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
       avatarUrl: user.avatarUrl || undefined,
       accessToken: user.accessToken,
     };
-    
+
     next();
   } catch (error) {
-    console.error("Auth middleware error:", error);
-    res.status(500).json({ error: "Authentication error" });
+    console.error('Auth middleware error:', error);
+    res.status(500).json({ error: 'Authentication error' });
   }
 }
 
-export function optionalAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+export function optionalAuth(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
   const userId = req.session?.userId;
-  
+
   if (userId) {
-    databaseStorage.getUserById(userId)
-      .then(user => {
+    databaseStorage
+      .getUserById(userId)
+      .then((user) => {
         if (user) {
           req.user = {
             id: user.id,

@@ -1,6 +1,6 @@
-import { Github, Shield, Zap, GitBranch } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { loginWithGitHub } from "@/lib/auth";
+import { Github, Shield, Zap, GitBranch } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { loginWithGitHub } from '@/lib/auth';
 
 export default function Login() {
   return (
@@ -9,7 +9,9 @@ export default function Login() {
         <div className="text-center mb-8">
           <div className="flex items-center justify-center space-x-3 mb-6">
             <Github className="text-4xl text-github-blue" size={48} />
-            <h1 className="text-3xl font-bold text-github-text">GitHub Hausmeister</h1>
+            <h1 className="text-3xl font-bold text-github-text">
+              GitHub Hausmeister
+            </h1>
           </div>
           <p className="text-github-muted text-lg">
             Automated repository maintenance with GitHub Copilot integration
@@ -17,11 +19,15 @@ export default function Login() {
         </div>
 
         <div className="bg-github-surface border border-github-border rounded-lg p-6 mb-6">
-          <h2 className="text-xl font-semibold text-github-text mb-4">Features</h2>
+          <h2 className="text-xl font-semibold text-github-text mb-4">
+            Features
+          </h2>
           <div className="space-y-3">
             <div className="flex items-center space-x-3">
               <Zap className="text-github-blue" size={20} />
-              <span className="text-github-text">Automated chore issue creation</span>
+              <span className="text-github-text">
+                Automated chore issue creation
+              </span>
             </div>
             <div className="flex items-center space-x-3">
               <GitBranch className="text-github-green" size={20} />
@@ -29,18 +35,23 @@ export default function Login() {
             </div>
             <div className="flex items-center space-x-3">
               <Shield className="text-github-amber" size={20} />
-              <span className="text-github-text">Auto-merge with CI validation</span>
+              <span className="text-github-text">
+                Auto-merge with CI validation
+              </span>
             </div>
           </div>
         </div>
 
         <div className="bg-github-surface border border-github-border rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-github-text mb-4">Get Started</h2>
+          <h2 className="text-lg font-semibold text-github-text mb-4">
+            Get Started
+          </h2>
           <p className="text-github-muted mb-6">
-            Sign in with your GitHub account to start automating repository maintenance tasks.
+            Sign in with your GitHub account to start automating repository
+            maintenance tasks.
           </p>
-          
-          <Button 
+
+          <Button
             onClick={loginWithGitHub}
             className="w-full bg-github-blue hover:bg-github-blue/80 text-white font-medium py-3 rounded-lg transition-colors flex items-center justify-center space-x-2"
             data-testid="button-github-login"
@@ -48,15 +59,19 @@ export default function Login() {
             <Github size={20} />
             <span>Continue with GitHub</span>
           </Button>
-          
+
           <p className="text-xs text-github-muted mt-4 text-center">
-            We'll only access repositories you explicitly authorize for maintenance.
+            We'll only access repositories you explicitly authorize for
+            maintenance.
           </p>
         </div>
 
         <div className="mt-6 text-center">
           <p className="text-sm text-github-muted">
-            Need help? <a href="#" className="text-github-blue hover:underline">View Documentation</a>
+            Need help?{' '}
+            <a href="#" className="text-github-blue hover:underline">
+              View Documentation
+            </a>
           </p>
         </div>
       </div>

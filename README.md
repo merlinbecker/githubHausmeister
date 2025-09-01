@@ -20,17 +20,21 @@ An automated GitHub maintenance application that creates chore issues, assigns t
 The system provides fully automated CI/CD processing for Copilot-generated PRs:
 
 ### 1. Draft PR Creation
+
 - When a GitHub Copilot agent creates a draft PR, the CI pipeline automatically starts
 - Webhook events for `pull_request` with `opened` action trigger the workflow
 - CI runs on all PRs including drafts (TypeScript check, tests, build process)
 
-### 2. CI Monitoring  
+### 2. CI Monitoring
+
 - Monitors `workflow_run`, `check_suite`, and `check_run` events for CI completion
 - Automatically checks CI status using combined GitHub status and checks APIs
 - Supports Codecov integration for test coverage reporting
 
 ### 3. Auto-Merge Process
+
 When CI completes successfully:
+
 1. **Draft Conversion**: Automatically converts draft PR to "ready for review"
 2. **Status Verification**: Confirms all CI checks are green using `isPRGreen`
 3. **Auto-Approval**: Creates an automatic approval review
@@ -38,17 +42,21 @@ When CI completes successfully:
 5. **Task Completion**: Marks the maintenance task as completed
 
 ### 4. Failure Handling
+
 When CI fails or auto-merge encounters errors:
+
 - PR remains open for manual intervention
 - Adds informative comment explaining the failure
 - Marks task as failed for dashboard visibility
 - Preserves draft → ready conversion for manual review
 
 ### 5. Monitored Events
+
 The webhook system handles these GitHub events:
+
 - `pull_request` (opened, ready_for_review, synchronize)
 - `workflow_run` (CI workflow completion)
-- `check_suite` (check suite completion)  
+- `check_suite` (check suite completion)
 - `check_run` (individual check completion)
 - `issues` (issue events)
 

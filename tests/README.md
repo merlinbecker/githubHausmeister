@@ -36,39 +36,39 @@ tests/
 ### Basic Test Example
 
 ```typescript
-import { describe, it, expect } from 'vitest'
-import { myFunction } from '@/lib/utils'
+import { describe, it, expect } from 'vitest';
+import { myFunction } from '@/lib/utils';
 
 describe('MyFunction', () => {
   it('should return expected result', () => {
-    const result = myFunction('input')
-    expect(result).toBe('expected output')
-  })
-})
+    const result = myFunction('input');
+    expect(result).toBe('expected output');
+  });
+});
 ```
 
 ### Mocking Dependencies
 
 ```typescript
-import { describe, it, expect, vi } from 'vitest'
-import fs from 'fs'
+import { describe, it, expect, vi } from 'vitest';
+import fs from 'fs';
 
 // Mock external dependencies
 vi.mock('fs', () => ({
   default: {
     readFileSync: vi.fn(),
-    writeFileSync: vi.fn()
-  }
-}))
+    writeFileSync: vi.fn(),
+  },
+}));
 
 describe('File Operations', () => {
   it('should handle file operations', () => {
-    const mockFs = vi.mocked(fs)
-    mockFs.readFileSync.mockReturnValue('test content')
-    
+    const mockFs = vi.mocked(fs);
+    mockFs.readFileSync.mockReturnValue('test content');
+
     // Your test logic here
-  })
-})
+  });
+});
 ```
 
 ### Testing React Components
@@ -98,7 +98,7 @@ The following path aliases are available in tests:
 The testing setup includes:
 
 - **Global test utilities**: `describe`, `it`, `expect` are available globally
-- **jsdom environment**: For DOM testing of React components  
+- **jsdom environment**: For DOM testing of React components
 - **Jest DOM matchers**: Extended matchers like `toBeInTheDocument()`
 - **TypeScript support**: Full TypeScript support with proper type checking
 

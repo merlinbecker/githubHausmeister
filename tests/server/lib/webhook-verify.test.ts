@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import crypto from 'crypto'
 import { verifySignature, parseWebhookPayload } from '../../../server/lib/webhook-verify'
 
