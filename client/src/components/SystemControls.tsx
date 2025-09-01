@@ -8,6 +8,9 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Pause, Play, Trash2, Download } from 'lucide-react';
 
+import type { TaskStats } from "@shared/schema";
+import type { Stats } from "@shared/schema";
+
 interface SystemControlsProps {
   systemRunning: boolean;
   onRefresh: () => void;
@@ -18,9 +21,9 @@ export default function SystemControls({
   onRefresh,
 }: SystemControlsProps) {
   const { toast } = useToast();
-
-  const { data: stats } = useQuery<StatsData>({
+const { data: stats } = useQuery<StatsData>({
     queryKey: ['/api/stats'],
+
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 

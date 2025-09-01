@@ -1,8 +1,10 @@
 import { gql } from './github-graphql';
 
+
 export async function getCopilotNodeId(token: string): Promise<string> {
   const configured =
     process.env.COPILOT_ACTOR_ID || process.env.COPILOT_ACTOR_ID_ENV_VAR;
+
   if (configured && configured.trim()) {
     return configured.trim();
   }
@@ -31,11 +33,13 @@ export async function getCopilotNodeId(token: string): Promise<string> {
   );
 }
 
+
 export async function addAssignee(
   issueNodeId: string,
   assigneeNodeId: string,
   token: string
 ) {
+
   const mutation = `
     mutation($assignableId: ID!, $assigneeIds: [ID!]!) {
       addAssigneesToAssignable(input: {assignableId: $assignableId, assigneeIds: $assigneeIds}) {
@@ -49,6 +53,7 @@ export async function addAssignee(
       }
     }`;
 
+
   return gql(
     mutation,
     {
@@ -57,4 +62,5 @@ export async function addAssignee(
     },
     token
   );
+
 }

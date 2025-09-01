@@ -48,7 +48,10 @@ jobs:
         
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
-        if: always()
+        if: success() && (github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
+          files: ./coverage/coverage-final.json
+          flags: unittests
+          name: codecov-umbrella

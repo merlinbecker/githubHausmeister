@@ -126,11 +126,13 @@ export class DatabaseStorage {
 
   // Task operations
   async createTask(taskData: InsertTask): Promise<Task> {
+
     const dataToInsert = {
       ...taskData,
       labels: taskData.labels as string[] | null,
     };
     const [task] = await db.insert(tasks).values(dataToInsert).returning();
+
     return task;
   }
 

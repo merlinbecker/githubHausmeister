@@ -1,14 +1,18 @@
+
 import { ListChecks, List, TrendingUp, CheckCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import type { AppState, StatsData } from '@/lib/api';
+import type { TaskStats } from "@shared/schema";
+import type { Stats } from "@shared/schema";
 
 interface StatusOverviewProps {
   appState?: AppState;
 }
 
 export default function StatusOverview({ appState }: StatusOverviewProps) {
+
   const { data: stats } = useQuery<StatsData>({
     queryKey: ['/api/stats'],
+
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 

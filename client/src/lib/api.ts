@@ -1,5 +1,12 @@
+
 import { apiRequest } from './queryClient';
 import type { User } from '@/lib/auth';
+
+import type { UserRepository } from "@shared/schema";
+
+// Re-export UserRepository for components
+export type { UserRepository };
+
 
 export interface AppState {
   user?: User;
@@ -39,16 +46,6 @@ export interface GitHubRepository {
   };
 }
 
-export interface UserRepository {
-  id: string;
-  userId: string;
-  owner: string;
-  repo: string;
-  webhookId?: number;
-  isActive: boolean;
-  createdAt: string;
-}
-
 export async function getStatus(): Promise<AppState> {
   const response = await fetch('/api/status', {
     credentials: 'include',
@@ -69,6 +66,7 @@ export async function getGitHubRepositories(): Promise<GitHubRepository[]> {
   return response.json();
 }
 
+
 export async function addRepository(
   owner: string,
   repo: string
@@ -77,11 +75,14 @@ export async function addRepository(
     owner,
     repo,
   });
+
   return response.json();
 }
 
 export async function removeRepository(repositoryId: string): Promise<void> {
+
   await apiRequest('DELETE', `/api/repositories/${repositoryId}`);
+
 }
 
 export async function createTasks(data: CreateTasksRequest) {
