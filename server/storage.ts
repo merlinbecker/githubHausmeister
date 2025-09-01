@@ -3,15 +3,9 @@ import {
   type InsertTask,
   type WebhookDelivery,
   type AppState,
+  type SystemState,
 } from '@shared/schema';
 import { randomUUID } from 'crypto';
-
-interface SystemState {
-  id: string;
-  monthlyDone: number;
-  systemRunning: boolean;
-  lastReset: Date;
-}
 
 export interface IStorage {
   // Task management
