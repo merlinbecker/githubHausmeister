@@ -103,8 +103,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { code, state } = req.query;
       const sessionState = req.session!.oauthState;
 
+      // Debug logging
+      console.log('OAuth callback debug:');
+      console.log('- Received code:', !!code);
+      console.log('- Received state:', state);
+      console.log('- Session state:', sessionState);
+      console.log('- States match:', state === sessionState);
+
       if (!code || !state || state !== sessionState) {
-        return res.status(400).json({ error: 'Invalid OAuth callback' });
+        console.error('OAuth validation failed:', { code: !!code, state, sessionState });
+        return res.status(400).json({ 
+          error: 'Invalid OAuth callback',
+          debug: { hasCode: !!code, receivedState: state, sessionState }
+        });
       }
 
       // Exchange code for token
