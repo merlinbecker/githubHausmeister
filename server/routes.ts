@@ -721,6 +721,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Get webhook deliveries for monitoring
+  app.get(
+    '/api/webhooks/deliveries',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const limit = parseInt(req.query.limit as string) || 50;
+        const deliveries = await databaseStorage.getUserWebhookDeliveries(
+          req.user!.id,
+          limit
+        );
+        res.json(deliveries);
+      } catch (error) {
+        console.error('Error getting webhook deliveries:', error);
+        res.status(500).json({ error: 'Failed to get webhook deliveries' });
+      }
+    }
+  );
+
+  // Test webhook endpoint
+  app.post(
+    '/api/webhooks/test',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { repositoryId } = req.body;
+
+        if (!repositoryId) {
+          return res.status(400).json({ error: 'Repository ID is required' });
+        }
+
+        // Get repository info
+        const repositories = await databaseStorage.getUserRepositories(
+          req.user!.id
+        );
+        const repository = repositories.find((r) => r.id === repositoryId);
+
+        if (!repository) {
+          return res.status(404).json({ error: 'Repository not found' });
+        }
+
+        // Create a test webhook delivery
+        const testDelivery = {
+          id: `test-${Date.now()}`,
+          event: 'test',
+          processed: true,
+          repositoryOwner: repository.owner,
+          repositoryName: repository.repo,
+          action: 'webhook_test',
+          actorLogin: req.user!.username,
+          payloadSummary: {
+            action: 'webhook_test',
+            actorLogin: req.user!.username,
+            message: 'Test webhook triggered from UI',
+            timestamp: new Date().toISOString(),
+          },
+        };
+
+        const recorded = await databaseStorage.recordWebhookDelivery(testDelivery);
+
+        // Send test notification
+        const subscriptions = await databaseStorage.getUserPushSubscriptions(
+          req.user!.id
+        );
+
+        if (subscriptions.length > 0) {
+          const payload = {
+            title: 'Test Webhook',
+            body: `Test webhook für ${repository.owner}/${repository.repo}`,
+            icon: '/icon-192.png',
+            url: '/',
+            tag: 'webhook-test',
+          };
+
+          try {
+            const { sendPushToMultipleSubscriptions } = await import('./lib/webPush');
+            await sendPushToMultipleSubscriptions(
+              subscriptions.map((sub) => ({
+                endpoint: sub.endpoint,
+                keys: {
+                  p256dh: sub.p256dhKey,
+                  auth: sub.authKey,
+                },
+              })),
+              payload
+            );
+          } catch (notificationError) {
+            console.warn('Failed to send test notification:', notificationError);
+          }
+        }
+
+        res.json({
+          success: true,
+          delivery: recorded,
+          message: 'Test webhook created successfully',
+        });
+      } catch (error) {
+        console.error('Error creating test webhook:', error);
+        res.status(500).json({ error: 'Failed to create test webhook' });
+      }
+    }
+  );
+
   // GitHub webhook endpoint
   app.post('/api/webhook', async (req, res) => {
     try {
@@ -753,15 +856,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ ok: true, message: 'Already processed' });
       }
 
+      const payload = parseWebhookPayload(body, contentType);
+
+      // Extract repository information and payload summary
+      const repositoryOwner = payload?.repository?.owner?.login;
+      const repositoryName = payload?.repository?.name;
+      const action = payload?.action;
+      const actorLogin = payload?.sender?.login;
+      
+      // Create payload summary with relevant info
+      const payloadSummary = {
+        action,
+        actorLogin,
+        pullRequestNumber: payload?.pull_request?.number,
+        issueNumber: payload?.issue?.number,
+        workflowName: payload?.workflow?.name,
+        checkSuiteName: payload?.check_suite?.app?.name,
+        checkRunName: payload?.check_run?.name,
+        conclusion: payload?.check_run?.conclusion || payload?.check_suite?.conclusion || payload?.workflow_run?.conclusion,
+      };
+
       // Record delivery
       await databaseStorage.recordWebhookDelivery({
         id: delivery,
         event,
         processed: true,
-        createdAt: new Date(),
+        repositoryOwner,
+        repositoryName,
+        action,
+        actorLogin,
+        payloadSummary,
       });
-
-      const payload = parseWebhookPayload(body, contentType);
 
       // Handle different webhook events
       if (event === 'pull_request') {

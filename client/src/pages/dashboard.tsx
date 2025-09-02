@@ -8,6 +8,7 @@ import TaskQueue from '@/components/TaskQueue';
 import TaskCreationForm from '@/components/TaskCreationForm';
 import RepositoryManager from '@/components/RepositoryManager';
 import WebhookStatus from '@/components/WebhookStatus';
+import WebhookMonitor from '@/components/WebhookMonitor';
 import SystemControls from '@/components/SystemControls';
 import { NotificationSettings } from '@/components/NotificationSettings';
 import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
@@ -121,6 +122,11 @@ export default function Dashboard() {
         />
 
         <WebhookStatus />
+
+        <WebhookMonitor
+          repositories={appState?.repositories || []}
+          onRefresh={refetch}
+        />
 
         <SystemControls
           systemRunning={appState?.systemRunning || false}

@@ -83,6 +83,11 @@ export const webhookDeliveries = pgTable('webhook_deliveries', {
   id: varchar('id').primaryKey(),
   event: text('event').notNull(),
   processed: boolean('processed').default(false),
+  repositoryOwner: text('repository_owner'),
+  repositoryName: text('repository_name'),
+  action: text('action'),
+  actorLogin: text('actor_login'),
+  payloadSummary: json('payload_summary'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -257,6 +262,12 @@ export const insertWebhookDeliverySchema = createInsertSchema(
 ).pick({
   id: true,
   event: true,
+  processed: true,
+  repositoryOwner: true,
+  repositoryName: true,
+  action: true,
+  actorLogin: true,
+  payloadSummary: true,
 });
 
 export const insertPushSubscriptionSchema = createInsertSchema(
@@ -290,6 +301,7 @@ export type InsertUserRepository = z.infer<typeof insertUserRepositorySchema>;
 export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type Task = typeof tasks.$inferSelect;
 export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;
+export type InsertWebhookDelivery = z.infer<typeof insertWebhookDeliverySchema>;
 export type UserSystemState = typeof userSystemState.$inferSelect;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
 export type InsertPushSubscription = z.infer<typeof insertPushSubscriptionSchema>;
@@ -314,6 +326,19 @@ export interface TaskStats {
   successRate: number;
   avgTimeHours: number;
   maxMonthlyTasks: number;
+}
+
+export interface WebhookPayloadSummary {
+  action?: string;
+  actorLogin?: string;
+  pullRequestNumber?: number;
+  issueNumber?: number;
+  workflowName?: string;
+  checkSuiteName?: string;
+  checkRunName?: string;
+  conclusion?: string;
+  message?: string;
+  timestamp?: string;
 }
 
 // For backward compatibility and storage.ts
