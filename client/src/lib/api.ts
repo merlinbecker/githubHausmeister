@@ -104,3 +104,17 @@ export async function clearQueue() {
 export async function deleteTask(taskId: string) {
   return apiRequest('DELETE', `/api/tasks/${taskId}`);
 }
+
+export async function getWebhookDeliveries(limit: number = 50): Promise<any[]> {
+  const response = await fetch(`/api/webhooks/deliveries?limit=${limit}`, {
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to get webhook deliveries: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function testWebhook(repositoryId: string) {
+  return apiRequest('POST', '/api/webhooks/test', { repositoryId });
+}

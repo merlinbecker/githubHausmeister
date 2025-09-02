@@ -1,4 +1,4 @@
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, isNotNull } from 'drizzle-orm';
 import { db } from '../db';
 import {
   users,
@@ -15,6 +15,7 @@ import {
   type Task,
   type InsertTask,
   type WebhookDelivery,
+  type InsertWebhookDelivery,
   type UserSystemState,
   type PushSubscription,
   type InsertPushSubscription,
@@ -190,14 +191,14 @@ export class DatabaseStorage {
 
   // Webhook delivery operations
   async recordWebhookDelivery(
-    delivery: WebhookDelivery
+    delivery: InsertWebhookDelivery
   ): Promise<WebhookDelivery> {
     const [recorded] = await db
       .insert(webhookDeliveries)
       .values(delivery)
       .onConflictDoNothing()
       .returning();
-    return recorded || delivery;
+    return recorded || delivery as WebhookDelivery;
   }
 
   async isDeliveryProcessed(deliveryId: string): Promise<boolean> {
@@ -206,6 +207,37 @@ export class DatabaseStorage {
       .from(webhookDeliveries)
       .where(eq(webhookDeliveries.id, deliveryId));
     return delivery?.processed ?? false;
+  }
+
+  async getUserWebhookDeliveries(userId: string, limit: number = 50): Promise<WebhookDelivery[]> {
+    // Get user's repositories
+    const userRepos = await this.getUserRepositories(userId);
+    const repoNames = userRepos.map(repo => `${repo.owner}/${repo.repo}`);
+    
+    if (repoNames.length === 0) {
+      return [];
+    }
+
+    // Get webhook deliveries for user's repositories
+    const deliveries = await db
+      .select()
+      .from(webhookDeliveries)
+      .where(
+        and(
+          eq(webhookDeliveries.processed, true),
+          // Filter by repositories user owns
+          isNotNull(webhookDeliveries.repositoryOwner),
+          isNotNull(webhookDeliveries.repositoryName)
+        )
+      )
+      .orderBy(desc(webhookDeliveries.createdAt))
+      .limit(limit);
+
+    // Filter to only include user's repositories
+    return deliveries.filter(delivery => {
+      if (!delivery.repositoryOwner || !delivery.repositoryName) return false;
+      return repoNames.includes(`${delivery.repositoryOwner}/${delivery.repositoryName}`);
+    });
   }
 
   // User system state operations
