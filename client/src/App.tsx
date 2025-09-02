@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import Dashboard from '@/pages/dashboard';
 import Login from '@/pages/login';
 import NotFound from '@/pages/not-found';
+import { StartupNotificationPrompt } from '@/components/StartupNotificationPrompt';
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -34,6 +35,8 @@ function Router() {
           <Route path="*" component={Login} />
         )}
       </Switch>
+      {/* Show notification prompt only for authenticated users */}
+      {isAuthenticated && <StartupNotificationPrompt />}
     </div>
   );
 }

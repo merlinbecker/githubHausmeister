@@ -9,8 +9,9 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Bell, BellOff, Smartphone } from 'lucide-react';
+import { Bell, BellOff, Smartphone, RefreshCw } from 'lucide-react';
 import { usePushNotifications } from '../hooks/usePushNotifications';
+import { useNotificationPrompt } from '../hooks/useNotificationPrompt';
 
 interface NotificationSettings {
   taskStarted: boolean;
@@ -24,6 +25,7 @@ interface NotificationSettings {
 
 export function NotificationSettings() {
   const push = usePushNotifications();
+  const notificationPrompt = useNotificationPrompt();
   const [settings, setSettings] = useState<NotificationSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -117,6 +119,9 @@ export function NotificationSettings() {
                 </Badge>
               )}
             </div>
+            <p className="text-xs text-muted-foreground">
+              Benachrichtigungen können auch in den Browser-Einstellungen verwaltet werden
+            </p>
           </div>
 
           {push.isSupported && (
@@ -155,6 +160,41 @@ export function NotificationSettings() {
             </div>
           )}
         </div>
+
+        {/* Browser Settings Info */}
+        {push.isSupported && (
+          <div className="space-y-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+            <h4 className="font-medium text-sm">Browser-Einstellungen</h4>
+            <div className="space-y-2 text-xs text-muted-foreground">
+              <p>
+                <strong>Chrome/Edge:</strong> Einstellungen → Datenschutz und Sicherheit → Website-Einstellungen → Benachrichtigungen
+              </p>
+              <p>
+                <strong>Firefox:</strong> Einstellungen → Datenschutz & Sicherheit → Berechtigungen → Benachrichtigungen
+              </p>
+              <p>
+                <strong>Safari:</strong> Safari → Einstellungen → Websites → Benachrichtigungen
+              </p>
+            </div>
+            
+            {push.permission === 'denied' && (
+              <div className="mt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={notificationPrompt.resetPrompt}
+                  className="text-xs"
+                >
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                  Startup-Prompt zurücksetzen
+                </Button>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Zeigt den Benachrichtigungs-Dialog beim nächsten App-Start erneut an
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Notification Types */}
         {push.isSubscribed && (
