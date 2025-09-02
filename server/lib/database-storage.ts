@@ -162,7 +162,7 @@ export class DatabaseStorage {
     const [task] = await db
       .select()
       .from(tasks)
-      .where(and(eq(tasks.userId, userId), eq(tasks.status, 'active')));
+      .where(and(eq(tasks.userId, userId), eq(tasks.status, 'in_progress')));
     return task;
   }
 
