@@ -23,7 +23,8 @@ GitHub Hausmeister ist eine automatisierte GitHub-Wartungsanwendung, die Reposit
 - **CI-Überwachung**: Überwacht Pull Requests und genehmigt/merged automatisch, wenn CI erfolgreich ist
 - **Webhook-Integration**: Echtzeitbehandlung von GitHub-Events (Issues, PRs, CI-Abschluss)
 - **Task Queue Management**: Einzelaufgaben-Nebenläufigkeit mit konfigurierbaren monatlichen Limits
-- **Mobile-First UI**: Dunkles GitHub-themed Dashboard für Überwachung und Kontrolle
+- **PWA Push-Benachrichtigungen**: Real-time Push-Notifications für Task-Updates, PR-Status und CI-Ereignisse
+- **Mobile-First UI**: Dunkles GitHub-themed Dashboard für Überwachung und Kontrolle mit PWA-Installation
 
 ## Qualitätsziele
 
@@ -75,6 +76,9 @@ GitHub Hausmeister ist eine automatisierte GitHub-Wartungsanwendung, die Reposit
 | `OWNER`                 | GitHub Benutzer oder Organisation                                                         | `mein-github-user-oder-org` | ✅                |
 | `REPOSITORIES`          | Komma-getrennte Liste der zu verwaltenden Repositories                                    | `repo1,repo2,repo3`         | ✅                |
 | `MAX_MONTHLY_TASKS`     | Maximale Anzahl Tasks pro Monat                                                           | `50`                        | ❌ (Standard: 50) |
+| `VAPID_PUBLIC_KEY`      | VAPID Public Key für Push-Benachrichtigungen                                              | `BCVxZ2z3TZr...`            | ❌ (für PWA)      |
+| `VAPID_PRIVATE_KEY`     | VAPID Private Key für Push-Benachrichtigungen                                             | `WzG5kR8kF2h...`            | ❌ (für PWA)      |
+| `VAPID_SUBJECT`         | VAPID Subject (E-Mail oder URL)                                                           | `mailto:admin@example.com`  | ❌ (für PWA)      |
 
 ### Dateisystem-Struktur
 
@@ -182,6 +186,8 @@ graph TB
 - **GitHub GraphQL API v4**: Copilot-Agent-Zuweisung und erweiterte Abfragen
 - **GitHub Webhooks**: Echtzeitverarbeitung von Events mit HMAC-SHA256-Verifikation
 - **PostgreSQL via Drizzle ORM**: Typsichere Datenbankoperationen
+- **Web Push API**: PWA Push-Benachrichtigungen über VAPID-Protokoll
+- **Service Worker API**: Offline-Funktionalität und Background-Push-Verarbeitung
 
 # Lösungsstrategie
 
@@ -513,6 +519,159 @@ Das System verarbeitet folgende GitHub-Events:
 4. State-Update und Queue-Management
 5. Automatische Weiterverarbeitung (Issue → PR → CI → Merge)
 
+### PWA Push-Benachrichtigungen
+
+Das System implementiert eine vollständige Progressive Web App mit Push-Benachrichtigungen über das VAPID-Protokoll.
+
+#### PWA-Architektur
+
+```mermaid
+graph TB
+    subgraph "PWA Frontend"
+        Manifest[Web App Manifest]
+        SW[Service Worker]
+        PushManager[Push Manager]
+        UI[React UI Components]
+    end
+
+    subgraph "Push Infrastructure"
+        VAPID[VAPID Keys]
+        WebPush[Web Push Library]
+        NotificationService[Notification Service]
+        DB[(Push Subscriptions)]
+    end
+
+    subgraph "Event Sources"
+        Webhooks[GitHub Webhooks]
+        TaskQueue[Task Queue Events]
+        CIEvents[CI Status Events]
+    end
+
+    SW --> PushManager
+    PushManager --> VAPID
+    UI --> NotificationService
+    NotificationService --> WebPush
+    WebPush --> DB
+    
+    Webhooks --> NotificationService
+    TaskQueue --> NotificationService
+    CIEvents --> NotificationService
+```
+
+#### Event-zu-Notification Mapping
+
+| Webhook Event     | Notification Type        | User Setting      | Priorität |
+| ----------------- | ------------------------ | ----------------- | --------- |
+| Task Started      | 🚀 Task gestartet        | `taskStarted`     | Hoch      |
+| Task Completed    | ✅ Task abgeschlossen    | `taskCompleted`   | Hoch      |
+| Task Failed       | ❌ Task fehlgeschlagen   | `taskFailed`      | Kritisch  |
+| PR Created        | 📝 Pull Request erstellt | `prCreated`       | Mittel    |
+| PR Merged         | 🎉 Pull Request gemergt  | `prMerged`        | Hoch      |
+| Copilot Assigned  | 🤖 Copilot zugewiesen    | `copilotAssigned` | Mittel    |
+| CI Status Changed | 🔄 CI-Status geändert    | `ciStatusChanged` | Niedrig   |
+
+#### Service Worker Implementation
+
+```typescript
+// client/public/sw.js (Kernfunktionalität)
+self.addEventListener('push', (event) => {
+  const options = {
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    vibrate: [100, 50, 100],
+    actions: [
+      { action: 'open', title: 'Öffnen', icon: '/icon-192.png' },
+      { action: 'close', title: 'Schließen' },
+    ],
+  };
+
+  let notificationData = {};
+  if (event.data) {
+    notificationData = event.data.json();
+  }
+
+  const title = notificationData.title || 'GitHub Hausmeister';
+  const body = notificationData.body || 'Neue Aktivität';
+
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      ...options,
+      body,
+      tag: notificationData.tag || 'general',
+      url: notificationData.url || '/',
+      data: notificationData,
+    })
+  );
+});
+```
+
+#### VAPID-Konfiguration
+
+```typescript
+// server/lib/webPush.ts
+import webpush from 'web-push';
+
+export function initializeWebPush() {
+  const publicKey = process.env.VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  const subject = process.env.VAPID_SUBJECT || 'mailto:admin@example.com';
+
+  if (!publicKey || !privateKey) {
+    throw new Error('VAPID keys not configured');
+  }
+
+  webpush.setVapidDetails(subject, publicKey, privateKey);
+}
+```
+
+#### Database Schema-Erweiterung
+
+```typescript
+// shared/schema.ts (PWA-spezifische Tabellen)
+export const pushSubscriptions = pgTable('push_subscriptions', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar('user_id').notNull().references(() => users.id),
+  endpoint: text('endpoint').notNull(),
+  p256dhKey: text('p256dh_key').notNull(),
+  authKey: text('auth_key').notNull(),
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const notificationSettings = pgTable('notification_settings', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar('user_id').notNull().references(() => users.id),
+  taskStarted: boolean('task_started').default(true),
+  taskCompleted: boolean('task_completed').default(true),
+  taskFailed: boolean('task_failed').default(true),
+  prCreated: boolean('pr_created').default(true),
+  prMerged: boolean('pr_merged').default(true),
+  ciStatusChanged: boolean('ci_status_changed').default(false),
+  copilotAssigned: boolean('copilot_assigned').default(true),
+});
+```
+
+#### iOS PWA Besonderheiten
+
+- **Mindestanforderung**: iOS 16.4+ für Push-Notifications
+- **Installation erforderlich**: Push funktioniert nur in installierter PWA
+- **Installation-Guide**: Step-by-Step Anweisungen für Benutzer
+- **Graceful Fallback**: App funktioniert vollständig ohne Push
+
+#### Security & Performance
+
+**Security-Maßnahmen**:
+- VAPID-Keys in Environment Variables
+- Subscription-Endpoint Validation
+- Rate Limiting für Notifications
+- Explizite User-Consent pro Event-Type
+
+**Performance-Optimierungen**:
+- Batch-Processing für Multiple Subscriptions
+- Automatic Cleanup ungültiger Subscriptions
+- Service Worker Caching-Optimierung
+- Database-Indizes für Push-Subscription Queries
+
 ### Chore-Task-Templates
 
 Das System verwendet vordefinierte Templates für verschiedene Wartungsaufgaben:
@@ -628,15 +787,19 @@ graph TB
 - **REST API**: Frontend-Backend Kommunikation
 - **GitHub APIs**: Externe Integration für Repository-Management
 - **Webhook Interface**: Eingehende GitHub-Events
+- **Push API**: VAPID-basierte Push-Benachrichtigungen
+- **Service Worker**: Offline-Funktionalität und Background-Synchronisation
 
 ### Frontend Layer
 
-**Zweck/Verantwortung**: Bereitstellung einer responsiven Web-Oberfläche für Repository-Management, Task-Überwachung und Systemkontrolle.
+**Zweck/Verantwortung**: Bereitstellung einer responsiven Progressive Web App für Repository-Management, Task-Überwachung und Systemkontrolle mit Push-Benachrichtigungen.
 
 **Schnittstelle(n)**:
 
 - REST API Client über `/api/*` Endpoints
-- WebSocket-Verbindung für Real-time Updates (geplant)
+- Push Subscription Management über `/api/push/*`
+- Service Worker für Background Push-Handling
+- PWA Installation Prompts und Offline-Funktionalität
 
 **Qualitäts-/Leistungsmerkmale**:
 
@@ -644,6 +807,9 @@ graph TB
 - Dark Theme entsprechend GitHub-Styling
 - Client-side Routing mit Wouter
 - Optimistische Updates über TanStack Query
+- PWA-Funktionalität mit Service Worker
+- Push-Benachrichtigungen mit konfigurierbaren Einstellungen
+- Offline-Cache für kritische App-Funktionen
 
 **Ablageort/Datei(en)**: `client/src/`, `components.json`, `vite.config.ts`
 
@@ -855,6 +1021,44 @@ sequenceDiagram
 - Duplikat-Erkennung verhindert Mehrfachverarbeitung
 - Event-spezifische Handler für verschiedene GitHub-Events
 
+## PWA Push-Notification Workflow
+
+```mermaid
+sequenceDiagram
+    participant User as Benutzer
+    participant PWA as PWA Frontend
+    participant SW as Service Worker
+    participant API as Express API
+    participant NotificationService as Notification Service
+    participant WebPush as Web Push
+    participant TaskQueue as Task Queue
+
+    User->>PWA: Push-Benachrichtigungen aktivieren
+    PWA->>SW: requestNotificationPermission()
+    SW-->>PWA: Permission granted
+    PWA->>API: POST /api/push/subscribe
+    API->>API: Store subscription in DB
+
+    Note over TaskQueue: Task-Event tritt auf
+
+    TaskQueue->>NotificationService: sendNotification()
+    NotificationService->>API: Load user settings
+    NotificationService->>API: Load user subscriptions
+    NotificationService->>WebPush: Send push to subscriptions
+    WebPush->>SW: Push message delivered
+    SW->>SW: Show notification
+    User->>SW: Click notification
+    SW->>PWA: Open/focus app
+```
+
+**PWA Push-Besonderheiten**:
+
+- iOS Push nur in installierter PWA (iOS 16.4+)
+- VAPID-Authentifizierung für alle Push-Nachrichten
+- Benutzerdefinierte Einstellungen pro Notification-Type
+- Graceful Fallback bei nicht unterstützten Browsern
+- Automatische Subscription-Cleanup bei ungültigen Endpoints
+
 # Verteilungssicht
 
 ## Infrastruktur Ebene 1
@@ -1028,6 +1232,8 @@ Jedes Repository, das von GitHub Hausmeister verwaltet werden soll, benötigt ei
 | **Single Task Concurrency**         | ✅ Umgesetzt | Verhindert GitHub API Konflikte, einfache Implementierung        | Reduzierte Durchsatzleistung, Queue-Delays               |
 | **Replit als Deployment Platform**  | ✅ Umgesetzt | Integrierte Entwicklungsumgebung, Secrets Management             | Vendor Lock-in, begrenzte Skalierungsoptionen            |
 | **Wouter statt React Router**       | ✅ Umgesetzt | Reduzierte Bundle-Größe, einfache API                            | Weniger Features, kleinere Community                     |
+| **PWA mit Service Worker**          | ✅ Umgesetzt | Offline-Funktionalität, Push-Notifications, App-like Experience  | Komplexität der Caching-Strategien, Browser-Support      |
+| **VAPID für Push-Notifications**    | ✅ Umgesetzt | Standard-konform, sicher, plattformübergreifend                  | Setup-Komplexität, iOS-Einschränkungen                   |
 
 # Qualitätsanforderungen
 
@@ -1087,6 +1293,7 @@ graph TB
 | **Error Monitoring**      | Nur Console-Logging vorhanden              | Mittel    | Strukturiertes Logging + Monitoring        |
 | **WebSocket Integration** | Real-time Updates nur über Polling         | Niedrig   | WebSocket für Live-Updates                 |
 | **Backup Strategy**       | Keine automatisierte Backups               | Mittel    | Neon PostgreSQL Backup + State File Backup |
+| **PWA Testing Coverage**  | PWA-spezifische Features nicht getestet    | Mittel    | Service Worker und Push-Notification Tests |
 
 ## Bekannte Limitationen
 
@@ -1114,3 +1321,8 @@ graph TB
 | **shadcn/ui**               | React Component Library basierend auf Radix UI                      |
 | **TanStack Query**          | Library für Server State Management und Caching                     |
 | **Replit Secrets**          | Environment Variable Management in der Replit Platform              |
+| **PWA**                     | Progressive Web App mit Service Worker und App-like Experience      |
+| **VAPID**                   | Voluntary Application Server Identification für Web Push            |
+| **Service Worker**          | Browser-Background-Script für Offline-Funktionalität und Push       |
+| **Push Subscription**       | Browser-spezifische Subscription für Push-Benachrichtigungen        |
+| **Web Push**                | Standard-Protokoll für Browser-Push-Benachrichtigungen              |
