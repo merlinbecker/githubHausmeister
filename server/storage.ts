@@ -108,7 +108,7 @@ export class MemStorage implements IStorage {
 
   async getActiveTask(): Promise<Task | undefined> {
     return Array.from(this.tasks.values()).find(
-      (task) => task.status === 'active'
+      (task) => task.status === 'in_progress'
     );
   }
 
