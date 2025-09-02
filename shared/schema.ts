@@ -114,11 +114,59 @@ export const sessions = pgTable(
   (table) => [index('IDX_session_expire').on(table.expire)]
 );
 
+// Push subscription table
+export const pushSubscriptions = pgTable(
+  'push_subscriptions',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    endpoint: text('endpoint').notNull(),
+    p256dhKey: text('p256dh_key').notNull(),
+    authKey: text('auth_key').notNull(),
+    userAgent: text('user_agent'),
+    isActive: boolean('is_active').default(true),
+    createdAt: timestamp('created_at').defaultNow(),
+    lastUsed: timestamp('last_used').defaultNow(),
+  },
+  (table) => [
+    index('push_subscriptions_user_id_idx').on(table.userId),
+    index('push_subscriptions_endpoint_idx').on(table.endpoint),
+  ]
+);
+
+// Notification settings table
+export const notificationSettings = pgTable(
+  'notification_settings',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    taskStarted: boolean('task_started').default(true),
+    taskCompleted: boolean('task_completed').default(true),
+    taskFailed: boolean('task_failed').default(true),
+    prCreated: boolean('pr_created').default(true),
+    prMerged: boolean('pr_merged').default(true),
+    ciStatusChanged: boolean('ci_status_changed').default(false),
+    copilotAssigned: boolean('copilot_assigned').default(true),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => [index('notification_settings_user_id_idx').on(table.userId)]
+);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   repositories: many(userRepositories),
   tasks: many(tasks),
   systemState: many(userSystemState),
+  pushSubscriptions: many(pushSubscriptions),
+  notificationSettings: many(notificationSettings),
 }));
 
 export const userRepositoriesRelations = relations(
@@ -148,6 +196,26 @@ export const userSystemStateRelations = relations(
   ({ one }) => ({
     user: one(users, {
       fields: [userSystemState.userId],
+      references: [users.id],
+    }),
+  })
+);
+
+export const pushSubscriptionsRelations = relations(
+  pushSubscriptions,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [pushSubscriptions.userId],
+      references: [users.id],
+    }),
+  })
+);
+
+export const notificationSettingsRelations = relations(
+  notificationSettings,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [notificationSettings.userId],
       references: [users.id],
     }),
   })
@@ -191,6 +259,29 @@ export const insertWebhookDeliverySchema = createInsertSchema(
   event: true,
 });
 
+export const insertPushSubscriptionSchema = createInsertSchema(
+  pushSubscriptions
+).pick({
+  userId: true,
+  endpoint: true,
+  p256dhKey: true,
+  authKey: true,
+  userAgent: true,
+});
+
+export const insertNotificationSettingsSchema = createInsertSchema(
+  notificationSettings
+).pick({
+  userId: true,
+  taskStarted: true,
+  taskCompleted: true,
+  taskFailed: true,
+  prCreated: true,
+  prMerged: true,
+  ciStatusChanged: true,
+  copilotAssigned: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -200,6 +291,10 @@ export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type Task = typeof tasks.$inferSelect;
 export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;
 export type UserSystemState = typeof userSystemState.$inferSelect;
+export type PushSubscription = typeof pushSubscriptions.$inferSelect;
+export type InsertPushSubscription = z.infer<typeof insertPushSubscriptionSchema>;
+export type NotificationSettings = typeof notificationSettings.$inferSelect;
+export type InsertNotificationSettings = z.infer<typeof insertNotificationSettingsSchema>;
 
 // API Response types
 export interface AppState {

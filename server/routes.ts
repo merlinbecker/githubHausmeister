@@ -25,6 +25,8 @@ import {
   optionalAuth,
   type AuthenticatedRequest,
 } from './lib/auth-middleware';
+import { NotificationService, NotificationType } from './lib/notificationService';
+import { initializeWebPush } from './lib/webPush';
 
 // Extend session types
 declare module 'express-session' {
@@ -35,6 +37,15 @@ declare module 'express-session' {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Initialize web-push with VAPID keys
+  try {
+    initializeWebPush();
+    console.log('✅ Web-push initialized with VAPID keys');
+  } catch (error) {
+    console.warn('⚠️ Web-push initialization failed:', error);
+    console.warn('Push notifications will not be available');
+  }
+
   // Session configuration
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
   const pgStore = connectPg(session);
@@ -564,6 +575,152 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Push notification endpoints
+  
+  // Get VAPID public key
+  app.get('/api/push/vapid-public-key', (req, res) => {
+    res.json({
+      publicKey: process.env.VAPID_PUBLIC_KEY,
+    });
+  });
+
+  // Subscribe to push notifications
+  app.post(
+    '/api/push/subscribe',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { endpoint, keys } = req.body;
+
+        if (!endpoint || !keys?.p256dh || !keys?.auth) {
+          return res.status(400).json({
+            error: 'Invalid subscription data',
+          });
+        }
+
+        const subscription = await databaseStorage.addPushSubscription({
+          userId: req.user!.id,
+          endpoint,
+          p256dhKey: keys.p256dh,
+          authKey: keys.auth,
+          userAgent: req.get('User-Agent'),
+        });
+
+        res.json({ success: true, id: subscription.id });
+      } catch (error) {
+        console.error('Error subscribing to push:', error);
+        res.status(500).json({ error: 'Failed to subscribe' });
+      }
+    }
+  );
+
+  // Unsubscribe from push notifications
+  app.post(
+    '/api/push/unsubscribe',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { endpoint } = req.body;
+
+        if (!endpoint) {
+          return res.status(400).json({
+            error: 'Endpoint required',
+          });
+        }
+
+        await databaseStorage.removePushSubscription(endpoint);
+        res.json({ success: true });
+      } catch (error) {
+        console.error('Error unsubscribing from push:', error);
+        res.status(500).json({ error: 'Failed to unsubscribe' });
+      }
+    }
+  );
+
+  // Get notification settings
+  app.get(
+    '/api/push/settings',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const settings = await databaseStorage.getUserNotificationSettings(
+          req.user!.id
+        );
+        res.json(settings);
+      } catch (error) {
+        console.error('Error getting notification settings:', error);
+        res.status(500).json({ error: 'Failed to get settings' });
+      }
+    }
+  );
+
+  // Update notification settings
+  app.put(
+    '/api/push/settings',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const updates = req.body;
+        const settings = await databaseStorage.updateNotificationSettings(
+          req.user!.id,
+          updates
+        );
+        res.json(settings);
+      } catch (error) {
+        console.error('Error updating notification settings:', error);
+        res.status(500).json({ error: 'Failed to update settings' });
+      }
+    }
+  );
+
+  // Test notification endpoint
+  app.post(
+    '/api/push/test',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const subscriptions = await databaseStorage.getUserPushSubscriptions(
+          req.user!.id
+        );
+
+        if (subscriptions.length === 0) {
+          return res.status(404).json({
+            error: 'No active subscriptions found',
+          });
+        }
+
+        const payload = {
+          title: 'Test Benachrichtigung',
+          body: 'Push-Benachrichtigungen funktionieren!',
+          icon: '/icon-192.png',
+          url: '/',
+          tag: 'test',
+        };
+
+        const { sendPushToMultipleSubscriptions } = await import('./lib/webPush');
+        const results = await sendPushToMultipleSubscriptions(
+          subscriptions.map((sub) => ({
+            endpoint: sub.endpoint,
+            keys: {
+              p256dh: sub.p256dhKey,
+              auth: sub.authKey,
+            },
+          })),
+          payload
+        );
+
+        res.json({
+          success: true,
+          sent: results.successful,
+          failed: results.failed,
+        });
+      } catch (error) {
+        console.error('Error sending test notification:', error);
+        res.status(500).json({ error: 'Failed to send test' });
+      }
+    }
+  );
+
   // GitHub webhook endpoint
   app.post('/api/webhook', async (req, res) => {
     try {
@@ -656,6 +813,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = await databaseStorage.getUserById(userRepo.userId);
       if (!user?.accessToken) return;
+
+      // Send PR created notification if this is the first time we see this PR
+      if (action === 'opened') {
+        await NotificationService.sendNotification(NotificationType.PR_CREATED, {
+          userId: userRepo.userId,
+          repositoryName: `${owner}/${repo}`,
+          pullNumber: pr.number,
+          issueNumber: activeTask.issueNumber,
+          url: pr.html_url,
+        });
+      }
 
       // For draft PRs that were just opened, wait for CI to complete
       if (action === 'opened' && pr.draft) {
