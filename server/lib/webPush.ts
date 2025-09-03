@@ -28,15 +28,21 @@ export function initializeWebPush() {
     return false;
   }
 
-  // Validate key format
+  // Validate key formats and lengths
   try {
     const publicKeyBuffer = Buffer.from(publicKey, 'base64url');
     if (publicKeyBuffer.length !== 65) {
       console.error(`Invalid VAPID public key length: ${publicKeyBuffer.length} bytes (expected 65)`);
       return false;
     }
+    
+    const privateKeyBuffer = Buffer.from(privateKey, 'base64url');
+    if (privateKeyBuffer.length !== 32) {
+      console.error(`Invalid VAPID private key length: ${privateKeyBuffer.length} bytes (expected 32)`);
+      return false;
+    }
   } catch (error) {
-    console.error('Invalid VAPID public key format:', error);
+    console.error('Invalid VAPID key format:', error);
     return false;
   }
 

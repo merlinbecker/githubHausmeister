@@ -18,12 +18,16 @@ export function generateVapidKeys(): VapidKeys {
     },
   });
 
-  // Extract raw public key from DER format (remove 26-byte header)
+  // Extract raw public key from DER format (remove 26-byte header to get 65 bytes)
   const publicKeyDer = Buffer.from(keyPair.publicKey);
-  const rawPublicKey = publicKeyDer.slice(26); // Remove DER header to get 65-byte raw key
+  const rawPublicKey = publicKeyDer.slice(26);
+  
+  // Extract raw private key from DER format (remove header to get 32 bytes)
+  const privateKeyDer = Buffer.from(keyPair.privateKey);
+  const rawPrivateKey = privateKeyDer.slice(-32); // Get last 32 bytes (raw private key)
   
   const publicKey = rawPublicKey.toString('base64url');
-  const privateKey = Buffer.from(keyPair.privateKey).toString('base64url');
+  const privateKey = rawPrivateKey.toString('base64url');
 
   return { publicKey, privateKey };
 }

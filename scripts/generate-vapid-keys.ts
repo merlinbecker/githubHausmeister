@@ -15,9 +15,11 @@ async function main() {
     console.log('');
     console.log('📝 Gehe zu den Secrets (linke Seitenleiste) und füge diese Werte hinzu.');
     
-    // Verify key length
+    // Verify key lengths
     const publicKeyBuffer = Buffer.from(keys.publicKey, 'base64url');
+    const privateKeyBuffer = Buffer.from(keys.privateKey, 'base64url');
     console.log(`✅ Public Key Länge: ${publicKeyBuffer.length} bytes (erwartet: 65)`);
+    console.log(`✅ Private Key Länge: ${privateKeyBuffer.length} bytes (erwartet: 32)`);
     
   } catch (error) {
     console.error('❌ Fehler beim Generieren der VAPID-Keys:', error);
