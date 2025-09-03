@@ -33,14 +33,18 @@ export function initializeWebPush() {
     const publicKeyBuffer = Buffer.from(publicKey, 'base64url');
     if (publicKeyBuffer.length !== 65) {
       console.error(`Invalid VAPID public key length: ${publicKeyBuffer.length} bytes (expected 65)`);
+      console.log('Please regenerate VAPID keys using: npm run generate-vapid-keys');
       return false;
     }
     
     const privateKeyBuffer = Buffer.from(privateKey, 'base64url');
     if (privateKeyBuffer.length !== 32) {
       console.error(`Invalid VAPID private key length: ${privateKeyBuffer.length} bytes (expected 32)`);
+      console.log('Please regenerate VAPID keys using: npm run generate-vapid-keys');
       return false;
     }
+    
+    console.log('✅ VAPID keys validation successful');
   } catch (error) {
     console.error('Invalid VAPID key format:', error);
     return false;
@@ -48,6 +52,7 @@ export function initializeWebPush() {
 
   try {
     webpush.setVapidDetails(subject, publicKey, privateKey);
+    console.log('✅ Web-push initialized with VAPID keys');
     return true;
   } catch (error) {
     console.error('Failed to set VAPID details:', error);

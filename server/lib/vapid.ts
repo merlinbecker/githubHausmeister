@@ -18,13 +18,16 @@ export function generateVapidKeys(): VapidKeys {
     },
   });
 
-  // Extract raw public key from DER format (remove 26-byte header to get 65 bytes)
+  // Extract raw public key from DER format
   const publicKeyDer = Buffer.from(keyPair.publicKey);
-  const rawPublicKey = publicKeyDer.slice(26);
+  // For P-256 SPKI format, the header is 26 bytes, followed by 1 byte (0x04) and 64 bytes of coordinates
+  // We need all 65 bytes (0x04 + 32 bytes x + 32 bytes y)
+  const rawPublicKey = publicKeyDer.slice(26, 91); // Extract exactly 65 bytes
   
-  // Extract raw private key from DER format (remove header to get 32 bytes)
+  // Extract raw private key from DER format
   const privateKeyDer = Buffer.from(keyPair.privateKey);
-  const rawPrivateKey = privateKeyDer.slice(-32); // Get last 32 bytes (raw private key)
+  // For P-256 PKCS8 format, find the 32-byte private key
+  const rawPrivateKey = privateKeyDer.slice(-32);
   
   const publicKey = rawPublicKey.toString('base64url');
   const privateKey = rawPrivateKey.toString('base64url');

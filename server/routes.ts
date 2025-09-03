@@ -517,6 +517,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Set headers for file download
         res.setHeader('Content-Type', 'application/json');
         res.setHeader(
+
+
+  // Debug endpoint to test push notifications directly
+  app.post(
+    '/api/push/debug-test',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { NotificationService, NotificationType } = await import('./lib/notificationService');
+        
+        const result = await NotificationService.sendNotification(
+          NotificationType.TASK_COMPLETED,
+          {
+            userId: req.user!.id,
+            repositoryName: 'test-repo',
+            taskTitle: 'Debug Test Task',
+            url: '/',
+          }
+        );
+
+        res.json({
+          success: true,
+          sent: result.sent,
+          failed: result.failed,
+          message: 'Debug notification sent'
+        });
+      } catch (error) {
+        console.error('Error sending debug notification:', error);
+        res.status(500).json({ 
+          error: 'Failed to send debug notification',
+          details: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    }
+  );
+
           'Content-Disposition',
           `attachment; filename=github-hausmeister-logs-${new Date().toISOString().split('T')[0]}.json`
         );
