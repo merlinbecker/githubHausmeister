@@ -60,7 +60,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   sessionStore.on('connect', () => {
     console.log('✅ Session store connected to PostgreSQL');
   });
-  
+
   sessionStore.on('disconnect', () => {
     console.log('❌ Session store disconnected from PostgreSQL');
   });
@@ -111,7 +111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     const state = randomUUID();
-    
+
     console.log('🔑 Starting OAuth flow:', {
       sessionId: req.session.id,
       state,
@@ -119,37 +119,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       cookies: req.headers.cookie,
       sessionStore: !!sessionStore
     });
-    
+
     // Initialize session with OAuth state
     req.session.oauthState = state;
     req.session.oauthTimestamp = Date.now();
-    
-    // Force session save with callback and add delay
-    req.session.save((err) => {
-      if (err) {
-        console.error('❌ Session save error:', err);
-        return res.status(500).json({ error: 'Session error' });
-      }
-      
-      console.log('✅ Session saved successfully:', {
-        sessionId: req.session?.id,
-        oauthState: req.session?.oauthState,
-        timestamp: req.session?.oauthTimestamp
-      });
-      
-      // Add small delay to ensure session is persisted
-      setTimeout(() => {
+
+    // Force session save with callback
+      req.session.save((err) => {
+        if (err) {
+          console.error('❌ Session save error:', err);
+          return res.status(500).json({ error: 'Session error' });
+        }
+
+        console.log('✅ Session saved successfully:', {
+          sessionId: req.session?.id,
+          oauthState: req.session?.oauthState,
+          timestamp: req.session?.oauthTimestamp
+        });
+
         const authUrl = githubOAuth.getAuthorizationUrl(state);
         console.log('🔀 Redirecting to GitHub:', authUrl);
         res.redirect(authUrl);
-      }, 100);
-    });
+      });
   });
 
   app.get('/api/auth/github/callback', async (req, res) => {
     try {
       const { code, state, error, error_description } = req.query;
-      
+
       // Extended debug logging
       console.log('🔍 OAuth callback debug:');
       console.log('- Full query params:', req.query);
@@ -162,7 +159,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('- Cookies received:', req.headers.cookie);
       console.log('- Session store connected:', sessionStore ? 'yes' : 'no');
       console.log('- Full session object:', JSON.stringify(req.session, null, 2));
-      
+
       const sessionState = req.session?.oauthState;
       console.log('- Session state:', sessionState);
       console.log('- Session timestamp:', req.session?.oauthTimestamp);
@@ -679,7 +676,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Push notification endpoints
-  
+
   // Get VAPID public key
   app.get('/api/push/vapid-public-key', (req, res) => {
     res.json({
@@ -966,7 +963,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const repositoryName = payload?.repository?.name;
       const action = payload?.action;
       const actorLogin = payload?.sender?.login;
-      
+
       // Create payload summary with relevant info
       const payloadSummary = {
         action,
