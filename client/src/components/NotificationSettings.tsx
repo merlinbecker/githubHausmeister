@@ -82,6 +82,29 @@ export function NotificationSettings() {
     }
   };
 
+  const handleTestNotification = async () => {
+    console.log('🔔 Test-Benachrichtigung wird gesendet...');
+    console.log('📱 Push-Status:', {
+      isSupported: push.isSupported,
+      isSubscribed: push.isSubscribed,
+      permission: push.permission
+    });
+
+    try {
+      const success = await push.sendTestNotification();
+      if (success) {
+        console.log('✅ Test-Benachrichtigung erfolgreich gesendet');
+        alert('Test-Benachrichtigung gesendet! Prüfen Sie Ihre Benachrichtigungen.');
+      } else {
+        console.error('❌ Fehler beim Senden der Test-Benachrichtigung');
+        alert('Fehler beim Senden der Test-Benachrichtigung. Prüfen Sie die Konsole für Details.');
+      }
+    } catch (error) {
+      console.error('💥 Exception beim Senden der Test-Benachrichtigung:', error);
+      alert('Unerwarteter Fehler beim Senden der Test-Benachrichtigung.');
+    }
+  };
+
   if (isLoading || !settings) {
     return <div>Loading...</div>;
   }
@@ -141,7 +164,7 @@ export function NotificationSettings() {
                 <>
                   <Button
                     variant="outline"
-                    onClick={push.sendTestNotification}
+                    onClick={handleTestNotification}
                     size="sm"
                   >
                     Test senden

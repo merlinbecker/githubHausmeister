@@ -12,6 +12,7 @@ import WebhookMonitor from '@/components/WebhookMonitor';
 import SystemControls from '@/components/SystemControls';
 import { NotificationSettings } from '@/components/NotificationSettings';
 import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
+import { PushNotificationTester } from '@/components/PushNotificationTester';
 import { Github, LogOut, User } from 'lucide-react';
 
 export default function Dashboard() {
@@ -99,7 +100,7 @@ export default function Dashboard() {
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         <PWAInstallPrompt />
-        
+
         <StatusOverview appState={appState} />
 
         {appState?.activeTask && (
@@ -133,7 +134,12 @@ export default function Dashboard() {
           onRefresh={refetch}
         />
 
-        <NotificationSettings />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <NotificationSettings />
+          <PWAInstallPrompt />
+        </div>
+
+        <PushNotificationTester />
       </main>
 
       {/* Footer */}
