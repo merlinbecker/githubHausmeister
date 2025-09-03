@@ -100,21 +100,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/auth/github/callback', async (req, res) => {
     try {
-      const { code, state } = req.query;
+      const { code, state, error, error_description } = req.query;
       const sessionState = req.session!.oauthState;
 
       // Debug logging
       console.log('OAuth callback debug:');
+      console.log('- Full query params:', req.query);
       console.log('- Received code:', !!code);
       console.log('- Received state:', state);
       console.log('- Session state:', sessionState);
       console.log('- States match:', state === sessionState);
+      console.log('- Session ID:', req.session?.id);
+      console.log('- Session data:', req.session);
 
-      if (!code || !state || state !== sessionState) {
-        console.error('OAuth validation failed:', { code: !!code, state, sessionState });
+      // Check for GitHub OAuth errors first
+      if (error) {
+        console.error('GitHub OAuth error:', error, error_description);
         return res.status(400).json({ 
-          error: 'Invalid OAuth callback',
-          debug: { hasCode: !!code, receivedState: state, sessionState }
+          error: 'GitHub OAuth error',
+          details: error_description || error
+        });
+      }
+
+      if (!code) {
+        console.error('No authorization code received');
+        return res.status(400).json({ 
+          error: 'No authorization code received',
+          debug: { query: req.query }
+        });
+      }
+
+      if (!state) {
+        console.error('No state parameter received');
+        return res.status(400).json({ 
+          error: 'No state parameter received',
+          debug: { query: req.query }
+        });
+      }
+
+      if (!sessionState) {
+        console.error('No session state found');
+        return res.status(400).json({ 
+          error: 'Session expired or invalid',
+          debug: { hasSession: !!req.session, sessionKeys: Object.keys(req.session || {}) }
+        });
+      }
+
+      if (state !== sessionState) {
+        console.error('State mismatch:', { received: state, expected: sessionState });
+        return res.status(400).json({ 
+          error: 'State parameter mismatch',
+          debug: { receivedState: state, sessionState }
         });
       }
 
