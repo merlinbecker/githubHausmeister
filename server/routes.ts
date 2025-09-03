@@ -51,7 +51,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL,
-    createTableIfMissing: false,
+    createTableIfMissing: true, // Allow automatic table creation
     ttl: sessionTtl,
     tableName: 'sessions',
   });
@@ -69,14 +69,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     session({
       secret: process.env.SESSION_SECRET || 'dev-secret-change-in-production',
       store: sessionStore,
-      resave: true, // Force session save on each request
-      saveUninitialized: true, // Allow empty sessions to be saved
-      rolling: true, // Reset expiry on each request
+      resave: false, // Don't force session save when nothing changed
+      saveUninitialized: false, // Don't save empty sessions
+      rolling: false, // Don't reset expiry on each request
       cookie: {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: false, // Always false for Replit dev environment
         maxAge: sessionTtl,
-        sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'lax', // Changed from 'none' to 'lax'
+        sameSite: 'lax', // Consistent across environments
       },
       name: 'github-hausmeister-session', // Explicit session name
     })
@@ -104,20 +104,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // GitHub OAuth routes
   app.get('/api/auth/github', (req, res) => {
+    // Ensure session exists
+    if (!req.session) {
+      console.error('❌ No session available');
+      return res.status(500).json({ error: 'Session not initialized' });
+    }
+
     const state = randomUUID();
     
     console.log('🔑 Starting OAuth flow:', {
-      sessionId: req.session?.id,
+      sessionId: req.session.id,
       state,
       userAgent: req.get('User-Agent'),
-      cookies: req.headers.cookie
+      cookies: req.headers.cookie,
+      sessionStore: !!sessionStore
     });
     
-    req.session!.oauthState = state;
-    req.session!.oauthTimestamp = Date.now();
+    // Initialize session with OAuth state
+    req.session.oauthState = state;
+    req.session.oauthTimestamp = Date.now();
     
-    // Force session save before redirect
-    req.session!.save((err) => {
+    // Force session save with callback and add delay
+    req.session.save((err) => {
       if (err) {
         console.error('❌ Session save error:', err);
         return res.status(500).json({ error: 'Session error' });
@@ -129,31 +137,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timestamp: req.session?.oauthTimestamp
       });
       
-      const authUrl = githubOAuth.getAuthorizationUrl(state);
-      console.log('🔀 Redirecting to GitHub:', authUrl);
-      res.redirect(authUrl);
+      // Add small delay to ensure session is persisted
+      setTimeout(() => {
+        const authUrl = githubOAuth.getAuthorizationUrl(state);
+        console.log('🔀 Redirecting to GitHub:', authUrl);
+        res.redirect(authUrl);
+      }, 100);
     });
   });
 
   app.get('/api/auth/github/callback', async (req, res) => {
     try {
       const { code, state, error, error_description } = req.query;
-      const sessionState = req.session!.oauthState;
-
-      // Debug logging
+      
+      // Extended debug logging
       console.log('🔍 OAuth callback debug:');
       console.log('- Full query params:', req.query);
       console.log('- Received code:', !!code);
       console.log('- Received state:', state);
+      console.log('- Session available:', !!req.session);
+      console.log('- Session ID:', req.session?.id);
+      console.log('- Session keys:', req.session ? Object.keys(req.session) : 'no session');
+      console.log('- User-Agent:', req.get('User-Agent'));
+      console.log('- Cookies received:', req.headers.cookie);
+      console.log('- Session store connected:', sessionStore ? 'yes' : 'no');
+      console.log('- Full session object:', JSON.stringify(req.session, null, 2));
+      
+      const sessionState = req.session?.oauthState;
       console.log('- Session state:', sessionState);
       console.log('- Session timestamp:', req.session?.oauthTimestamp);
       console.log('- Time since OAuth start:', req.session?.oauthTimestamp ? Date.now() - req.session.oauthTimestamp : 'unknown');
       console.log('- States match:', state === sessionState);
-      console.log('- Session ID:', req.session?.id);
-      console.log('- Session keys:', req.session ? Object.keys(req.session) : 'no session');
-      console.log('- User-Agent:', req.get('User-Agent'));
-      console.log('- Cookies:', req.headers.cookie);
-      console.log('- Session data:', req.session);
 
       // Check for GitHub OAuth errors first
       if (error) {
