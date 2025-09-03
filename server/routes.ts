@@ -25,7 +25,6 @@ import {
   optionalAuth,
   type AuthenticatedRequest,
 } from './lib/auth-middleware';
-import { NotificationService, NotificationType } from './lib/notificationService';
 import { initializeWebPush } from './lib/webPush';
 
 // Extend session types
@@ -1076,6 +1075,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send PR created notification if this is the first time we see this PR
       if (action === 'opened') {
+        const { NotificationService, NotificationType } = await import('./lib/notificationService');
         await NotificationService.sendNotification(NotificationType.PR_CREATED, {
           userId: userRepo.userId,
           repositoryName: `${owner}/${repo}`,
