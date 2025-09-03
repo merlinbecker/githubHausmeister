@@ -56,17 +56,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     tableName: 'sessions',
   });
 
+  // Log session store connection
+  sessionStore.on('connect', () => {
+    console.log('✅ Session store connected to PostgreSQL');
+  });
+  
+  sessionStore.on('disconnect', () => {
+    console.log('❌ Session store disconnected from PostgreSQL');
+  });
+
   app.use(
     session({
       secret: process.env.SESSION_SECRET || 'dev-secret-change-in-production',
       store: sessionStore,
       resave: false,
-      saveUninitialized: false,
+      saveUninitialized: true, // Changed to true for OAuth flow
       cookie: {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         maxAge: sessionTtl,
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Important for OAuth in production
       },
+      name: 'github-hausmeister-session', // Explicit session name
     })
   );
 
@@ -93,9 +104,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GitHub OAuth routes
   app.get('/api/auth/github', (req, res) => {
     const state = randomUUID();
+    
+    console.log('Setting OAuth state:', {
+      sessionId: req.session?.id,
+      state,
+      sessionBefore: req.session
+    });
+    
     req.session!.oauthState = state;
-    const authUrl = githubOAuth.getAuthorizationUrl(state);
-    res.redirect(authUrl);
+    
+    // Force session save before redirect
+    req.session!.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.status(500).json({ error: 'Session error' });
+      }
+      
+      console.log('Session saved successfully:', {
+        sessionId: req.session?.id,
+        oauthState: req.session?.oauthState
+      });
+      
+      const authUrl = githubOAuth.getAuthorizationUrl(state);
+      res.redirect(authUrl);
+    });
   });
 
   app.get('/api/auth/github/callback', async (req, res) => {
