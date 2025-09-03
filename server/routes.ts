@@ -517,7 +517,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Set headers for file download
         res.setHeader('Content-Type', 'application/json');
         res.setHeader(
+          'Content-Disposition',
+          `attachment; filename=github-hausmeister-logs-${new Date().toISOString().split('T')[0]}.json`
+        );
 
+        res.json({
+          exportDate: new Date().toISOString(),
+          user: req.user!.username,
+          totalTasks: logs.length,
+          logs: logs,
+        });
+      } catch (error) {
+        console.error('Error exporting logs:', error);
+        res.status(500).json({ error: 'Failed to export logs' });
+      }
+    }
+  );
 
   // Debug endpoint to test push notifications directly
   app.post(
@@ -549,23 +564,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           error: 'Failed to send debug notification',
           details: error instanceof Error ? error.message : 'Unknown error'
         });
-      }
-    }
-  );
-
-          'Content-Disposition',
-          `attachment; filename=github-hausmeister-logs-${new Date().toISOString().split('T')[0]}.json`
-        );
-
-        res.json({
-          exportDate: new Date().toISOString(),
-          user: req.user!.username,
-          totalTasks: logs.length,
-          logs: logs,
-        });
-      } catch (error) {
-        console.error('Error exporting logs:', error);
-        res.status(500).json({ error: 'Failed to export logs' });
       }
     }
   );
