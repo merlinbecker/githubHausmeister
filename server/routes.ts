@@ -32,6 +32,7 @@ import { initializeWebPush } from './lib/webPush';
 declare module 'express-session' {
   interface Session {
     oauthState?: string;
+    oauthTimestamp?: number;
     userId?: string;
   }
 }
