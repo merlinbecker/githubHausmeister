@@ -300,18 +300,31 @@ export class DatabaseStorage {
   async addPushSubscription(
     subscription: InsertPushSubscription
   ): Promise<PushSubscription> {
-    const [inserted] = await db
-      .insert(pushSubscriptions)
-      .values(subscription)
-      .onConflictDoUpdate({
-        target: pushSubscriptions.endpoint,
-        set: {
+    // Zuerst prüfen ob Subscription bereits existiert
+    const [existing] = await db
+      .select()
+      .from(pushSubscriptions)
+      .where(eq(pushSubscriptions.endpoint, subscription.endpoint));
+
+    if (existing) {
+      // Update existing subscription
+      const [updated] = await db
+        .update(pushSubscriptions)
+        .set({
           isActive: true,
           lastUsed: new Date(),
-        },
-      })
-      .returning();
-    return inserted;
+        })
+        .where(eq(pushSubscriptions.endpoint, subscription.endpoint))
+        .returning();
+      return updated;
+    } else {
+      // Insert new subscription
+      const [inserted] = await db
+        .insert(pushSubscriptions)
+        .values(subscription)
+        .returning();
+      return inserted;
+    }
   }
 
   async getUserPushSubscriptions(userId: string): Promise<PushSubscription[]> {
