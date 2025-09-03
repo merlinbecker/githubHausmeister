@@ -807,6 +807,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Check if subscription exists on server
+  app.post(
+    '/api/push/subscription-status',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { endpoint } = req.body;
+
+        if (!endpoint) {
+          return res.status(400).json({
+            error: 'Endpoint required',
+          });
+        }
+
+        const subscriptions = await databaseStorage.getUserPushSubscriptions(
+          req.user!.id
+        );
+
+        const exists = subscriptions.some(sub => sub.endpoint === endpoint);
+
+        res.json({ exists });
+      } catch (error) {
+        console.error('Error checking subscription status:', error);
+        res.status(500).json({ error: 'Failed to check subscription status' });
+      }
+    }
+  );
+
   // Test notification endpoint
   app.post(
     '/api/push/test',

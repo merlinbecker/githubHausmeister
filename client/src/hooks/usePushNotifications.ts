@@ -39,10 +39,40 @@ export function usePushNotifications() {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
 
+      console.log('Push subscription check:', {
+        hasSubscription: !!subscription,
+        endpoint: subscription?.endpoint,
+        permission: Notification.permission,
+      });
+
+      // Zusätzlich prüfen ob die Subscription auch server-seitig bekannt ist
+      let serverKnowsSubscription = false;
+      if (subscription) {
+        try {
+          const response = await fetch('/api/push/subscription-status', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({ endpoint: subscription.endpoint }),
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            serverKnowsSubscription = data.exists;
+          }
+        } catch (error) {
+          console.warn('Could not check server subscription status:', error);
+          // Fallback: Annahme dass Subscription existiert wenn Browser sie hat
+          serverKnowsSubscription = true;
+        }
+      }
+
       setState((prev) => ({
         ...prev,
         isSupported: true,
-        isSubscribed: !!subscription,
+        isSubscribed: !!subscription && serverKnowsSubscription,
         permission: Notification.permission,
         isLoading: false,
       }));

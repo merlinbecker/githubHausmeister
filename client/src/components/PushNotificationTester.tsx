@@ -43,9 +43,18 @@ export function PushNotificationTester() {
       // 3. Check Subscription
       if (!push.isSubscribed) {
         addTestResult('⚠️ Nicht für Push-Benachrichtigungen angemeldet');
-        return;
+        addTestResult('🔧 Versuche automatische Anmeldung...');
+        
+        const subscribed = await push.subscribe();
+        if (subscribed) {
+          addTestResult('✅ Automatische Anmeldung erfolgreich');
+        } else {
+          addTestResult('❌ Automatische Anmeldung fehlgeschlagen');
+          return;
+        }
+      } else {
+        addTestResult('✅ Für Push-Benachrichtigungen angemeldet');
       }
-      addTestResult('✅ Für Push-Benachrichtigungen angemeldet');
 
       // 4. Test Service Worker
       addTestResult('🔧 Prüfe Service Worker...');
