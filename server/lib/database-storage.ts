@@ -218,26 +218,25 @@ export class DatabaseStorage {
       return [];
     }
 
-    // Get webhook deliveries for user's repositories
-    const deliveries = await db
-      .select()
-      .from(webhookDeliveries)
-      .where(
-        and(
-          eq(webhookDeliveries.processed, true),
-          // Filter by repositories user owns
-          isNotNull(webhookDeliveries.repositoryOwner),
-          isNotNull(webhookDeliveries.repositoryName)
-        )
-      )
-      .orderBy(desc(webhookDeliveries.createdAt))
-      .limit(limit);
+    try {
+      // Get webhook deliveries for user's repositories
+      const deliveries = await db
+        .select()
+        .from(webhookDeliveries)
+        .where(eq(webhookDeliveries.processed, true))
+        .orderBy(desc(webhookDeliveries.createdAt))
+        .limit(limit);
 
-    // Filter to only include user's repositories
-    return deliveries.filter(delivery => {
-      if (!delivery.repositoryOwner || !delivery.repositoryName) return false;
-      return repoNames.includes(`${delivery.repositoryOwner}/${delivery.repositoryName}`);
-    });
+      // Filter to only include user's repositories
+      return deliveries.filter(delivery => {
+        if (!delivery.repositoryOwner || !delivery.repositoryName) return false;
+        return repoNames.includes(`${delivery.repositoryOwner}/${delivery.repositoryName}`);
+      });
+    } catch (error) {
+      console.error('Error querying webhook deliveries:', error);
+      // Return empty array if query fails
+      return [];
+    }
   }
 
   // User system state operations
