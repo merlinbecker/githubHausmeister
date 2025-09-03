@@ -24,10 +24,29 @@ export function initializeWebPush() {
   const subject = process.env.VAPID_SUBJECT || 'mailto:admin@example.com';
 
   if (!publicKey || !privateKey) {
-    throw new Error('VAPID keys not configured');
+    console.warn('VAPID keys not configured. Push notifications disabled.');
+    return false;
   }
 
-  webpush.setVapidDetails(subject, publicKey, privateKey);
+  // Validate key format
+  try {
+    const publicKeyBuffer = Buffer.from(publicKey, 'base64url');
+    if (publicKeyBuffer.length !== 65) {
+      console.error(`Invalid VAPID public key length: ${publicKeyBuffer.length} bytes (expected 65)`);
+      return false;
+    }
+  } catch (error) {
+    console.error('Invalid VAPID public key format:', error);
+    return false;
+  }
+
+  try {
+    webpush.setVapidDetails(subject, publicKey, privateKey);
+    return true;
+  } catch (error) {
+    console.error('Failed to set VAPID details:', error);
+    return false;
+  }
 }
 
 export async function sendPushNotification(
