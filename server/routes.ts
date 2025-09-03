@@ -69,13 +69,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     session({
       secret: process.env.SESSION_SECRET || 'dev-secret-change-in-production',
       store: sessionStore,
-      resave: false,
-      saveUninitialized: true, // Changed to true for OAuth flow
+      resave: true, // Force session save on each request
+      saveUninitialized: true, // Allow empty sessions to be saved
+      rolling: true, // Reset expiry on each request
       cookie: {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         maxAge: sessionTtl,
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Important for OAuth in production
+        sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'lax', // Changed from 'none' to 'lax'
       },
       name: 'github-hausmeister-session', // Explicit session name
     })
@@ -105,27 +106,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/auth/github', (req, res) => {
     const state = randomUUID();
     
-    console.log('Setting OAuth state:', {
+    console.log('🔑 Starting OAuth flow:', {
       sessionId: req.session?.id,
       state,
-      sessionBefore: req.session
+      userAgent: req.get('User-Agent'),
+      cookies: req.headers.cookie
     });
     
     req.session!.oauthState = state;
+    req.session!.oauthTimestamp = Date.now();
     
     // Force session save before redirect
     req.session!.save((err) => {
       if (err) {
-        console.error('Session save error:', err);
+        console.error('❌ Session save error:', err);
         return res.status(500).json({ error: 'Session error' });
       }
       
-      console.log('Session saved successfully:', {
+      console.log('✅ Session saved successfully:', {
         sessionId: req.session?.id,
-        oauthState: req.session?.oauthState
+        oauthState: req.session?.oauthState,
+        timestamp: req.session?.oauthTimestamp
       });
       
       const authUrl = githubOAuth.getAuthorizationUrl(state);
+      console.log('🔀 Redirecting to GitHub:', authUrl);
       res.redirect(authUrl);
     });
   });
@@ -136,13 +141,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sessionState = req.session!.oauthState;
 
       // Debug logging
-      console.log('OAuth callback debug:');
+      console.log('🔍 OAuth callback debug:');
       console.log('- Full query params:', req.query);
       console.log('- Received code:', !!code);
       console.log('- Received state:', state);
       console.log('- Session state:', sessionState);
+      console.log('- Session timestamp:', req.session?.oauthTimestamp);
+      console.log('- Time since OAuth start:', req.session?.oauthTimestamp ? Date.now() - req.session.oauthTimestamp : 'unknown');
       console.log('- States match:', state === sessionState);
       console.log('- Session ID:', req.session?.id);
+      console.log('- Session keys:', req.session ? Object.keys(req.session) : 'no session');
+      console.log('- User-Agent:', req.get('User-Agent'));
+      console.log('- Cookies:', req.headers.cookie);
       console.log('- Session data:', req.session);
 
       // Check for GitHub OAuth errors first
