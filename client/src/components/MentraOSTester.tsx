@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,14 +8,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { 
   Eye, 
   Smartphone, 
   MessageCircle, 
   Image as ImageIcon, 
   Mic, 
-  Settings, 
   Plus,
   Trash2,
   Send,
@@ -146,7 +144,7 @@ const api = {
 
 export function MentraOSTester() {
   const queryClient = useQueryClient();
-  const [selectedGlass, setSelectedGlass] = useState<string>('');
+  const [_selectedGlass, _setSelectedGlass] = useState<string>('');
   const [testResults, setTestResults] = useState<string[]>([]);
 
   // Queries
@@ -224,7 +222,7 @@ export function MentraOSTester() {
     setTestResults([]);
   };
 
-  const getStatusIcon = (status: string) => {
+  const _getStatusIcon = (status: string) => {
     switch (status) {
       case 'executed':
       case 'sent':
@@ -239,7 +237,7 @@ export function MentraOSTester() {
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const _formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
   };
 

@@ -161,7 +161,7 @@ export class NotificationService {
       const payload = this.getNotificationContent(type, context);
 
       let webResults = { successful: 0, failed: 0 };
-      let glassResults = { sent: 0, failed: 0 };
+      const glassResults = { sent: 0, failed: 0 };
 
       // Send to web push subscriptions
       const subscriptions = await databaseStorage.getUserPushSubscriptions(

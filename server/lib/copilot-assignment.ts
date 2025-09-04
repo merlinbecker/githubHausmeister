@@ -346,7 +346,7 @@ export class CopilotAssignmentService {
             source: 'search',
           };
         }
-      } catch (error) {
+      } catch {
         // Continue to next candidate
         console.log(`🎯 [COPILOT AGENT] Agent ${agentLogin} not found globally`);
       }

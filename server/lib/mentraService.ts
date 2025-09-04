@@ -1,4 +1,4 @@
-import { randomBytes, createHash } from 'crypto';
+import { randomBytes } from 'crypto';
 import { databaseStorage } from './database-storage';
 import {
   type MentraGlass,
@@ -273,7 +273,7 @@ export class MentraService {
       let result: Record<string, any> = {};
 
       switch (command.commandType) {
-        case VoiceCommandType.STATUS_CHECK:
+        case VoiceCommandType.STATUS_CHECK: {
           const userState = await databaseStorage.getUserSystemState(command.userId);
           result = {
             monthlyDone: userState.monthlyDone,
@@ -281,8 +281,9 @@ export class MentraService {
             message: `System läuft. ${userState.monthlyDone} Aufgaben diesen Monat erledigt.`,
           };
           break;
+        }
 
-        case VoiceCommandType.TASK_LIST:
+        case VoiceCommandType.TASK_LIST: {
           const userTasks = await databaseStorage.getUserTasks(command.userId, 5);
           result = {
             taskCount: userTasks.length,
@@ -290,8 +291,9 @@ export class MentraService {
             message: `${userTasks.length} aktuelle Aufgaben gefunden.`,
           };
           break;
+        }
 
-        case VoiceCommandType.REPO_STATUS:
+        case VoiceCommandType.REPO_STATUS: {
           const userRepos = await databaseStorage.getUserRepositories(command.userId);
           result = {
             repositoryCount: userRepos.length,
@@ -299,6 +301,7 @@ export class MentraService {
             message: `${userRepos.length} Repositories überwacht.`,
           };
           break;
+        }
 
         case VoiceCommandType.HELP:
           result = {

@@ -1,4 +1,4 @@
-import { eq, and, desc, isNotNull } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import { db } from '../db';
 import {
   users,
@@ -24,7 +24,6 @@ import {
   type PushSubscription,
   type InsertPushSubscription,
   type NotificationSettings,
-  type InsertNotificationSettings,
   type MentraGlass,
   type InsertMentraGlass,
   type MentraSession,

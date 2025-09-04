@@ -1,17 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
   Activity, 
   Clock, 
-  ExternalLink, 
   Play, 
   RefreshCw, 
   GitBranch, 
   User, 
   CheckCircle,
-  AlertCircle,
-  Info,
-  Settings
+  AlertCircle
 } from 'lucide-react';
 import { getWebhookDeliveries, testWebhook } from '@/lib/api';
 import type { WebhookDelivery, UserRepository, WebhookPayloadSummary } from '@shared/schema';
