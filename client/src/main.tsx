@@ -6,6 +6,7 @@ import { registerServiceWorker } from './lib/serviceWorker';
 createRoot(document.getElementById('root')!).render(<App />);
 
 // Register service worker after app initialization
-if (import.meta.env.PROD) {
+// Enable in development for Replit since it provides HTTPS
+if (import.meta.env.PROD || import.meta.env.DEV) {
   registerServiceWorker();
 }
