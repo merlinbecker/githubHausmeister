@@ -152,6 +152,12 @@ To enable push notifications for real-time task updates:
 
 **Note**: Push notifications work on all modern browsers and can be received even when the app is closed.
 
+**PWA Icons**: To complete the PWA setup, add icon files to `client/public/`:
+- `icon-192.png` (192x192px) - For app installation and notifications
+- `icon-512.png` (512x512px) - For app installation
+- `screenshot-narrow.png` (720x1280px) - Mobile app store preview
+- `screenshot-wide.png` (1280x720px) - Desktop app store preview
+
 ### 5. Repository Setup
 
 Each managed repository needs:
