@@ -73,9 +73,7 @@ function renderWithQueryClient(ui: React.ReactElement) {
     },
   });
   return render(
-    <QueryClientProvider client={queryClient}>
-      {ui}
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
   );
 }
 
@@ -88,14 +86,14 @@ describe('WebhookMonitor', () => {
     const { getWebhookDeliveries } = await import('@/lib/api');
     vi.mocked(getWebhookDeliveries).mockResolvedValue(mockWebhookDeliveries);
 
-    renderWithQueryClient(
-      <WebhookMonitor repositories={mockRepositories} />
-    );
+    renderWithQueryClient(<WebhookMonitor repositories={mockRepositories} />);
 
     expect(screen.getByText('Webhook Monitor')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /test webhook/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /test webhook/i })
+    ).toBeInTheDocument();
     expect(screen.getByText(/recent webhook events/i)).toBeInTheDocument();
-    
+
     // Check if repository select has options
     const select = screen.getByRole('combobox');
     expect(select).toBeInTheDocument();
@@ -107,9 +105,7 @@ describe('WebhookMonitor', () => {
     const { getWebhookDeliveries } = await import('@/lib/api');
     vi.mocked(getWebhookDeliveries).mockResolvedValue(mockWebhookDeliveries);
 
-    renderWithQueryClient(
-      <WebhookMonitor repositories={mockRepositories} />
-    );
+    renderWithQueryClient(<WebhookMonitor repositories={mockRepositories} />);
 
     await waitFor(() => {
       expect(screen.getByText('pull_request')).toBeInTheDocument();
@@ -124,14 +120,12 @@ describe('WebhookMonitor', () => {
   it('allows testing webhooks', async () => {
     const { getWebhookDeliveries, testWebhook } = await import('@/lib/api');
     vi.mocked(getWebhookDeliveries).mockResolvedValue([]);
-    vi.mocked(testWebhook).mockResolvedValue({ 
+    vi.mocked(testWebhook).mockResolvedValue({
       ok: true,
-      json: async () => ({ success: true })
+      json: async () => ({ success: true }),
     } as Response);
 
-    renderWithQueryClient(
-      <WebhookMonitor repositories={mockRepositories} />
-    );
+    renderWithQueryClient(<WebhookMonitor repositories={mockRepositories} />);
 
     // Select a repository
     const select = screen.getByRole('combobox');
@@ -150,9 +144,7 @@ describe('WebhookMonitor', () => {
     const { getWebhookDeliveries } = await import('@/lib/api');
     vi.mocked(getWebhookDeliveries).mockResolvedValue([]);
 
-    renderWithQueryClient(
-      <WebhookMonitor repositories={mockRepositories} />
-    );
+    renderWithQueryClient(<WebhookMonitor repositories={mockRepositories} />);
 
     expect(screen.getByText('Live')).toBeInTheDocument();
     expect(screen.getByText('Refresh')).toBeInTheDocument();
@@ -162,13 +154,13 @@ describe('WebhookMonitor', () => {
     const { getWebhookDeliveries } = await import('@/lib/api');
     vi.mocked(getWebhookDeliveries).mockResolvedValue([]);
 
-    renderWithQueryClient(
-      <WebhookMonitor repositories={mockRepositories} />
-    );
+    renderWithQueryClient(<WebhookMonitor repositories={mockRepositories} />);
 
     await waitFor(() => {
       expect(screen.getByText('No Webhook Events')).toBeInTheDocument();
-      expect(screen.getByText('Webhook events will appear here as they are received')).toBeInTheDocument();
+      expect(
+        screen.getByText('Webhook events will appear here as they are received')
+      ).toBeInTheDocument();
     });
   });
 });

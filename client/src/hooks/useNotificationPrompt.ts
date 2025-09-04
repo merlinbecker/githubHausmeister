@@ -21,7 +21,7 @@ export function useNotificationPrompt() {
 
   const checkShouldPrompt = () => {
     // Check if notifications are supported
-    const isSupported = 
+    const isSupported =
       'serviceWorker' in navigator &&
       'PushManager' in window &&
       'Notification' in window;
@@ -56,11 +56,11 @@ export function useNotificationPrompt() {
 
     try {
       const permission = await Notification.requestPermission();
-      
+
       // Mark that we've prompted the user
       localStorage.setItem(STORAGE_KEY, 'true');
-      
-      setState(prev => ({
+
+      setState((prev) => ({
         ...prev,
         shouldShow: false,
         permission,
@@ -69,11 +69,11 @@ export function useNotificationPrompt() {
       return permission === 'granted';
     } catch (error) {
       console.error('Error requesting notification permission:', error);
-      
+
       // Mark as prompted even if there was an error
       localStorage.setItem(STORAGE_KEY, 'true');
-      setState(prev => ({ ...prev, shouldShow: false }));
-      
+      setState((prev) => ({ ...prev, shouldShow: false }));
+
       return false;
     }
   };
@@ -81,7 +81,7 @@ export function useNotificationPrompt() {
   const dismissPrompt = () => {
     // Mark that we've prompted (even if user dismissed without action)
     localStorage.setItem(STORAGE_KEY, 'true');
-    setState(prev => ({ ...prev, shouldShow: false }));
+    setState((prev) => ({ ...prev, shouldShow: false }));
   };
 
   const resetPrompt = () => {

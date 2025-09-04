@@ -1,10 +1,21 @@
-
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Alert, AlertDescription } from './ui/alert';
-import { Smartphone, CheckCircle, XCircle, AlertCircle, Bell } from 'lucide-react';
+import {
+  Smartphone,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Bell,
+} from 'lucide-react';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 
 export function PushNotificationTester() {
@@ -13,7 +24,10 @@ export function PushNotificationTester() {
   const [isRunningTests, setIsRunningTests] = useState(false);
 
   const addTestResult = (message: string) => {
-    setTestResults(prev => [...prev, `${new Date().toLocaleTimeString()}: ${message}`]);
+    setTestResults((prev) => [
+      ...prev,
+      `${new Date().toLocaleTimeString()}: ${message}`,
+    ]);
   };
 
   const clearTestResults = () => {
@@ -35,19 +49,26 @@ export function PushNotificationTester() {
 
       // 1.1. Detect Browser for specific compatibility info
       const userAgent = navigator.userAgent;
-      const isChrome = userAgent.includes('Chrome') && !userAgent.includes('Edg');
+      const isChrome =
+        userAgent.includes('Chrome') && !userAgent.includes('Edg');
       const isEdge = userAgent.includes('Edg');
       const isFirefox = userAgent.includes('Firefox');
-      const isSafari = userAgent.includes('Safari') && !userAgent.includes('Chrome');
-      const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
-      
+      const isSafari =
+        userAgent.includes('Safari') && !userAgent.includes('Chrome');
+      const isMobile =
+        /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          userAgent
+        );
+
       let browserInfo = '';
       if (isEdge) browserInfo = 'Microsoft Edge - Vollständige Unterstützung';
-      else if (isChrome) browserInfo = 'Google Chrome - Vollständige Unterstützung';
+      else if (isChrome)
+        browserInfo = 'Google Chrome - Vollständige Unterstützung';
       else if (isFirefox) browserInfo = 'Firefox - Vollständige Unterstützung';
-      else if (isSafari) browserInfo = 'Safari - Nur als PWA unterstützt (iOS 16.4+)';
+      else if (isSafari)
+        browserInfo = 'Safari - Nur als PWA unterstützt (iOS 16.4+)';
       else browserInfo = 'Unbekannter Browser';
-      
+
       addTestResult(`🌐 Browser erkannt: ${browserInfo}`);
       if (isMobile) {
         addTestResult('📱 Mobiles Gerät erkannt - PWA Installation empfohlen');
@@ -64,7 +85,7 @@ export function PushNotificationTester() {
       if (!push.isSubscribed) {
         addTestResult('⚠️ Nicht für Push-Benachrichtigungen angemeldet');
         addTestResult('🔧 Versuche automatische Anmeldung...');
-        
+
         const subscribed = await push.subscribe();
         if (subscribed) {
           addTestResult('✅ Automatische Anmeldung erfolgreich');
@@ -81,10 +102,12 @@ export function PushNotificationTester() {
       if ('serviceWorker' in navigator) {
         const registration = await navigator.serviceWorker.ready;
         addTestResult(`✅ Service Worker aktiv: ${registration.scope}`);
-        
+
         const subscription = await registration.pushManager.getSubscription();
         if (subscription) {
-          addTestResult(`✅ Push-Subscription gefunden: ${subscription.endpoint.substring(0, 50)}...`);
+          addTestResult(
+            `✅ Push-Subscription gefunden: ${subscription.endpoint.substring(0, 50)}...`
+          );
         } else {
           addTestResult('❌ Keine Push-Subscription gefunden');
           return;
@@ -97,7 +120,9 @@ export function PushNotificationTester() {
         const vapidResponse = await fetch('/api/push/vapid-public-key');
         const { publicKey } = await vapidResponse.json();
         if (publicKey) {
-          addTestResult(`✅ VAPID Public Key: ${publicKey.substring(0, 20)}...`);
+          addTestResult(
+            `✅ VAPID Public Key: ${publicKey.substring(0, 20)}...`
+          );
         } else {
           addTestResult('❌ VAPID Public Key nicht verfügbar');
         }
@@ -113,7 +138,6 @@ export function PushNotificationTester() {
       } else {
         addTestResult('❌ Fehler beim Senden der Test-Benachrichtigung');
       }
-
     } catch (error) {
       addTestResult(`💥 Unerwarteter Fehler: ${error}`);
     } finally {
@@ -130,7 +154,9 @@ export function PushNotificationTester() {
 
       if (response.ok) {
         const result = await response.json();
-        addTestResult(`✅ Custom Test gesendet - Erfolgreich: ${result.sent}, Fehlgeschlagen: ${result.failed}`);
+        addTestResult(
+          `✅ Custom Test gesendet - Erfolgreich: ${result.sent}, Fehlgeschlagen: ${result.failed}`
+        );
       } else {
         const error = await response.text();
         addTestResult(`❌ Custom Test fehlgeschlagen: ${error}`);
@@ -154,28 +180,48 @@ export function PushNotificationTester() {
       <CardContent className="space-y-4">
         {/* Status Overview */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          <Badge variant={push.isSupported ? "default" : "destructive"}>
-            {push.isSupported ? <CheckCircle className="h-3 w-3 mr-1" /> : <XCircle className="h-3 w-3 mr-1" />}
+          <Badge variant={push.isSupported ? 'default' : 'destructive'}>
+            {push.isSupported ? (
+              <CheckCircle className="h-3 w-3 mr-1" />
+            ) : (
+              <XCircle className="h-3 w-3 mr-1" />
+            )}
             Browser Support
           </Badge>
-          <Badge variant={push.permission === 'granted' ? "default" : push.permission === 'denied' ? "destructive" : "secondary"}>
-            {push.permission === 'granted' ? <CheckCircle className="h-3 w-3 mr-1" /> : 
-             push.permission === 'denied' ? <XCircle className="h-3 w-3 mr-1" /> : 
-             <AlertCircle className="h-3 w-3 mr-1" />}
+          <Badge
+            variant={
+              push.permission === 'granted'
+                ? 'default'
+                : push.permission === 'denied'
+                  ? 'destructive'
+                  : 'secondary'
+            }
+          >
+            {push.permission === 'granted' ? (
+              <CheckCircle className="h-3 w-3 mr-1" />
+            ) : push.permission === 'denied' ? (
+              <XCircle className="h-3 w-3 mr-1" />
+            ) : (
+              <AlertCircle className="h-3 w-3 mr-1" />
+            )}
             Permission: {push.permission}
           </Badge>
-          <Badge variant={push.isSubscribed ? "default" : "secondary"}>
-            {push.isSubscribed ? <CheckCircle className="h-3 w-3 mr-1" /> : <XCircle className="h-3 w-3 mr-1" />}
+          <Badge variant={push.isSubscribed ? 'default' : 'secondary'}>
+            {push.isSubscribed ? (
+              <CheckCircle className="h-3 w-3 mr-1" />
+            ) : (
+              <XCircle className="h-3 w-3 mr-1" />
+            )}
             Subscribed
           </Badge>
-          <Badge variant={push.isLoading ? "secondary" : "default"}>
-            {push.isLoading ? "Loading..." : "Ready"}
+          <Badge variant={push.isLoading ? 'secondary' : 'default'}>
+            {push.isLoading ? 'Loading...' : 'Ready'}
           </Badge>
         </div>
 
         {/* Test Buttons */}
         <div className="flex flex-wrap gap-2">
-          <Button 
+          <Button
             onClick={runComprehensiveTest}
             disabled={isRunningTests}
             variant="default"
@@ -183,8 +229,8 @@ export function PushNotificationTester() {
             <Smartphone className="h-4 w-4 mr-2" />
             Vollständiger Test
           </Button>
-          
-          <Button 
+
+          <Button
             onClick={sendCustomTestNotification}
             disabled={!push.isSubscribed}
             variant="outline"
@@ -193,7 +239,7 @@ export function PushNotificationTester() {
             Server Test
           </Button>
 
-          <Button 
+          <Button
             onClick={push.sendTestNotification}
             disabled={!push.isSubscribed}
             variant="outline"
@@ -202,11 +248,7 @@ export function PushNotificationTester() {
             Client Test
           </Button>
 
-          <Button 
-            onClick={clearTestResults}
-            variant="ghost"
-            size="sm"
-          >
+          <Button onClick={clearTestResults} variant="ghost" size="sm">
             Clear Log
           </Button>
         </div>
@@ -230,8 +272,9 @@ export function PushNotificationTester() {
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Um Push-Benachrichtigungen zu testen, müssen Sie sich zunächst anmelden. 
-              Gehen Sie zu den Benachrichtigungseinstellungen und aktivieren Sie Push-Benachrichtigungen.
+              Um Push-Benachrichtigungen zu testen, müssen Sie sich zunächst
+              anmelden. Gehen Sie zu den Benachrichtigungseinstellungen und
+              aktivieren Sie Push-Benachrichtigungen.
             </AlertDescription>
           </Alert>
         )}

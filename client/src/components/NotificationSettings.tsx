@@ -87,20 +87,27 @@ export function NotificationSettings() {
     console.log('📱 Push-Status:', {
       isSupported: push.isSupported,
       isSubscribed: push.isSubscribed,
-      permission: push.permission
+      permission: push.permission,
     });
 
     try {
       const success = await push.sendTestNotification();
       if (success) {
         console.log('✅ Test-Benachrichtigung erfolgreich gesendet');
-        alert('Test-Benachrichtigung gesendet! Prüfen Sie Ihre Benachrichtigungen.');
+        alert(
+          'Test-Benachrichtigung gesendet! Prüfen Sie Ihre Benachrichtigungen.'
+        );
       } else {
         console.error('❌ Fehler beim Senden der Test-Benachrichtigung');
-        alert('Fehler beim Senden der Test-Benachrichtigung. Prüfen Sie die Konsole für Details.');
+        alert(
+          'Fehler beim Senden der Test-Benachrichtigung. Prüfen Sie die Konsole für Details.'
+        );
       }
     } catch (error) {
-      console.error('💥 Exception beim Senden der Test-Benachrichtigung:', error);
+      console.error(
+        '💥 Exception beim Senden der Test-Benachrichtigung:',
+        error
+      );
       alert('Unerwarteter Fehler beim Senden der Test-Benachrichtigung.');
     }
   };
@@ -143,7 +150,8 @@ export function NotificationSettings() {
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              Benachrichtigungen können auch in den Browser-Einstellungen verwaltet werden
+              Benachrichtigungen können auch in den Browser-Einstellungen
+              verwaltet werden
             </p>
           </div>
 
@@ -190,16 +198,19 @@ export function NotificationSettings() {
             <h4 className="font-medium text-sm">Browser-Einstellungen</h4>
             <div className="space-y-2 text-xs text-muted-foreground">
               <p>
-                <strong>Chrome/Edge:</strong> Einstellungen → Datenschutz und Sicherheit → Website-Einstellungen → Benachrichtigungen
+                <strong>Chrome/Edge:</strong> Einstellungen → Datenschutz und
+                Sicherheit → Website-Einstellungen → Benachrichtigungen
               </p>
               <p>
-                <strong>Firefox:</strong> Einstellungen → Datenschutz & Sicherheit → Berechtigungen → Benachrichtigungen
+                <strong>Firefox:</strong> Einstellungen → Datenschutz &
+                Sicherheit → Berechtigungen → Benachrichtigungen
               </p>
               <p>
-                <strong>Safari:</strong> Safari → Einstellungen → Websites → Benachrichtigungen
+                <strong>Safari:</strong> Safari → Einstellungen → Websites →
+                Benachrichtigungen
               </p>
             </div>
-            
+
             {push.permission === 'denied' && (
               <div className="mt-2">
                 <Button
@@ -212,7 +223,8 @@ export function NotificationSettings() {
                   Startup-Prompt zurücksetzen
                 </Button>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Zeigt den Benachrichtigungs-Dialog beim nächsten App-Start erneut an
+                  Zeigt den Benachrichtigungs-Dialog beim nächsten App-Start
+                  erneut an
                 </p>
               </div>
             )}

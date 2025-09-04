@@ -6,24 +6,22 @@ const urlsToCache = [
   '/src/App.tsx',
   '/src/index.css',
   '/icon-192.png',
-  '/icon-512.png'
+  '/icon-512.png',
 ];
 
 self.addEventListener('install', (event) => {
   console.log('Service Worker installing...');
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(urlsToCache))
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache))
   );
 });
 
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Return cached version or fetch from network
-        return response || fetch(event.request);
-      })
+    caches.match(event.request).then((response) => {
+      // Return cached version or fetch from network
+      return response || fetch(event.request);
+    })
   );
 });
 
@@ -51,7 +49,7 @@ self.addEventListener('push', (event) => {
     body: 'Neue Benachrichtigung',
     icon: '/icon-192.png',
     badge: '/icon-192.png',
-    tag: 'default'
+    tag: 'default',
   };
 
   if (event.data) {
@@ -74,11 +72,17 @@ self.addEventListener('push', (event) => {
       timestamp: notificationData.timestamp || Date.now(),
       renotify: notificationData.renotify || false,
       silent: notificationData.silent || false,
-      actions: notificationData.actions || (notificationData.url ? [{
-        action: 'open',
-        title: 'Öffnen',
-        icon: notificationData.icon
-      }] : [])
+      actions:
+        notificationData.actions ||
+        (notificationData.url
+          ? [
+              {
+                action: 'open',
+                title: 'Öffnen',
+                icon: notificationData.icon,
+              },
+            ]
+          : []),
     })
   );
 });
@@ -97,7 +101,8 @@ self.addEventListener('notificationclick', (event) => {
   const urlToOpen = event.notification.data?.url || '/';
 
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true })
+    clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
       .then((clientList) => {
         // Check if app is already open
         for (const client of clientList) {

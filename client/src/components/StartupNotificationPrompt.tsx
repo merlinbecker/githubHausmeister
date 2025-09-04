@@ -10,7 +10,8 @@ import { Bell, X } from 'lucide-react';
 import { useNotificationPrompt } from '../hooks/useNotificationPrompt';
 
 export function StartupNotificationPrompt() {
-  const { shouldShow, requestPermission, dismissPrompt } = useNotificationPrompt();
+  const { shouldShow, requestPermission, dismissPrompt } =
+    useNotificationPrompt();
 
   if (!shouldShow) {
     return null;
@@ -31,7 +32,9 @@ export function StartupNotificationPrompt() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Bell className="h-5 w-5 text-blue-500" />
-              <CardTitle className="text-lg">Benachrichtigungen aktivieren</CardTitle>
+              <CardTitle className="text-lg">
+                Benachrichtigungen aktivieren
+              </CardTitle>
             </div>
             <Button
               variant="ghost"
@@ -43,8 +46,8 @@ export function StartupNotificationPrompt() {
             </Button>
           </div>
           <CardDescription>
-            Erhalten Sie Benachrichtigungen über wichtige Wartungsaufgaben, auch wenn 
-            die App geschlossen ist.
+            Erhalten Sie Benachrichtigungen über wichtige Wartungsaufgaben, auch
+            wenn die App geschlossen ist.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -65,13 +68,18 @@ export function StartupNotificationPrompt() {
               <Bell className="h-4 w-4 mr-2" />
               Aktivieren
             </Button>
-            <Button variant="outline" onClick={handleDismiss} className="flex-1">
+            <Button
+              variant="outline"
+              onClick={handleDismiss}
+              className="flex-1"
+            >
               Später
             </Button>
           </div>
 
           <p className="text-xs text-muted-foreground text-center">
-            Sie können Benachrichtigungen jederzeit in den Einstellungen anpassen oder deaktivieren.
+            Sie können Benachrichtigungen jederzeit in den Einstellungen
+            anpassen oder deaktivieren.
           </p>
         </CardContent>
       </Card>

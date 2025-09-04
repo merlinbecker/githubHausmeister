@@ -28,36 +28,44 @@ if (result.success) {
 For backward compatibility and simple usage:
 
 ```typescript
-import { assignCopilotToIssue, verifyCopilotAssignment } from './server/lib/copilot-assignment';
+import {
+  assignCopilotToIssue,
+  verifyCopilotAssignment,
+} from './server/lib/copilot-assignment';
 
 // Assign agent
 const result = await assignCopilotToIssue(token, owner, repo, issueNumber);
 
 // Verify assignment
-const verification = await verifyCopilotAssignment(token, owner, repo, issueNumber);
+const verification = await verifyCopilotAssignment(
+  token,
+  owner,
+  repo,
+  issueNumber
+);
 ```
 
 ## Configuration
 
 ### Environment Variables
 
-| Variable | Description | Required | Default |
-|----------|-------------|----------|---------|
-| `COPILOT_ACTOR_ID` | GitHub NodeID of Copilot agent | No | Auto-detect |
-| `COPILOT_CACHE_TTL` | Cache TTL in milliseconds | No | 3600000 (1 hour) |
+| Variable            | Description                    | Required | Default          |
+| ------------------- | ------------------------------ | -------- | ---------------- |
+| `COPILOT_ACTOR_ID`  | GitHub NodeID of Copilot agent | No       | Auto-detect      |
+| `COPILOT_CACHE_TTL` | Cache TTL in milliseconds      | No       | 3600000 (1 hour) |
 
 ### Service Configuration
 
 ```typescript
 const config = {
   // Primary configuration
-  actorId: 'MDQ6VXNlcjxxxxxxxxx',           // Direct NodeID
-  
+  actorId: 'MDQ6VXNlcjxxxxxxxxx', // Direct NodeID
+
   // Fallback options
   preferredAgents: ['copilot', 'github-copilot[bot]'],
-  enableSearch: true,                       // Enable global search
-  fallbackToUser: false,                    // Fallback to current user
-  
+  enableSearch: true, // Enable global search
+  fallbackToUser: false, // Fallback to current user
+
   // Behavior
   retryAttempts: 3,
   verificationDelay: 2000,
@@ -96,6 +104,7 @@ async assignToIssue(owner: string, repo: string, issueNumber: number): Promise<A
 Assigns a Copilot agent to the specified issue.
 
 **Returns:**
+
 - `success`: Whether assignment succeeded
 - `assignedAgent`: Login of assigned agent
 - `error`: Error message if failed
@@ -110,6 +119,7 @@ async verifyAssignment(owner: string, repo: string, issueNumber: number): Promis
 Verifies that a Copilot agent is assigned to the issue.
 
 **Returns:**
+
 - `isAssigned`: Whether a Copilot agent is assigned
 - `assignedCopilot`: Login of assigned Copilot agent
 - `allAssignees`: Array of all assignee logins

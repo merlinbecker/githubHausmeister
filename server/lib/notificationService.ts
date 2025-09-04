@@ -3,6 +3,7 @@ import {
   sendPushToMultipleSubscriptions,
   type NotificationPayload,
 } from './webPush';
+import { MentraService } from './mentraService';
 
 export enum NotificationType {
   TASK_STARTED = 'taskStarted',
@@ -12,6 +13,9 @@ export enum NotificationType {
   PR_MERGED = 'prMerged',
   CI_STATUS_CHANGED = 'ciStatusChanged',
   COPILOT_ASSIGNED = 'copilotAssigned',
+  // mentraOS specific notifications
+  GLASS_COMMAND_EXECUTED = 'glassCommandExecuted',
+  GLASS_STATUS_UPDATE = 'glassStatusUpdate',
 }
 
 export interface NotificationContext {
@@ -104,6 +108,26 @@ export class NotificationService {
           data: { type, context },
         };
 
+      case NotificationType.GLASS_COMMAND_EXECUTED:
+        return {
+          title: '🤖 Befehl ausgeführt',
+          body: context.data?.message || 'Sprachbefehl wurde verarbeitet',
+          icon: '/icon-192.png',
+          tag: 'glass-command',
+          url: context.url || '/',
+          data: { type, context },
+        };
+
+      case NotificationType.GLASS_STATUS_UPDATE:
+        return {
+          title: '📊 Status Update',
+          body: context.data?.message || 'System Status wurde aktualisiert',
+          icon: '/icon-192.png',
+          tag: 'glass-status',
+          url: context.url || '/',
+          data: { type, context },
+        };
+
       default:
         return {
           title: 'GitHub Hausmeister',
@@ -119,7 +143,12 @@ export class NotificationService {
   public static async sendNotification(
     type: NotificationType,
     context: NotificationContext
-  ): Promise<{ sent: number; failed: number }> {
+  ): Promise<{
+    sent: number;
+    failed: number;
+    glassSent: number;
+    glassFailed: number;
+  }> {
     try {
       // Get user's notification settings
       const settings = await databaseStorage.getUserNotificationSettings(
@@ -130,44 +159,79 @@ export class NotificationService {
       const settingKey = type as keyof typeof settings;
       if (settings[settingKey] === false) {
         console.log(`Notification ${type} disabled for user ${context.userId}`);
-        return { sent: 0, failed: 0 };
-      }
-
-      // Get user's push subscriptions
-      const subscriptions = await databaseStorage.getUserPushSubscriptions(
-        context.userId
-      );
-
-      if (subscriptions.length === 0) {
-        console.log(`No push subscriptions found for user ${context.userId}`);
-        return { sent: 0, failed: 0 };
+        return { sent: 0, failed: 0, glassSent: 0, glassFailed: 0 };
       }
 
       // Generate notification content
       const payload = this.getNotificationContent(type, context);
 
-      // Send to all user's devices
-      const pushSubscriptions = subscriptions.map((sub) => ({
-        endpoint: sub.endpoint,
-        keys: {
-          p256dh: sub.p256dhKey,
-          auth: sub.authKey,
-        },
-      }));
+      let webResults = { successful: 0, failed: 0 };
+      const glassResults = { sent: 0, failed: 0 };
 
-      const results = await sendPushToMultipleSubscriptions(
-        pushSubscriptions,
-        payload
+      // Send to web push subscriptions
+      const subscriptions = await databaseStorage.getUserPushSubscriptions(
+        context.userId
       );
+
+      if (subscriptions.length > 0) {
+        const pushSubscriptions = subscriptions.map((sub) => ({
+          endpoint: sub.endpoint,
+          keys: {
+            p256dh: sub.p256dhKey,
+            auth: sub.authKey,
+          },
+        }));
+
+        webResults = await sendPushToMultipleSubscriptions(
+          pushSubscriptions,
+          payload
+        );
+      }
+
+      // Send to mentraOS glasses
+      const glasses = await databaseStorage.getUserGlasses(context.userId);
+
+      if (glasses.length > 0) {
+        const glassPromises = glasses.map(async (glass) => {
+          try {
+            await MentraService.sendNotificationToGlass({
+              glassId: glass.glassId,
+              notification: {
+                type: 'text',
+                title: payload.title,
+                message: payload.body,
+              },
+            });
+            return { success: true };
+          } catch (error) {
+            console.error(
+              `Failed to send notification to glass ${glass.glassId}:`,
+              error
+            );
+            return { success: false };
+          }
+        });
+
+        const glassResultsArray = await Promise.allSettled(glassPromises);
+        glassResults.sent = glassResultsArray.filter(
+          (result) => result.status === 'fulfilled' && result.value.success
+        ).length;
+        glassResults.failed = glassResultsArray.length - glassResults.sent;
+      }
 
       console.log(
-        `Sent ${type} notification to user ${context.userId}: ${results.successful} successful, ${results.failed} failed`
+        `Sent ${type} notification to user ${context.userId}: Web: ${webResults.successful}/${webResults.failed}, Glass: ${glassResults.sent}/${glassResults.failed}`
       );
 
-      return { sent: results.successful, failed: results.failed };
+      return {
+        sent: webResults.successful,
+        failed: webResults.failed,
+        glassSent: glassResults.sent,
+        glassFailed: glassResults.failed,
+      };
     } catch (error) {
       console.error(`Error sending ${type} notification:`, error);
-      return { sent: 0, failed: 1 };
+      return { sent: 0, failed: 1, glassSent: 0, glassFailed: 0 };
     }
   }
 }

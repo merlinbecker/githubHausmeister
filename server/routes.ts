@@ -26,6 +26,7 @@ import {
   type AuthenticatedRequest,
 } from './lib/auth-middleware';
 import { initializeWebPush } from './lib/webPush';
+import { MentraService } from './lib/mentraService';
 
 // Extend session types
 declare module 'express-session' {
@@ -117,7 +118,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       state,
       userAgent: req.get('User-Agent'),
       cookies: req.headers.cookie,
-      sessionStore: !!sessionStore
+      sessionStore: !!sessionStore,
     });
 
     // Initialize session with OAuth state
@@ -125,22 +126,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     req.session.oauthTimestamp = Date.now();
 
     // Force session save with callback
-      req.session.save((err) => {
-        if (err) {
-          console.error('❌ Session save error:', err);
-          return res.status(500).json({ error: 'Session error' });
-        }
+    req.session.save((err) => {
+      if (err) {
+        console.error('❌ Session save error:', err);
+        return res.status(500).json({ error: 'Session error' });
+      }
 
-        console.log('✅ Session saved successfully:', {
-          sessionId: req.session?.id,
-          oauthState: req.session?.oauthState,
-          timestamp: req.session?.oauthTimestamp
-        });
-
-        const authUrl = githubOAuth.getAuthorizationUrl(state);
-        console.log('🔀 Redirecting to GitHub:', authUrl);
-        res.redirect(authUrl);
+      console.log('✅ Session saved successfully:', {
+        sessionId: req.session?.id,
+        oauthState: req.session?.oauthState,
+        timestamp: req.session?.oauthTimestamp,
       });
+
+      const authUrl = githubOAuth.getAuthorizationUrl(state);
+      console.log('🔀 Redirecting to GitHub:', authUrl);
+      res.redirect(authUrl);
+    });
   });
 
   app.get('/api/auth/github/callback', async (req, res) => {
@@ -154,56 +155,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('- Received state:', state);
       console.log('- Session available:', !!req.session);
       console.log('- Session ID:', req.session?.id);
-      console.log('- Session keys:', req.session ? Object.keys(req.session) : 'no session');
+      console.log(
+        '- Session keys:',
+        req.session ? Object.keys(req.session) : 'no session'
+      );
       console.log('- User-Agent:', req.get('User-Agent'));
       console.log('- Cookies received:', req.headers.cookie);
       console.log('- Session store connected:', sessionStore ? 'yes' : 'no');
-      console.log('- Full session object:', JSON.stringify(req.session, null, 2));
+      console.log(
+        '- Full session object:',
+        JSON.stringify(req.session, null, 2)
+      );
 
       const sessionState = req.session?.oauthState;
       console.log('- Session state:', sessionState);
       console.log('- Session timestamp:', req.session?.oauthTimestamp);
-      console.log('- Time since OAuth start:', req.session?.oauthTimestamp ? Date.now() - req.session.oauthTimestamp : 'unknown');
+      console.log(
+        '- Time since OAuth start:',
+        req.session?.oauthTimestamp
+          ? Date.now() - req.session.oauthTimestamp
+          : 'unknown'
+      );
       console.log('- States match:', state === sessionState);
 
       // Check for GitHub OAuth errors first
       if (error) {
         console.error('GitHub OAuth error:', error, error_description);
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: 'GitHub OAuth error',
-          details: error_description || error
+          details: error_description || error,
         });
       }
 
       if (!code) {
         console.error('No authorization code received');
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: 'No authorization code received',
-          debug: { query: req.query }
+          debug: { query: req.query },
         });
       }
 
       if (!state) {
         console.error('No state parameter received');
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: 'No state parameter received',
-          debug: { query: req.query }
+          debug: { query: req.query },
         });
       }
 
       if (!sessionState) {
         console.error('No session state found');
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: 'Session expired or invalid',
-          debug: { hasSession: !!req.session, sessionKeys: Object.keys(req.session || {}) }
+          debug: {
+            hasSession: !!req.session,
+            sessionKeys: Object.keys(req.session || {}),
+          },
         });
       }
 
       if (state !== sessionState) {
-        console.error('State mismatch:', { received: state, expected: sessionState });
-        return res.status(400).json({ 
+        console.error('State mismatch:', {
+          received: state,
+          expected: sessionState,
+        });
+        return res.status(400).json({
           error: 'State parameter mismatch',
-          debug: { receivedState: state, sessionState }
+          debug: { receivedState: state, sessionState },
         });
       }
 
@@ -540,8 +558,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     requireAuth,
     async (req: AuthenticatedRequest, res) => {
       try {
-        const { NotificationService, NotificationType } = await import('./lib/notificationService');
-        
+        const { NotificationService, NotificationType } = await import(
+          './lib/notificationService'
+        );
+
         const result = await NotificationService.sendNotification(
           NotificationType.TASK_COMPLETED,
           {
@@ -556,13 +576,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           success: true,
           sent: result.sent,
           failed: result.failed,
-          message: 'Debug notification sent'
+          message: 'Debug notification sent',
         });
       } catch (error) {
         console.error('Error sending debug notification:', error);
-        res.status(500).json({ 
+        res.status(500).json({
           error: 'Failed to send debug notification',
-          details: error instanceof Error ? error.message : 'Unknown error'
+          details: error instanceof Error ? error.message : 'Unknown error',
         });
       }
     }
@@ -825,7 +845,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           req.user!.id
         );
 
-        const exists = subscriptions.some(sub => sub.endpoint === endpoint);
+        const exists = subscriptions.some((sub) => sub.endpoint === endpoint);
 
         res.json({ exists });
       } catch (error) {
@@ -859,7 +879,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           tag: 'test',
         };
 
-        const { sendPushToMultipleSubscriptions } = await import('./lib/webPush');
+        const { sendPushToMultipleSubscriptions } = await import(
+          './lib/webPush'
+        );
         const results = await sendPushToMultipleSubscriptions(
           subscriptions.map((sub) => ({
             endpoint: sub.endpoint,
@@ -883,6 +905,294 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // ======================================
+  // mentraOS Smartglasses API Endpoints
+  // ======================================
+
+  // Register a new glass with user account
+  app.post(
+    '/api/mentra/register',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { glassId, glassName, deviceModel, apiEndpoint } = req.body;
+
+        if (!glassId || !glassName) {
+          return res.status(400).json({
+            error: 'glassId and glassName are required',
+          });
+        }
+
+        const { glass, pairingToken } = await MentraService.registerGlass({
+          userId: req.user!.id,
+          glassId,
+          glassName,
+          deviceModel,
+          apiEndpoint,
+        });
+
+        res.json({
+          success: true,
+          glass: {
+            id: glass.id,
+            glassId: glass.glassId,
+            glassName: glass.glassName,
+            deviceModel: glass.deviceModel,
+            isActive: glass.isActive,
+            createdAt: glass.createdAt,
+          },
+          pairingToken,
+        });
+      } catch (error) {
+        console.error('Error registering glass:', error);
+        const message =
+          error instanceof Error ? error.message : 'Failed to register glass';
+        res.status(400).json({ error: message });
+      }
+    }
+  );
+
+  // Create a session for a registered glass (used by mentraOS app)
+  app.post('/api/mentra/pair', async (req, res) => {
+    try {
+      const { glassId, pairingToken } = req.body;
+
+      if (!glassId || !pairingToken) {
+        return res.status(400).json({
+          error: 'glassId and pairingToken are required',
+        });
+      }
+
+      const { sessionToken, expiresAt } = await MentraService.createSession(
+        glassId,
+        pairingToken
+      );
+
+      res.json({
+        success: true,
+        sessionToken,
+        expiresAt,
+      });
+    } catch (error) {
+      console.error('Error pairing glass:', error);
+      const message =
+        error instanceof Error ? error.message : 'Failed to pair glass';
+      res.status(400).json({ error: message });
+    }
+  });
+
+  // Receive voice commands from glasses
+  app.post('/api/mentra/voice', async (req, res) => {
+    try {
+      const { glassId, sessionToken, voiceText, timestamp } = req.body;
+
+      if (!glassId || !sessionToken || !voiceText) {
+        return res.status(400).json({
+          error: 'glassId, sessionToken, and voiceText are required',
+        });
+      }
+
+      const voiceCommand = await MentraService.processVoiceCommand({
+        glassId,
+        sessionToken,
+        voiceText,
+        timestamp,
+      });
+
+      res.json({
+        success: true,
+        commandId: voiceCommand.id,
+        commandType: voiceCommand.commandType,
+        status: voiceCommand.executionStatus,
+      });
+    } catch (error) {
+      console.error('Error processing voice command:', error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Failed to process voice command';
+      res.status(400).json({ error: message });
+    }
+  });
+
+  // Send push notification to a specific glass
+  app.post(
+    '/api/mentra/push',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { glassId, notification } = req.body;
+
+        if (!glassId || !notification) {
+          return res.status(400).json({
+            error: 'glassId and notification are required',
+          });
+        }
+
+        if (
+          !notification.type ||
+          !notification.title ||
+          !notification.message
+        ) {
+          return res.status(400).json({
+            error: 'notification must have type, title, and message',
+          });
+        }
+
+        const glassNotification = await MentraService.sendNotificationToGlass({
+          glassId,
+          notification,
+        });
+
+        res.json({
+          success: true,
+          notificationId: glassNotification.id,
+          deliveryStatus: glassNotification.deliveryStatus,
+        });
+      } catch (error) {
+        console.error('Error sending notification to glass:', error);
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Failed to send notification';
+        res.status(400).json({ error: message });
+      }
+    }
+  );
+
+  // Send image notification to glass
+  app.post(
+    '/api/mentra/image',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { glassId, title, message, imageUrl, imageData } = req.body;
+
+        if (!glassId || !title) {
+          return res.status(400).json({
+            error: 'glassId and title are required',
+          });
+        }
+
+        if (!imageUrl && !imageData) {
+          return res.status(400).json({
+            error: 'Either imageUrl or imageData must be provided',
+          });
+        }
+
+        const notification = {
+          type: 'image' as const,
+          title,
+          message: message || '',
+          imageUrl,
+          imageData,
+        };
+
+        const glassNotification = await MentraService.sendNotificationToGlass({
+          glassId,
+          notification,
+        });
+
+        res.json({
+          success: true,
+          notificationId: glassNotification.id,
+          deliveryStatus: glassNotification.deliveryStatus,
+        });
+      } catch (error) {
+        console.error('Error sending image to glass:', error);
+        const message =
+          error instanceof Error ? error.message : 'Failed to send image';
+        res.status(400).json({ error: message });
+      }
+    }
+  );
+
+  // Get user's registered glasses and status
+  app.get(
+    '/api/mentra/glasses',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const glassStatus = await MentraService.getGlassStatus(req.user!.id);
+        res.json(glassStatus);
+      } catch (error) {
+        console.error('Error getting glass status:', error);
+        res.status(500).json({ error: 'Failed to get glass status' });
+      }
+    }
+  );
+
+  // Get voice command history
+  app.get(
+    '/api/mentra/voice-commands',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const limit = parseInt(req.query.limit as string) || 50;
+        const commands = await databaseStorage.getUserVoiceCommands(
+          req.user!.id,
+          limit
+        );
+        res.json(commands);
+      } catch (error) {
+        console.error('Error getting voice commands:', error);
+        res.status(500).json({ error: 'Failed to get voice commands' });
+      }
+    }
+  );
+
+  // Get glass notification history
+  app.get(
+    '/api/mentra/notifications',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const limit = parseInt(req.query.limit as string) || 50;
+        const notifications = await databaseStorage.getUserGlassNotifications(
+          req.user!.id,
+          limit
+        );
+        res.json(notifications);
+      } catch (error) {
+        console.error('Error getting glass notifications:', error);
+        res.status(500).json({ error: 'Failed to get notifications' });
+      }
+    }
+  );
+
+  // Deactivate/remove a glass
+  app.delete(
+    '/api/mentra/glasses/:glassId',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { glassId } = req.params;
+
+        // Find the glass and verify ownership
+        const glass = await databaseStorage.getGlassByGlassId(glassId);
+        if (!glass) {
+          return res.status(404).json({ error: 'Glass not found' });
+        }
+
+        if (glass.userId !== req.user!.id) {
+          return res
+            .status(403)
+            .json({ error: 'Glass belongs to another user' });
+        }
+
+        const success = await databaseStorage.deactivateGlass(glass.id);
+        if (success) {
+          res.json({ success: true, message: 'Glass deactivated' });
+        } else {
+          res.status(400).json({ error: 'Failed to deactivate glass' });
+        }
+      } catch (error) {
+        console.error('Error deactivating glass:', error);
+        res.status(500).json({ error: 'Failed to deactivate glass' });
+      }
+    }
+  );
+
   // Schedule delayed test notification endpoint
   app.post(
     '/api/push/schedule-delayed-test',
@@ -891,7 +1201,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const { delaySeconds, message, testId } = req.body;
 
-        if (!delaySeconds || typeof delaySeconds !== 'number' || delaySeconds < 1 || delaySeconds > 300) {
+        if (
+          !delaySeconds ||
+          typeof delaySeconds !== 'number' ||
+          delaySeconds < 1 ||
+          delaySeconds > 300
+        ) {
           return res.status(400).json({
             error: 'Invalid delay seconds (must be 1-300)',
           });
@@ -916,8 +1231,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Schedule the notification
         setTimeout(async () => {
           try {
-            console.log(`🔔 Sending delayed notification after ${delaySeconds}s for user ${req.user!.id}`);
-            
+            console.log(
+              `🔔 Sending delayed notification after ${delaySeconds}s for user ${req.user!.id}`
+            );
+
             const payload = {
               title: 'Verzögerte Test-Benachrichtigung',
               body: message,
@@ -935,12 +1252,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 {
                   action: 'open',
                   title: 'App öffnen',
-                  icon: '/icon-192.png'
-                }
-              ]
+                  icon: '/icon-192.png',
+                },
+              ],
             };
 
-            const { sendPushToMultipleSubscriptions } = await import('./lib/webPush');
+            const { sendPushToMultipleSubscriptions } = await import(
+              './lib/webPush'
+            );
             const results = await sendPushToMultipleSubscriptions(
               subscriptions.map((sub) => ({
                 endpoint: sub.endpoint,
@@ -952,7 +1271,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               payload
             );
 
-            console.log(`✅ Delayed notification sent - Success: ${results.successful}, Failed: ${results.failed}`);
+            console.log(
+              `✅ Delayed notification sent - Success: ${results.successful}, Failed: ${results.failed}`
+            );
           } catch (error) {
             console.error('❌ Error sending delayed notification:', error);
           }
@@ -966,7 +1287,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       } catch (error) {
         console.error('Error scheduling delayed notification:', error);
-        res.status(500).json({ error: 'Failed to schedule delayed notification' });
+        res
+          .status(500)
+          .json({ error: 'Failed to schedule delayed notification' });
       }
     }
   );
@@ -1029,7 +1352,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
         };
 
-        const recorded = await databaseStorage.recordWebhookDelivery(testDelivery);
+        const recorded =
+          await databaseStorage.recordWebhookDelivery(testDelivery);
 
         // Send test notification
         const subscriptions = await databaseStorage.getUserPushSubscriptions(
@@ -1046,7 +1370,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
 
           try {
-            const { sendPushToMultipleSubscriptions } = await import('./lib/webPush');
+            const { sendPushToMultipleSubscriptions } = await import(
+              './lib/webPush'
+            );
             await sendPushToMultipleSubscriptions(
               subscriptions.map((sub) => ({
                 endpoint: sub.endpoint,
@@ -1058,7 +1384,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               payload
             );
           } catch (notificationError) {
-            console.warn('Failed to send test notification:', notificationError);
+            console.warn(
+              'Failed to send test notification:',
+              notificationError
+            );
           }
         }
 
@@ -1123,7 +1452,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         workflowName: payload?.workflow?.name,
         checkSuiteName: payload?.check_suite?.app?.name,
         checkRunName: payload?.check_run?.name,
-        conclusion: payload?.check_run?.conclusion || payload?.check_suite?.conclusion || payload?.workflow_run?.conclusion,
+        conclusion:
+          payload?.check_run?.conclusion ||
+          payload?.check_suite?.conclusion ||
+          payload?.workflow_run?.conclusion,
       };
 
       // Record delivery
@@ -1194,14 +1526,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send PR created notification if this is the first time we see this PR
       if (action === 'opened') {
-        const { NotificationService, NotificationType } = await import('./lib/notificationService');
-        await NotificationService.sendNotification(NotificationType.PR_CREATED, {
-          userId: userRepo.userId,
-          repositoryName: `${owner}/${repo}`,
-          pullNumber: pr.number,
-          issueNumber: activeTask.issueNumber,
-          url: pr.html_url,
-        });
+        const { NotificationService, NotificationType } = await import(
+          './lib/notificationService'
+        );
+        await NotificationService.sendNotification(
+          NotificationType.PR_CREATED,
+          {
+            userId: userRepo.userId,
+            repositoryName: `${owner}/${repo}`,
+            pullNumber: pr.number,
+            issueNumber: activeTask.issueNumber,
+            url: pr.html_url,
+          }
+        );
       }
 
       // For draft PRs that were just opened, wait for CI to complete
@@ -1291,36 +1628,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!repoFullName) return;
 
     const [owner, repo] = repoFullName.split('/');
-    const userRepos = await databaseStorage.getUserRepositoriesByName(owner, repo);
+    const userRepos = await databaseStorage.getUserRepositoriesByName(
+      owner,
+      repo
+    );
     if (userRepos.length === 0) return;
 
     // Send CI status change notifications to all users monitoring this repository
-    const ciStatus = payload.check_suite?.conclusion || 
-                    payload.workflow_run?.conclusion || 
-                    payload.check_run?.conclusion || 
-                    'unknown';
-    
-    const workflowName = payload.workflow_run?.name || 
-                        payload.check_suite?.app?.name ||
-                        payload.check_run?.name ||
-                        'CI Check';
+    const ciStatus =
+      payload.check_suite?.conclusion ||
+      payload.workflow_run?.conclusion ||
+      payload.check_run?.conclusion ||
+      'unknown';
+
+    const workflowName =
+      payload.workflow_run?.name ||
+      payload.check_suite?.app?.name ||
+      payload.check_run?.name ||
+      'CI Check';
 
     // Send notifications to all users
     for (const userRepo of userRepos) {
       try {
-        const { NotificationService, NotificationType } = await import('./lib/notificationService');
-        await NotificationService.sendNotification(NotificationType.CI_STATUS_CHANGED, {
-          userId: userRepo.userId,
-          repositoryName: `${owner}/${repo}`,
-          url: payload.workflow_run?.html_url || payload.check_suite?.url || payload.check_run?.html_url,
-          data: {
-            status: ciStatus,
-            workflow: workflowName,
-            event: payload.workflow_run ? 'workflow_run' : payload.check_suite ? 'check_suite' : 'check_run'
+        const { NotificationService, NotificationType } = await import(
+          './lib/notificationService'
+        );
+        await NotificationService.sendNotification(
+          NotificationType.CI_STATUS_CHANGED,
+          {
+            userId: userRepo.userId,
+            repositoryName: `${owner}/${repo}`,
+            url:
+              payload.workflow_run?.html_url ||
+              payload.check_suite?.url ||
+              payload.check_run?.html_url,
+            data: {
+              status: ciStatus,
+              workflow: workflowName,
+              event: payload.workflow_run
+                ? 'workflow_run'
+                : payload.check_suite
+                  ? 'check_suite'
+                  : 'check_run',
+            },
           }
-        });
+        );
       } catch (error) {
-        console.warn(`Failed to send CI notification to user ${userRepo.userId}:`, error);
+        console.warn(
+          `Failed to send CI notification to user ${userRepo.userId}:`,
+          error
+        );
       }
     }
 
@@ -1379,43 +1736,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const issue = payload.issue;
     const owner = payload.repository?.owner?.login;
     const repo = payload.repository?.name;
-    
+
     if (!owner || !repo || !issue) return;
 
     // Get all users monitoring this repository
-    const userRepos = await databaseStorage.getUserRepositoriesByName(owner, repo);
+    const userRepos = await databaseStorage.getUserRepositoriesByName(
+      owner,
+      repo
+    );
     if (userRepos.length === 0) return;
 
     // Define which issue actions should trigger notifications
-    const notifiableActions = ['opened', 'closed', 'reopened', 'assigned', 'unassigned', 'labeled', 'unlabeled'];
-    
+    const notifiableActions = [
+      'opened',
+      'closed',
+      'reopened',
+      'assigned',
+      'unassigned',
+      'labeled',
+      'unlabeled',
+    ];
+
     if (!notifiableActions.includes(action)) {
-      console.log(`Issue event: ${action} for issue #${issue.number} (not notifiable)`);
+      console.log(
+        `Issue event: ${action} for issue #${issue.number} (not notifiable)`
+      );
       return;
     }
 
-    console.log(`Issue event: ${action} for issue #${issue.number} - sending notifications`);
+    console.log(
+      `Issue event: ${action} for issue #${issue.number} - sending notifications`
+    );
 
     // Send notifications to all users monitoring this repository
     for (const userRepo of userRepos) {
       try {
         // Check if this is a Copilot-managed issue by looking for our labels
-        const isHausmeisterIssue = issue.labels?.some((label: any) => 
+        const isHausmeisterIssue = issue.labels?.some((label: any) =>
           ['hausmeister', 'chore'].includes(label.name?.toLowerCase())
         );
-        
+
         // Use different notification types based on context
         let notificationType;
         if (isHausmeisterIssue && action === 'closed') {
-          notificationType = await import('./lib/notificationService').then(m => m.NotificationType.TASK_COMPLETED);
+          notificationType = await import('./lib/notificationService').then(
+            (m) => m.NotificationType.TASK_COMPLETED
+          );
         } else if (isHausmeisterIssue && ['assigned'].includes(action)) {
-          notificationType = await import('./lib/notificationService').then(m => m.NotificationType.COPILOT_ASSIGNED);
+          notificationType = await import('./lib/notificationService').then(
+            (m) => m.NotificationType.COPILOT_ASSIGNED
+          );
         } else {
           // Generic repository activity
           continue; // Skip for now, could add REPOSITORY_ACTIVITY notification type
         }
 
-        const { NotificationService } = await import('./lib/notificationService');
+        const { NotificationService } = await import(
+          './lib/notificationService'
+        );
         await NotificationService.sendNotification(notificationType, {
           userId: userRepo.userId,
           repositoryName: `${owner}/${repo}`,
@@ -1426,11 +1804,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           data: {
             action,
             issueState: issue.state,
-            issueTitle: issue.title
-          }
+            issueTitle: issue.title,
+          },
         });
       } catch (error) {
-        console.warn(`Failed to send issue notification to user ${userRepo.userId}:`, error);
+        console.warn(
+          `Failed to send issue notification to user ${userRepo.userId}:`,
+          error
+        );
       }
     }
   }
@@ -1438,31 +1819,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
   async function handleGenericWebhookEvent(event: string, payload: any) {
     const owner = payload.repository?.owner?.login;
     const repo = payload.repository?.name;
-    
+
     if (!owner || !repo) return;
 
     // Skip events that are too frequent or not user-relevant
     const skipEvents = [
-      'ping', 'push', 'create', 'delete', 'fork', 'watch', 'star',
-      'repository', 'member', 'team', 'organization', 'installation'
+      'ping',
+      'push',
+      'create',
+      'delete',
+      'fork',
+      'watch',
+      'star',
+      'repository',
+      'member',
+      'team',
+      'organization',
+      'installation',
     ];
-    
+
     if (skipEvents.includes(event)) return;
 
-    // Get all users monitoring this repository  
-    const userRepos = await databaseStorage.getUserRepositoriesByName(owner, repo);
+    // Get all users monitoring this repository
+    const userRepos = await databaseStorage.getUserRepositoriesByName(
+      owner,
+      repo
+    );
     if (userRepos.length === 0) return;
 
-    console.log(`Generic webhook event: ${event} for ${owner}/${repo} - notifying ${userRepos.length} users`);
+    console.log(
+      `Generic webhook event: ${event} for ${owner}/${repo} - notifying ${userRepos.length} users`
+    );
 
     // Send generic repository activity notifications
     for (const userRepo of userRepos) {
       try {
         // For now, we'll use a simple notification for unhandled events
         // Later this could be expanded with a REPOSITORY_ACTIVITY notification type
-        console.log(`Webhook ${event} received for ${owner}/${repo} (user: ${userRepo.userId})`);
+        console.log(
+          `Webhook ${event} received for ${owner}/${repo} (user: ${userRepo.userId})`
+        );
       } catch (error) {
-        console.warn(`Failed to process generic webhook for user ${userRepo.userId}:`, error);
+        console.warn(
+          `Failed to process generic webhook for user ${userRepo.userId}:`,
+          error
+        );
       }
     }
   }

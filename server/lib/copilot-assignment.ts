@@ -3,16 +3,16 @@ import { gql, getIssueNodeId } from './github-graphql';
 // Types for the unified service
 export interface CopilotConfig {
   // Primary configuration
-  actorId?: string;           // COPILOT_ACTOR_ID (NodeID)
-  
+  actorId?: string; // COPILOT_ACTOR_ID (NodeID)
+
   // Fallback options
-  preferredAgents: string[];  // ['copilot', 'github-copilot[bot]', ...]
-  enableSearch: boolean;      // GraphQL search activation
-  fallbackToUser: boolean;    // Fallback to current user
-  
+  preferredAgents: string[]; // ['copilot', 'github-copilot[bot]', ...]
+  enableSearch: boolean; // GraphQL search activation
+  fallbackToUser: boolean; // Fallback to current user
+
   // Behavior
-  retryAttempts: number;      // Number of retry attempts
-  verificationDelay: number;  // Delay for verification (ms)
+  retryAttempts: number; // Number of retry attempts
+  verificationDelay: number; // Delay for verification (ms)
 }
 
 export interface AgentInfo {
@@ -36,7 +36,7 @@ export interface VerificationResult {
 
 /**
  * Unified Copilot Assignment Service
- * 
+ *
  * Consolidates all Copilot agent assignment logic into a single service
  * using GitHub's recommended GraphQL approach with comprehensive fallback strategies.
  */
@@ -44,7 +44,10 @@ export class CopilotAssignmentService {
   private config: CopilotConfig;
   private agentCache = new Map<string, { agent: AgentInfo; expires: number }>();
 
-  constructor(private token: string, config?: Partial<CopilotConfig>) {
+  constructor(
+    private token: string,
+    config?: Partial<CopilotConfig>
+  ) {
     this.config = {
       // Default configuration
       preferredAgents: ['copilot', 'github-copilot[bot]', 'copilot-swe-agent'],
@@ -75,21 +78,26 @@ export class CopilotAssignmentService {
       // Step 1: Find Copilot agent
       console.log(`🎯 [COPILOT ASSIGNMENT] Step 1: Finding Copilot agent...`);
       const agentInfo = await this.findCopilotAgent(owner, repo);
-      
+
       console.log(
         `✅ [COPILOT ASSIGNMENT] Step 1 SUCCESS: Found agent ${agentInfo.login} (${agentInfo.source})`
       );
 
       // Step 2: Get issue node ID
       console.log(`🎯 [COPILOT ASSIGNMENT] Step 2: Getting issue node ID...`);
-      const issueNodeId = await getIssueNodeId(this.token, owner, repo, issueNumber);
-      
+      const issueNodeId = await getIssueNodeId(
+        this.token,
+        owner,
+        repo,
+        issueNumber
+      );
+
       console.log(`✅ [COPILOT ASSIGNMENT] Step 2 SUCCESS: Got issue node ID`);
 
       // Step 3: Assign via GraphQL
       console.log(`🎯 [COPILOT ASSIGNMENT] Step 3: Assigning via GraphQL...`);
       await this.assignViaGraphQL(issueNodeId, agentInfo.nodeId);
-      
+
       console.log(
         `✅ [COPILOT ASSIGNMENT] Step 3 SUCCESS: Agent ${agentInfo.login} assigned to issue #${issueNumber}`
       );
@@ -99,7 +107,6 @@ export class CopilotAssignmentService {
         assignedAgent: agentInfo.login,
         agentInfo,
       };
-
     } catch (error: any) {
       console.error(
         `❌ [COPILOT ASSIGNMENT] FAILED for issue #${issueNumber}: ${error.message}`
@@ -114,20 +121,27 @@ export class CopilotAssignmentService {
   /**
    * Find Copilot agent using multiple strategies with fallbacks
    */
-  private async findCopilotAgent(owner: string, repo: string): Promise<AgentInfo> {
+  private async findCopilotAgent(
+    owner: string,
+    repo: string
+  ): Promise<AgentInfo> {
     const cacheKey = `${owner}/${repo}`;
-    
+
     // Check cache first
     const cached = this.agentCache.get(cacheKey);
     if (cached && cached.expires > Date.now()) {
-      console.log(`🎯 [COPILOT AGENT] Using cached agent: ${cached.agent.login}`);
+      console.log(
+        `🎯 [COPILOT AGENT] Using cached agent: ${cached.agent.login}`
+      );
       return cached.agent;
     }
 
     // Strategy 1: Use environment variable if configured
     if (this.config.actorId) {
       try {
-        console.log(`🎯 [COPILOT AGENT] Strategy 1: Using environment COPILOT_ACTOR_ID`);
+        console.log(
+          `🎯 [COPILOT AGENT] Strategy 1: Using environment COPILOT_ACTOR_ID`
+        );
         const login = await this.getLoginFromNodeId(this.config.actorId);
         const agentInfo: AgentInfo = {
           nodeId: this.config.actorId,
@@ -143,7 +157,9 @@ export class CopilotAssignmentService {
 
     // Strategy 2: Search in repository assignable users
     try {
-      console.log(`🎯 [COPILOT AGENT] Strategy 2: Searching in repository assignable users`);
+      console.log(
+        `🎯 [COPILOT AGENT] Strategy 2: Searching in repository assignable users`
+      );
       const agentInfo = await this.findAgentInRepository(owner, repo);
       if (agentInfo) {
         this.cacheAgent(cacheKey, agentInfo);
@@ -156,7 +172,9 @@ export class CopilotAssignmentService {
     // Strategy 3: Global search if enabled
     if (this.config.enableSearch) {
       try {
-        console.log(`🎯 [COPILOT AGENT] Strategy 3: Global search for Copilot agents`);
+        console.log(
+          `🎯 [COPILOT AGENT] Strategy 3: Global search for Copilot agents`
+        );
         const agentInfo = await this.findAgentByGlobalSearch();
         if (agentInfo) {
           this.cacheAgent(cacheKey, agentInfo);
@@ -187,7 +205,10 @@ export class CopilotAssignmentService {
   /**
    * Assign agent to issue using GraphQL mutation
    */
-  private async assignViaGraphQL(issueNodeId: string, agentNodeId: string): Promise<void> {
+  private async assignViaGraphQL(
+    issueNodeId: string,
+    agentNodeId: string
+  ): Promise<void> {
     const mutation = `
       mutation($assignableId: ID!, $assigneeIds: [ID!]!) {
         addAssigneesToAssignable(input: {
@@ -244,14 +265,18 @@ export class CopilotAssignmentService {
         }
       `;
 
-      const data: any = await gql(query, { owner, repo, issueNumber }, this.token);
+      const data: any = await gql(
+        query,
+        { owner, repo, issueNumber },
+        this.token
+      );
       const assignees = data.repository?.issue?.assignees?.nodes || [];
       const assigneeLogins = assignees.map((a: any) => a.login);
 
       // Check if any assignee is a known Copilot agent
       const copilotAssignee = assigneeLogins.find((login: string) =>
-        this.config.preferredAgents.some(agent => 
-          login.toLowerCase().includes('copilot') || login === agent
+        this.config.preferredAgents.some(
+          (agent) => login.toLowerCase().includes('copilot') || login === agent
         )
       );
 
@@ -292,7 +317,10 @@ export class CopilotAssignmentService {
     return data.node.login;
   }
 
-  private async findAgentInRepository(owner: string, repo: string): Promise<AgentInfo | null> {
+  private async findAgentInRepository(
+    owner: string,
+    repo: string
+  ): Promise<AgentInfo | null> {
     const query = `
       query($owner: String!, $repo: String!) {
         repository(owner: $owner, name: $repo) {
@@ -313,7 +341,9 @@ export class CopilotAssignmentService {
     // Look for Copilot agents in assignable users
     for (const user of assignableUsers) {
       if (this.isCopilotAgent(user.login)) {
-        console.log(`🎯 [COPILOT AGENT] Found agent in repository: ${user.login}`);
+        console.log(
+          `🎯 [COPILOT AGENT] Found agent in repository: ${user.login}`
+        );
         return {
           nodeId: user.id,
           login: user.login,
@@ -339,16 +369,20 @@ export class CopilotAssignmentService {
 
         const data: any = await gql(query, { login: agentLogin }, this.token);
         if (data.user?.id) {
-          console.log(`🎯 [COPILOT AGENT] Found agent via global search: ${data.user.login}`);
+          console.log(
+            `🎯 [COPILOT AGENT] Found agent via global search: ${data.user.login}`
+          );
           return {
             nodeId: data.user.id,
             login: data.user.login,
             source: 'search',
           };
         }
-      } catch (error) {
+      } catch {
         // Continue to next candidate
-        console.log(`🎯 [COPILOT AGENT] Agent ${agentLogin} not found globally`);
+        console.log(
+          `🎯 [COPILOT AGENT] Agent ${agentLogin} not found globally`
+        );
       }
     }
 
@@ -370,7 +404,9 @@ export class CopilotAssignmentService {
       throw new Error('Could not get current user information');
     }
 
-    console.log(`🎯 [COPILOT AGENT] Using current user as fallback: ${data.viewer.login}`);
+    console.log(
+      `🎯 [COPILOT AGENT] Using current user as fallback: ${data.viewer.login}`
+    );
     return {
       nodeId: data.viewer.id,
       login: data.viewer.login,

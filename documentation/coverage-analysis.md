@@ -7,20 +7,24 @@
 ## Root Cause Analysis
 
 ### Primary Issue
-The coverage upload step is configured with `if: always()`, which means it runs even when previous steps fail. However, coverage files are only generated when tests run successfully. 
+
+The coverage upload step is configured with `if: always()`, which means it runs even when previous steps fail. However, coverage files are only generated when tests run successfully.
 
 **Current workflow problem**:
+
 1. TypeScript check fails → Tests never run → No coverage files generated
 2. Coverage upload still attempts to run → "No coverage reports found" error
 
 ### Investigation Results
 
 ✅ **Coverage generation works locally**:
+
 - `npm run test:coverage` generates proper coverage files
 - `coverage-final.json` and HTML reports are created correctly
 - Vitest configuration is correct
 
 ❌ **CI workflow issues**:
+
 - TypeScript compilation errors prevent test execution
 - Coverage upload runs regardless of test success/failure
 - False error messages about missing coverage reports
@@ -30,16 +34,18 @@ The coverage upload step is configured with `if: always()`, which means it runs 
 ### 1. Fixed Coverage Upload Conditions
 
 **Before**:
+
 ```yaml
 - name: Upload coverage reports
   uses: codecov/codecov-action@v4
-  if: always()  # ❌ Runs even when tests fail
+  if: always() # ❌ Runs even when tests fail
   with:
     token: ${{ secrets.CODECOV_TOKEN }}
     fail_ci_if_error: false
 ```
 
 **After**:
+
 ```yaml
 - name: Upload coverage reports
   uses: codecov/codecov-action@v4
@@ -53,6 +59,7 @@ The coverage upload step is configured with `if: always()`, which means it runs 
 ```
 
 **Benefits**:
+
 - ✅ Only runs when tests succeed
 - ✅ Specifies exact coverage file path
 - ✅ Limits to important branches/events
@@ -61,6 +68,7 @@ The coverage upload step is configured with `if: always()`, which means it runs 
 ### 2. Added Codecov Configuration
 
 Created `codecov.yml` with:
+
 - Coverage precision settings (2 decimal places)
 - Target range (70-100%)
 - Proper ignore patterns for test files, configs, and UI components
@@ -69,6 +77,7 @@ Created `codecov.yml` with:
 ### 3. Comprehensive Documentation
 
 Created `documentation/coverage-workflow.md` explaining:
+
 - How coverage generation works
 - When coverage should be uploaded
 - CI/CD integration patterns
@@ -80,11 +89,13 @@ Created `documentation/coverage-workflow.md` explaining:
 ### When to Upload Coverage
 
 ✅ **Upload coverage on**:
+
 - Pull requests (for comparison and review)
 - Main branch pushes (for baseline tracking)
 - Develop branch pushes (for development monitoring)
 
 ❌ **Skip coverage upload on**:
+
 - Feature branches (saves API quota)
 - Failed test runs (no meaningful data)
 - Draft PRs (until ready for review)
@@ -102,6 +113,7 @@ Created `documentation/coverage-workflow.md` explaining:
 ### Addressing "wann sollte er durchgeführt werden?"
 
 Coverage upload should occur when:
+
 1. Tests run successfully (`if: success()`)
 2. On pull requests (for code review coverage insights)
 3. On main/develop branches (for baseline tracking)
@@ -110,11 +122,13 @@ Coverage upload should occur when:
 ### Why No Results on Codecov Server
 
 **Previous issues**:
+
 1. Upload running when no coverage files exist
 2. TypeScript errors preventing test execution
 3. Missing file path specification in upload action
 
 **Fixed with**:
+
 1. Conditional upload only on successful tests
 2. Explicit file path: `./coverage/coverage-final.json`
 3. Proper branch filtering
@@ -134,6 +148,7 @@ Coverage upload should occur when:
 ## Impact
 
 After these changes:
+
 - ✅ No more false "coverage reports not found" errors
 - ✅ Coverage only uploaded when meaningful data exists
 - ✅ Reduced API quota usage

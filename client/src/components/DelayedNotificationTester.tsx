@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Alert, AlertDescription } from './ui/alert';
@@ -11,15 +17,19 @@ import { usePushNotifications } from '../hooks/usePushNotifications';
 export function DelayedNotificationTester() {
   const push = usePushNotifications();
   const [delaySeconds, setDelaySeconds] = useState(5);
-  const [customMessage, setCustomMessage] = useState('Test-Benachrichtigung nach Verzögerung');
+  const [customMessage, setCustomMessage] = useState(
+    'Test-Benachrichtigung nach Verzögerung'
+  );
   const [isScheduling, setIsScheduling] = useState(false);
-  const [scheduledTests, setScheduledTests] = useState<Array<{
-    id: string;
-    scheduledAt: Date;
-    delaySeconds: number;
-    message: string;
-    status: 'pending' | 'sent' | 'failed';
-  }>>([]);
+  const [scheduledTests, setScheduledTests] = useState<
+    Array<{
+      id: string;
+      scheduledAt: Date;
+      delaySeconds: number;
+      message: string;
+      status: 'pending' | 'sent' | 'failed';
+    }>
+  >([]);
 
   const scheduleDelayedNotification = async () => {
     if (!push.isSubscribed) {
@@ -46,15 +56,18 @@ export function DelayedNotificationTester() {
 
       if (response.ok) {
         const _result = await response.json();
-        
+
         // Add test to local tracking
-        setScheduledTests(prev => [...prev, {
-          id: testId,
-          scheduledAt: new Date(),
-          delaySeconds,
-          message: customMessage,
-          status: 'pending'
-        }]);
+        setScheduledTests((prev) => [
+          ...prev,
+          {
+            id: testId,
+            scheduledAt: new Date(),
+            delaySeconds,
+            message: customMessage,
+            status: 'pending',
+          },
+        ]);
 
         alert(`✅ Verzögerte Benachrichtigung geplant! 
 ID: ${testId}
@@ -67,7 +80,10 @@ Die Benachrichtigung wird in ${delaySeconds} Sekunden gesendet, auch wenn der Br
         alert(`❌ Fehler beim Planen der Benachrichtigung: ${error}`);
       }
     } catch (error) {
-      console.error('💥 Fehler beim Planen der verzögerten Benachrichtigung:', error);
+      console.error(
+        '💥 Fehler beim Planen der verzögerten Benachrichtigung:',
+        error
+      );
       alert('Unerwarteter Fehler beim Planen der Benachrichtigung.');
     } finally {
       setIsScheduling(false);
@@ -80,14 +96,16 @@ Die Benachrichtigung wird in ${delaySeconds} Sekunden gesendet, auch wenn der Br
 
   // Update test status based on time
   const updateTestStatuses = () => {
-    setScheduledTests(prev => prev.map(test => {
-      const elapsed = (Date.now() - test.scheduledAt.getTime()) / 1000;
-      if (test.status === 'pending' && elapsed >= test.delaySeconds + 2) {
-        // Mark as sent if enough time has passed (adding 2 seconds buffer)
-        return { ...test, status: 'sent' as const };
-      }
-      return test;
-    }));
+    setScheduledTests((prev) =>
+      prev.map((test) => {
+        const elapsed = (Date.now() - test.scheduledAt.getTime()) / 1000;
+        if (test.status === 'pending' && elapsed >= test.delaySeconds + 2) {
+          // Mark as sent if enough time has passed (adding 2 seconds buffer)
+          return { ...test, status: 'sent' as const };
+        }
+        return test;
+      })
+    );
   };
 
   // Update statuses every 2 seconds
@@ -104,8 +122,9 @@ Die Benachrichtigung wird in ${delaySeconds} Sekunden gesendet, auch wenn der Br
           Verzögerte Push-Benachrichtigungen
         </CardTitle>
         <CardDescription>
-          Testen Sie verzögerte Benachrichtigungen, die auch funktionieren wenn der Browser geschlossen ist.
-          Diese Funktion simuliert echte Push-Benachrichtigungen für geschlossene Apps.
+          Testen Sie verzögerte Benachrichtigungen, die auch funktionieren wenn
+          der Browser geschlossen ist. Diese Funktion simuliert echte
+          Push-Benachrichtigungen für geschlossene Apps.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -136,21 +155,19 @@ Die Benachrichtigung wird in ${delaySeconds} Sekunden gesendet, auch wenn der Br
 
         {/* Test Button */}
         <div className="flex flex-wrap gap-2">
-          <Button 
+          <Button
             onClick={scheduleDelayedNotification}
             disabled={isScheduling || !push.isSubscribed}
             variant="default"
           >
             <Timer className="h-4 w-4 mr-2" />
-            {isScheduling ? 'Wird geplant...' : 'Verzögerte Benachrichtigung planen'}
+            {isScheduling
+              ? 'Wird geplant...'
+              : 'Verzögerte Benachrichtigung planen'}
           </Button>
-          
+
           {scheduledTests.length > 0 && (
-            <Button 
-              onClick={clearScheduledTests}
-              variant="ghost"
-              size="sm"
-            >
+            <Button onClick={clearScheduledTests} variant="ghost" size="sm">
               Test-Liste löschen
             </Button>
           )}
@@ -161,28 +178,60 @@ Die Benachrichtigung wird in ${delaySeconds} Sekunden gesendet, auch wenn der Br
           <Bell className="h-4 w-4" />
           <AlertDescription>
             <div className="space-y-2">
-              <p className="font-medium">Browser-Kompatibilität für Push-Benachrichtigungen:</p>
+              <p className="font-medium">
+                Browser-Kompatibilität für Push-Benachrichtigungen:
+              </p>
               <ul className="text-sm space-y-1 ml-4">
-                <li>✅ <strong>Chrome (63+):</strong> Vollständige Unterstützung inkl. Background Sync</li>
-                <li>✅ <strong>Microsoft Edge (17+):</strong> Vollständige Unterstützung</li>
-                <li>✅ <strong>Firefox (44+):</strong> Vollständige Unterstützung</li>
-                <li>✅ <strong>Safari (iOS 16.4+):</strong> Nur als PWA (zum Homescreen hinzufügen)</li>
-                <li>✅ <strong>Samsung Internet (4.0+):</strong> Vollständige Unterstützung</li>
-                <li>✅ <strong>Mobile Chrome/Firefox:</strong> Unterstützt auf modernen Android-Geräten</li>
-                <li>⚠️ <strong>iOS Safari (Web):</strong> Nicht unterstützt im Browser, nur als PWA</li>
+                <li>
+                  ✅ <strong>Chrome (63+):</strong> Vollständige Unterstützung
+                  inkl. Background Sync
+                </li>
+                <li>
+                  ✅ <strong>Microsoft Edge (17+):</strong> Vollständige
+                  Unterstützung
+                </li>
+                <li>
+                  ✅ <strong>Firefox (44+):</strong> Vollständige Unterstützung
+                </li>
+                <li>
+                  ✅ <strong>Safari (iOS 16.4+):</strong> Nur als PWA (zum
+                  Homescreen hinzufügen)
+                </li>
+                <li>
+                  ✅ <strong>Samsung Internet (4.0+):</strong> Vollständige
+                  Unterstützung
+                </li>
+                <li>
+                  ✅ <strong>Mobile Chrome/Firefox:</strong> Unterstützt auf
+                  modernen Android-Geräten
+                </li>
+                <li>
+                  ⚠️ <strong>iOS Safari (Web):</strong> Nicht unterstützt im
+                  Browser, nur als PWA
+                </li>
               </ul>
               <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-950 rounded text-xs">
                 <p className="font-medium mb-1">Mobile Optimierungen:</p>
                 <ul className="space-y-1">
-                  <li>• <code>requireInteraction: true</code> - Notification bleibt sichtbar</li>
-                  <li>• <code>badge</code> - App-Icon in der Benachrichtigung</li>
-                  <li>• <code>tag</code> - Vermeidet Duplikate</li>
-                  <li>• <code>icon</code> - Große Notification-Icons</li>
+                  <li>
+                    • <code>requireInteraction: true</code> - Notification
+                    bleibt sichtbar
+                  </li>
+                  <li>
+                    • <code>badge</code> - App-Icon in der Benachrichtigung
+                  </li>
+                  <li>
+                    • <code>tag</code> - Vermeidet Duplikate
+                  </li>
+                  <li>
+                    • <code>icon</code> - Große Notification-Icons
+                  </li>
                 </ul>
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                Für optimale Funktionalität auf mobilen Geräten sollte die App als PWA installiert werden.
-                Microsoft Edge unterstützt Push-Benachrichtigungen vollständig seit Version 17.
+                Für optimale Funktionalität auf mobilen Geräten sollte die App
+                als PWA installiert werden. Microsoft Edge unterstützt
+                Push-Benachrichtigungen vollständig seit Version 17.
               </p>
             </div>
           </AlertDescription>
@@ -194,14 +243,20 @@ Die Benachrichtigung wird in ${delaySeconds} Sekunden gesendet, auch wenn der Br
             <h4 className="font-medium">Geplante Tests</h4>
             <div className="space-y-2">
               {scheduledTests.map((test) => {
-                const elapsed = (Date.now() - test.scheduledAt.getTime()) / 1000;
+                const elapsed =
+                  (Date.now() - test.scheduledAt.getTime()) / 1000;
                 const remaining = Math.max(0, test.delaySeconds - elapsed);
-                
+
                 return (
-                  <div key={test.id} className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                  <div
+                    key={test.id}
+                    className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg"
+                  >
                     <div className="flex items-center justify-between">
                       <div className="space-y-1">
-                        <p className="text-sm font-medium">Test #{test.id.slice(-4)}</p>
+                        <p className="text-sm font-medium">
+                          Test #{test.id.slice(-4)}
+                        </p>
                         <p className="text-xs text-muted-foreground">
                           "{test.message}"
                         </p>
@@ -210,16 +265,29 @@ Die Benachrichtigung wird in ${delaySeconds} Sekunden gesendet, auch wenn der Br
                         </p>
                       </div>
                       <div className="text-right">
-                        <Badge variant={
-                          test.status === 'sent' ? 'default' : 
-                          test.status === 'failed' ? 'destructive' : 
-                          'secondary'
-                        }>
-                          {test.status === 'sent' && <CheckCircle className="h-3 w-3 mr-1" />}
-                          {test.status === 'failed' && <AlertCircle className="h-3 w-3 mr-1" />}
-                          {test.status === 'pending' && <Clock className="h-3 w-3 mr-1" />}
-                          {test.status === 'pending' ? `${Math.ceil(remaining)}s` : 
-                           test.status === 'sent' ? 'Gesendet' : 'Fehler'}
+                        <Badge
+                          variant={
+                            test.status === 'sent'
+                              ? 'default'
+                              : test.status === 'failed'
+                                ? 'destructive'
+                                : 'secondary'
+                          }
+                        >
+                          {test.status === 'sent' && (
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                          )}
+                          {test.status === 'failed' && (
+                            <AlertCircle className="h-3 w-3 mr-1" />
+                          )}
+                          {test.status === 'pending' && (
+                            <Clock className="h-3 w-3 mr-1" />
+                          )}
+                          {test.status === 'pending'
+                            ? `${Math.ceil(remaining)}s`
+                            : test.status === 'sent'
+                              ? 'Gesendet'
+                              : 'Fehler'}
                         </Badge>
                       </div>
                     </div>
@@ -235,9 +303,10 @@ Die Benachrichtigung wird in ${delaySeconds} Sekunden gesendet, auch wenn der Br
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Um verzögerte Push-Benachrichtigungen zu testen, müssen Sie sich zunächst für 
-              Push-Benachrichtigungen anmelden. Gehen Sie zurück zum Dashboard und 
-              aktivieren Sie Push-Benachrichtigungen in den Einstellungen.
+              Um verzögerte Push-Benachrichtigungen zu testen, müssen Sie sich
+              zunächst für Push-Benachrichtigungen anmelden. Gehen Sie zurück
+              zum Dashboard und aktivieren Sie Push-Benachrichtigungen in den
+              Einstellungen.
             </AlertDescription>
           </Alert>
         )}
@@ -246,10 +315,11 @@ Die Benachrichtigung wird in ${delaySeconds} Sekunden gesendet, auch wenn der Br
           <Alert>
             <CheckCircle className="h-4 w-4" />
             <AlertDescription>
-              <strong>Test-Anleitung:</strong> Klicken Sie auf "Verzögerte Benachrichtigung planen", 
-              schließen Sie dann Ihren Browser komplett oder wechseln Sie zu einer anderen App. 
-              Nach der eingestellten Verzögerung sollten Sie eine Push-Benachrichtigung erhalten, 
-              die Sie zurück zur App bringt.
+              <strong>Test-Anleitung:</strong> Klicken Sie auf "Verzögerte
+              Benachrichtigung planen", schließen Sie dann Ihren Browser
+              komplett oder wechseln Sie zu einer anderen App. Nach der
+              eingestellten Verzögerung sollten Sie eine Push-Benachrichtigung
+              erhalten, die Sie zurück zur App bringt.
             </AlertDescription>
           </Alert>
         )}

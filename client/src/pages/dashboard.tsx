@@ -13,6 +13,9 @@ import WebhookMonitor from '@/components/WebhookMonitor';
 import SystemControls from '@/components/SystemControls';
 import { NotificationSettings } from '@/components/NotificationSettings';
 import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
+
+import { PushNotificationTester } from '@/components/PushNotificationTester';
+import { MentraOSTester } from '@/components/MentraOSTester';
 import { Github, LogOut, User, Wrench } from 'lucide-react';
 import {
   DropdownMenu,
@@ -75,7 +78,7 @@ export default function Dashboard() {
                 GitHub Connected
               </span>
             </div>
-            
+
             {/* Developer Tools Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -93,7 +96,7 @@ export default function Dashboard() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            
+
             {user && (
               <div className="flex items-center space-x-3">
                 <div className="flex items-center space-x-2">
@@ -164,6 +167,10 @@ export default function Dashboard() {
           <NotificationSettings />
           <PWAInstallPrompt />
         </div>
+
+        <PushNotificationTester />
+
+        <MentraOSTester />
       </main>
 
       {/* Footer */}

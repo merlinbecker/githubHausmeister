@@ -1,10 +1,9 @@
-
 import { generateVapidKeys } from '../server/lib/vapid.js';
 
 async function main() {
   try {
     const keys = generateVapidKeys();
-    
+
     console.log('🔑 VAPID Keys generiert:');
     console.log('');
     console.log('Füge diese Werte zu deinen Secrets hinzu:');
@@ -13,14 +12,19 @@ async function main() {
     console.log('VAPID_PRIVATE_KEY=' + keys.privateKey);
     console.log('VAPID_SUBJECT=mailto:deine-email@example.com');
     console.log('');
-    console.log('📝 Gehe zu den Secrets (linke Seitenleiste) und füge diese Werte hinzu.');
-    
+    console.log(
+      '📝 Gehe zu den Secrets (linke Seitenleiste) und füge diese Werte hinzu.'
+    );
+
     // Verify key lengths
     const publicKeyBuffer = Buffer.from(keys.publicKey, 'base64url');
     const privateKeyBuffer = Buffer.from(keys.privateKey, 'base64url');
-    console.log(`✅ Public Key Länge: ${publicKeyBuffer.length} bytes (erwartet: 65)`);
-    console.log(`✅ Private Key Länge: ${privateKeyBuffer.length} bytes (erwartet: 32)`);
-    
+    console.log(
+      `✅ Public Key Länge: ${publicKeyBuffer.length} bytes (erwartet: 65)`
+    );
+    console.log(
+      `✅ Private Key Länge: ${privateKeyBuffer.length} bytes (erwartet: 32)`
+    );
   } catch (error) {
     console.error('❌ Fehler beim Generieren der VAPID-Keys:', error);
   }

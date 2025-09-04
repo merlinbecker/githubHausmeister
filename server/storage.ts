@@ -65,10 +65,9 @@ export class MemStorage implements IStorage {
         insertTask.labels === null
           ? null
           : Array.isArray(insertTask.labels) &&
-            insertTask.labels.every((lbl) => typeof lbl === "string")
-          ? insertTask.labels
-          : null,
-
+              insertTask.labels.every((lbl) => typeof lbl === 'string')
+            ? insertTask.labels
+            : null,
     };
     this.tasks.set(id, task);
     return task;
@@ -103,7 +102,6 @@ export class MemStorage implements IStorage {
         const bTime = b.createdAt?.getTime() || 0;
         return aTime - bTime;
       });
-
   }
 
   async getActiveTask(): Promise<Task | undefined> {
@@ -143,7 +141,6 @@ export class MemStorage implements IStorage {
       queue,
       systemRunning: this.systemState.systemRunning || false,
       repositories: [], // TODO: Implement repository management
-
     };
   }
 }

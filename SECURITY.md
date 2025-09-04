@@ -17,12 +17,14 @@ Please **do not** create GitHub issues for security vulnerabilities. This could 
 ### 2. Report Privately
 
 Send security reports to the repository maintainer via:
+
 - **GitHub Security Advisories**: Use the "Report a vulnerability" button in the Security tab
 - **Email**: Contact the repository owner directly through their GitHub profile
 
 ### 3. Include Detailed Information
 
 When reporting a vulnerability, please include:
+
 - Description of the vulnerability
 - Steps to reproduce the issue
 - Potential impact assessment
@@ -87,18 +89,22 @@ When contributing:
 ## Known Security Considerations
 
 ### 1. GitHub API Token Management
+
 - Tokens are passed to functions but not stored in database
 - Implement token rotation strategy for production use
 
 ### 2. Webhook Verification
+
 - All webhooks are verified using HMAC-SHA256 signatures
 - Implementation in `server/lib/webhook-verify.ts`
 
 ### 3. Session Security
+
 - Express sessions with secure configuration
 - Session secrets should be cryptographically strong
 
 ### 4. CORS and API Security
+
 - API endpoints validate request origins
 - Implement rate limiting for production deployments
 
@@ -116,6 +122,7 @@ The application implements several security layers:
 ## Third-Party Security
 
 This application integrates with:
+
 - **GitHub APIs**: Follow GitHub's security guidelines
 - **Neon PostgreSQL**: Serverless database with built-in security
 - **Replit Platform**: Relies on Replit's infrastructure security
@@ -123,6 +130,7 @@ This application integrates with:
 ## Updates and Patches
 
 Security updates will be:
+
 - Released as soon as possible after discovery
 - Documented in release notes
 - Communicated through GitHub releases
@@ -130,9 +138,10 @@ Security updates will be:
 ## Contact
 
 For security-related questions that are not vulnerabilities:
+
 - Create a regular GitHub issue with the `security` label
 - Tag maintainers for priority review
 
 ---
 
-*This security policy is subject to updates. Check this document regularly for the latest information.*
+_This security policy is subject to updates. Check this document regularly for the latest information._

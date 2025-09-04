@@ -1,20 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { 
-  Activity, 
-  Clock, 
-  ExternalLink, 
-  Play, 
-  RefreshCw, 
-  GitBranch, 
-  User, 
+import {
+  Activity,
+  Clock,
+  Play,
+  RefreshCw,
+  GitBranch,
+  User,
   CheckCircle,
   AlertCircle,
-  Info,
-  Settings
 } from 'lucide-react';
 import { getWebhookDeliveries, testWebhook } from '@/lib/api';
-import type { WebhookDelivery, UserRepository, WebhookPayloadSummary } from '@shared/schema';
+import type {
+  WebhookDelivery,
+  UserRepository,
+  WebhookPayloadSummary,
+} from '@shared/schema';
 
 interface WebhookMonitorProps {
   repositories: UserRepository[];
@@ -25,16 +26,19 @@ interface WebhookDeliveryWithTime extends WebhookDelivery {
   timeAgo: string;
 }
 
-export default function WebhookMonitor({ repositories, onRefresh }: WebhookMonitorProps) {
+export default function WebhookMonitor({
+  repositories,
+  onRefresh,
+}: WebhookMonitorProps) {
   const [selectedRepo, setSelectedRepo] = useState<string>('');
   const [isTestingWebhook, setIsTestingWebhook] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
-  const { 
-    data: webhookDeliveries = [], 
-    isLoading, 
+  const {
+    data: webhookDeliveries = [],
+    isLoading,
     refetch,
-    error 
+    error,
   } = useQuery({
     queryKey: ['webhook-deliveries'],
     queryFn: () => getWebhookDeliveries(100),
@@ -43,14 +47,16 @@ export default function WebhookMonitor({ repositories, onRefresh }: WebhookMonit
   });
 
   // Format webhook deliveries with time ago
-  const formattedDeliveries: WebhookDeliveryWithTime[] = (webhookDeliveries || []).map(delivery => ({
+  const formattedDeliveries: WebhookDeliveryWithTime[] = (
+    webhookDeliveries || []
+  ).map((delivery) => ({
     ...delivery,
     timeAgo: formatTimeAgo(new Date(delivery.createdAt)),
   }));
 
   const handleTestWebhook = async () => {
     if (!selectedRepo) return;
-    
+
     setIsTestingWebhook(true);
     try {
       await testWebhook(selectedRepo);
@@ -85,13 +91,13 @@ export default function WebhookMonitor({ repositories, onRefresh }: WebhookMonit
 
   const getEventColor = (event: string, payloadSummary: any) => {
     if (event === 'test') return 'text-blue-500';
-    
+
     const summary = payloadSummary as WebhookPayloadSummary;
     const conclusion = summary?.conclusion;
     if (conclusion === 'success') return 'text-green-500';
     if (conclusion === 'failure') return 'text-red-500';
     if (conclusion === 'cancelled') return 'text-yellow-500';
-    
+
     switch (event) {
       case 'pull_request':
         return 'text-blue-500';
@@ -117,13 +123,18 @@ export default function WebhookMonitor({ repositories, onRefresh }: WebhookMonit
           <button
             onClick={() => setAutoRefresh(!autoRefresh)}
             className={`flex items-center gap-1 px-3 py-1 rounded text-sm transition-colors ${
-              autoRefresh 
-                ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+              autoRefresh
+                ? 'bg-green-100 text-green-700 hover:bg-green-200'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
-            title={autoRefresh ? 'Auto-refresh enabled' : 'Auto-refresh disabled'}
+            title={
+              autoRefresh ? 'Auto-refresh enabled' : 'Auto-refresh disabled'
+            }
           >
-            <RefreshCw size={14} className={autoRefresh ? 'animate-spin' : ''} />
+            <RefreshCw
+              size={14}
+              className={autoRefresh ? 'animate-spin' : ''}
+            />
             {autoRefresh ? 'Live' : 'Paused'}
           </button>
           <button
@@ -183,10 +194,13 @@ export default function WebhookMonitor({ repositories, onRefresh }: WebhookMonit
         <h3 className="text-sm font-medium text-github-muted mb-3">
           Recent Webhook Events ({formattedDeliveries.length})
         </h3>
-        
+
         {isLoading ? (
           <div className="text-center py-8">
-            <RefreshCw className="animate-spin mx-auto text-github-blue mb-2" size={24} />
+            <RefreshCw
+              className="animate-spin mx-auto text-github-blue mb-2"
+              size={24}
+            />
             <p className="text-github-muted">Loading webhook events...</p>
           </div>
         ) : error ? (
@@ -208,8 +222,11 @@ export default function WebhookMonitor({ repositories, onRefresh }: WebhookMonit
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {formattedDeliveries.map((delivery) => {
               const IconComponent = getEventIcon(delivery.event);
-              const iconColor = getEventColor(delivery.event, delivery.payloadSummary);
-              
+              const iconColor = getEventColor(
+                delivery.event,
+                delivery.payloadSummary
+              );
+
               return (
                 <div
                   key={delivery.id}
@@ -229,11 +246,13 @@ export default function WebhookMonitor({ repositories, onRefresh }: WebhookMonit
                         )}
                       </div>
                       <div className="text-xs text-github-muted">
-                        {delivery.repositoryOwner && delivery.repositoryName && (
-                          <span className="mr-3">
-                            {delivery.repositoryOwner}/{delivery.repositoryName}
-                          </span>
-                        )}
+                        {delivery.repositoryOwner &&
+                          delivery.repositoryName && (
+                            <span className="mr-3">
+                              {delivery.repositoryOwner}/
+                              {delivery.repositoryName}
+                            </span>
+                          )}
                         {delivery.actorLogin && (
                           <span className="mr-3">by {delivery.actorLogin}</span>
                         )}
@@ -244,31 +263,51 @@ export default function WebhookMonitor({ repositories, onRefresh }: WebhookMonit
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
-                    {(delivery.payloadSummary as WebhookPayloadSummary)?.pullRequestNumber && (
+                    {(delivery.payloadSummary as WebhookPayloadSummary)
+                      ?.pullRequestNumber && (
                       <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">
-                        PR #{(delivery.payloadSummary as WebhookPayloadSummary).pullRequestNumber}
+                        PR #
+                        {
+                          (delivery.payloadSummary as WebhookPayloadSummary)
+                            .pullRequestNumber
+                        }
                       </span>
                     )}
-                    {(delivery.payloadSummary as WebhookPayloadSummary)?.issueNumber && (
+                    {(delivery.payloadSummary as WebhookPayloadSummary)
+                      ?.issueNumber && (
                       <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded">
-                        Issue #{(delivery.payloadSummary as WebhookPayloadSummary).issueNumber}
+                        Issue #
+                        {
+                          (delivery.payloadSummary as WebhookPayloadSummary)
+                            .issueNumber
+                        }
                       </span>
                     )}
-                    {(delivery.payloadSummary as WebhookPayloadSummary)?.conclusion && (
-                      <span className={`text-xs px-2 py-1 rounded ${
-                        (delivery.payloadSummary as WebhookPayloadSummary).conclusion === 'success' 
-                          ? 'bg-green-100 text-green-700'
-                          : (delivery.payloadSummary as WebhookPayloadSummary).conclusion === 'failure'
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-yellow-100 text-yellow-700'
-                      }`}>
-                        {(delivery.payloadSummary as WebhookPayloadSummary).conclusion}
+                    {(delivery.payloadSummary as WebhookPayloadSummary)
+                      ?.conclusion && (
+                      <span
+                        className={`text-xs px-2 py-1 rounded ${
+                          (delivery.payloadSummary as WebhookPayloadSummary)
+                            .conclusion === 'success'
+                            ? 'bg-green-100 text-green-700'
+                            : (delivery.payloadSummary as WebhookPayloadSummary)
+                                  .conclusion === 'failure'
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-yellow-100 text-yellow-700'
+                        }`}
+                      >
+                        {
+                          (delivery.payloadSummary as WebhookPayloadSummary)
+                            .conclusion
+                        }
                       </span>
                     )}
                     <span className="text-xs text-github-muted font-mono">
-                      {delivery.id.length > 8 ? `${delivery.id.slice(0, 8)}...` : delivery.id}
+                      {delivery.id.length > 8
+                        ? `${delivery.id.slice(0, 8)}...`
+                        : delivery.id}
                     </span>
                   </div>
                 </div>
@@ -284,7 +323,7 @@ export default function WebhookMonitor({ repositories, onRefresh }: WebhookMonit
 function formatTimeAgo(date: Date): string {
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-  
+
   if (diffInSeconds < 60) {
     return `${diffInSeconds}s ago`;
   } else if (diffInSeconds < 3600) {
