@@ -3,9 +3,7 @@ import {
   CopilotAssignmentService,
   assignCopilotToIssue,
   verifyCopilotAssignment,
-  type CopilotConfig,
-  type AgentInfo,
-  type AssignmentResult 
+  type CopilotConfig
 } from '../../../server/lib/copilot-assignment';
 import * as githubGraphql from '../../../server/lib/github-graphql';
 
