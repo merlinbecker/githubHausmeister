@@ -23,12 +23,12 @@ export function generateVapidKeys(): VapidKeys {
   // For P-256 SPKI format, the header is 26 bytes, followed by 1 byte (0x04) and 64 bytes of coordinates
   // We need all 65 bytes (0x04 + 32 bytes x + 32 bytes y)
   const rawPublicKey = publicKeyDer.slice(26, 91); // Extract exactly 65 bytes
-  
+
   // Extract raw private key from DER format
   const privateKeyDer = Buffer.from(keyPair.privateKey);
   // For P-256 PKCS8 format, find the 32-byte private key
   const rawPrivateKey = privateKeyDer.slice(-32);
-  
+
   const publicKey = rawPublicKey.toString('base64url');
   const privateKey = rawPrivateKey.toString('base64url');
 

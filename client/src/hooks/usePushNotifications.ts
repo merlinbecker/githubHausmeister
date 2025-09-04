@@ -57,7 +57,7 @@ export function usePushNotifications() {
             credentials: 'include',
             body: JSON.stringify({ endpoint: subscription.endpoint }),
           });
-          
+
           if (response.ok) {
             const data = await response.json();
             serverKnowsSubscription = data.exists;

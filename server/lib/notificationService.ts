@@ -143,7 +143,12 @@ export class NotificationService {
   public static async sendNotification(
     type: NotificationType,
     context: NotificationContext
-  ): Promise<{ sent: number; failed: number; glassSent: number; glassFailed: number }> {
+  ): Promise<{
+    sent: number;
+    failed: number;
+    glassSent: number;
+    glassFailed: number;
+  }> {
     try {
       // Get user's notification settings
       const settings = await databaseStorage.getUserNotificationSettings(
@@ -185,7 +190,7 @@ export class NotificationService {
 
       // Send to mentraOS glasses
       const glasses = await databaseStorage.getUserGlasses(context.userId);
-      
+
       if (glasses.length > 0) {
         const glassPromises = glasses.map(async (glass) => {
           try {
@@ -199,7 +204,10 @@ export class NotificationService {
             });
             return { success: true };
           } catch (error) {
-            console.error(`Failed to send notification to glass ${glass.glassId}:`, error);
+            console.error(
+              `Failed to send notification to glass ${glass.glassId}:`,
+              error
+            );
             return { success: false };
           }
         });
@@ -215,11 +223,11 @@ export class NotificationService {
         `Sent ${type} notification to user ${context.userId}: Web: ${webResults.successful}/${webResults.failed}, Glass: ${glassResults.sent}/${glassResults.failed}`
       );
 
-      return { 
-        sent: webResults.successful, 
+      return {
+        sent: webResults.successful,
         failed: webResults.failed,
         glassSent: glassResults.sent,
-        glassFailed: glassResults.failed
+        glassFailed: glassResults.failed,
       };
     } catch (error) {
       console.error(`Error sending ${type} notification:`, error);

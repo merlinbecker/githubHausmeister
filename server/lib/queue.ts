@@ -92,13 +92,16 @@ export async function startNextIfIdle(userId: string): Promise<void> {
       );
 
       // Send notification for linked task
-      await NotificationService.sendNotification(NotificationType.TASK_STARTED, {
-        userId,
-        repositoryName: `${nextTask.owner}/${nextTask.repo}`,
-        taskTitle: nextTask.title,
-        issueNumber: duplicateCheck.existingIssue.number,
-        url: `https://github.com/${nextTask.owner}/${nextTask.repo}/issues/${duplicateCheck.existingIssue.number}`,
-      });
+      await NotificationService.sendNotification(
+        NotificationType.TASK_STARTED,
+        {
+          userId,
+          repositoryName: `${nextTask.owner}/${nextTask.repo}`,
+          taskTitle: nextTask.title,
+          issueNumber: duplicateCheck.existingIssue.number,
+          url: `https://github.com/${nextTask.owner}/${nextTask.repo}/issues/${duplicateCheck.existingIssue.number}`,
+        }
+      );
 
       return;
     }
@@ -215,9 +218,9 @@ export async function markTaskCompleted(taskId: string): Promise<void> {
         pullNumber: task.pullNumber ?? undefined,
         url: task.pullNumber
           ? `https://github.com/${task.owner}/${task.repo}/pull/${task.pullNumber}`
-          : task.issueNumber 
-          ? `https://github.com/${task.owner}/${task.repo}/issues/${task.issueNumber}`
-          : '/',
+          : task.issueNumber
+            ? `https://github.com/${task.owner}/${task.repo}/issues/${task.issueNumber}`
+            : '/',
       }
     );
 

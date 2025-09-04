@@ -552,7 +552,7 @@ graph TB
     UI --> NotificationService
     NotificationService --> WebPush
     WebPush --> DB
-    
+
     Webhooks --> NotificationService
     TaskQueue --> NotificationService
     CIEvents --> NotificationService
@@ -629,8 +629,12 @@ export function initializeWebPush() {
 ```typescript
 // shared/schema.ts (PWA-spezifische Tabellen)
 export const pushSubscriptions = pgTable('push_subscriptions', {
-  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar('user_id').notNull().references(() => users.id),
+  id: varchar('id')
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar('user_id')
+    .notNull()
+    .references(() => users.id),
   endpoint: text('endpoint').notNull(),
   p256dhKey: text('p256dh_key').notNull(),
   authKey: text('auth_key').notNull(),
@@ -639,8 +643,12 @@ export const pushSubscriptions = pgTable('push_subscriptions', {
 });
 
 export const notificationSettings = pgTable('notification_settings', {
-  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar('user_id').notNull().references(() => users.id),
+  id: varchar('id')
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar('user_id')
+    .notNull()
+    .references(() => users.id),
   taskStarted: boolean('task_started').default(true),
   taskCompleted: boolean('task_completed').default(true),
   taskFailed: boolean('task_failed').default(true),
@@ -661,12 +669,14 @@ export const notificationSettings = pgTable('notification_settings', {
 #### Security & Performance
 
 **Security-Maßnahmen**:
+
 - VAPID-Keys in Environment Variables
 - Subscription-Endpoint Validation
 - Rate Limiting für Notifications
 - Explizite User-Consent pro Event-Type
 
 **Performance-Optimierungen**:
+
 - Batch-Processing für Multiple Subscriptions
 - Automatic Cleanup ungültiger Subscriptions
 - Service Worker Caching-Optimierung

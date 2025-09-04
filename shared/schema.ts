@@ -352,29 +352,23 @@ export const mentraGlassesRelations = relations(
   })
 );
 
-export const mentraSessionsRelations = relations(
-  mentraSessions,
-  ({ one }) => ({
-    glass: one(mentraGlasses, {
-      fields: [mentraSessions.glassId],
-      references: [mentraGlasses.id],
-    }),
-  })
-);
+export const mentraSessionsRelations = relations(mentraSessions, ({ one }) => ({
+  glass: one(mentraGlasses, {
+    fields: [mentraSessions.glassId],
+    references: [mentraGlasses.id],
+  }),
+}));
 
-export const voiceCommandsRelations = relations(
-  voiceCommands,
-  ({ one }) => ({
-    user: one(users, {
-      fields: [voiceCommands.userId],
-      references: [users.id],
-    }),
-    glass: one(mentraGlasses, {
-      fields: [voiceCommands.glassId],
-      references: [mentraGlasses.id],
-    }),
-  })
-);
+export const voiceCommandsRelations = relations(voiceCommands, ({ one }) => ({
+  user: one(users, {
+    fields: [voiceCommands.userId],
+    references: [users.id],
+  }),
+  glass: one(mentraGlasses, {
+    fields: [voiceCommands.glassId],
+    references: [mentraGlasses.id],
+  }),
+}));
 
 export const glassNotificationsRelations = relations(
   glassNotifications,
@@ -468,7 +462,9 @@ export const insertMentraGlassSchema = createInsertSchema(mentraGlasses).pick({
   apiEndpoint: true,
 });
 
-export const insertMentraSessionSchema = createInsertSchema(mentraSessions).pick({
+export const insertMentraSessionSchema = createInsertSchema(
+  mentraSessions
+).pick({
   glassId: true,
   sessionToken: true,
   isActive: true,
@@ -487,7 +483,9 @@ export const insertVoiceCommandSchema = createInsertSchema(voiceCommands).pick({
   errorMessage: true,
 });
 
-export const insertGlassNotificationSchema = createInsertSchema(glassNotifications).pick({
+export const insertGlassNotificationSchema = createInsertSchema(
+  glassNotifications
+).pick({
   userId: true,
   glassId: true,
   notificationType: true,
@@ -510,9 +508,13 @@ export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;
 export type InsertWebhookDelivery = z.infer<typeof insertWebhookDeliverySchema>;
 export type UserSystemState = typeof userSystemState.$inferSelect;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
-export type InsertPushSubscription = z.infer<typeof insertPushSubscriptionSchema>;
+export type InsertPushSubscription = z.infer<
+  typeof insertPushSubscriptionSchema
+>;
 export type NotificationSettings = typeof notificationSettings.$inferSelect;
-export type InsertNotificationSettings = z.infer<typeof insertNotificationSettingsSchema>;
+export type InsertNotificationSettings = z.infer<
+  typeof insertNotificationSettingsSchema
+>;
 
 // mentraOS Types
 export type MentraGlass = typeof mentraGlasses.$inferSelect;
@@ -522,7 +524,9 @@ export type InsertMentraSession = z.infer<typeof insertMentraSessionSchema>;
 export type VoiceCommand = typeof voiceCommands.$inferSelect;
 export type InsertVoiceCommand = z.infer<typeof insertVoiceCommandSchema>;
 export type GlassNotification = typeof glassNotifications.$inferSelect;
-export type InsertGlassNotification = z.infer<typeof insertGlassNotificationSchema>;
+export type InsertGlassNotification = z.infer<
+  typeof insertGlassNotificationSchema
+>;
 
 // API Response types
 export interface AppState {

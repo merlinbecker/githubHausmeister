@@ -1,26 +1,38 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  Eye, 
-  Smartphone, 
-  MessageCircle, 
-  Image as ImageIcon, 
-  Mic, 
+import {
+  Eye,
+  Smartphone,
+  MessageCircle,
+  Image as ImageIcon,
+  Mic,
   Plus,
   Trash2,
   Send,
   Clock,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -212,9 +224,9 @@ export function MentraOSTester() {
   });
 
   const addTestResult = (message: string) => {
-    setTestResults(prev => [
+    setTestResults((prev) => [
       `${new Date().toLocaleTimeString()}: ${message}`,
-      ...prev.slice(0, 49) // Keep last 50 entries
+      ...prev.slice(0, 49), // Keep last 50 entries
     ]);
   };
 
@@ -242,7 +254,9 @@ export function MentraOSTester() {
   };
 
   if (statusLoading) {
-    return <div className="flex items-center justify-center p-8">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center p-8">Loading...</div>
+    );
   }
 
   return (
@@ -256,7 +270,8 @@ export function MentraOSTester() {
         </div>
         <Badge variant="outline" className="flex items-center gap-1">
           <Eye className="h-3 w-3" />
-          {glassStatus?.glasses.filter(g => g.isActive).length || 0} Active Glasses
+          {glassStatus?.glasses.filter((g) => g.isActive).length || 0} Active
+          Glasses
         </Badge>
       </div>
 
@@ -266,7 +281,10 @@ export function MentraOSTester() {
             <Smartphone className="h-4 w-4" />
             Glasses
           </TabsTrigger>
-          <TabsTrigger value="notifications" className="flex items-center gap-2">
+          <TabsTrigger
+            value="notifications"
+            className="flex items-center gap-2"
+          >
             <Send className="h-4 w-4" />
             Send Test
           </TabsTrigger>
@@ -315,11 +333,14 @@ export function MentraOSTester() {
                       <GlassCard
                         key={glass.id}
                         glass={glass}
-                        onDeactivate={() => deactivateGlassMutation.mutate(glass.glassId)}
+                        onDeactivate={() =>
+                          deactivateGlassMutation.mutate(glass.glassId)
+                        }
                         isDeactivating={deactivateGlassMutation.isPending}
                       />
                     ))}
-                    {(!glassStatus?.glasses || glassStatus.glasses.length === 0) && (
+                    {(!glassStatus?.glasses ||
+                      glassStatus.glasses.length === 0) && (
                       <p className="text-sm text-muted-foreground">
                         No glasses registered yet
                       </p>
@@ -336,9 +357,14 @@ export function MentraOSTester() {
           <div className="grid gap-4 md:grid-cols-2">
             <NotificationTester
               glasses={glassStatus?.glasses || []}
-              onSendNotification={(data) => sendNotificationMutation.mutate(data)}
+              onSendNotification={(data) =>
+                sendNotificationMutation.mutate(data)
+              }
               onSendImage={(data) => sendImageMutation.mutate(data)}
-              isLoading={sendNotificationMutation.isPending || sendImageMutation.isPending}
+              isLoading={
+                sendNotificationMutation.isPending ||
+                sendImageMutation.isPending
+              }
             />
           </div>
         </TabsContent>
@@ -375,7 +401,10 @@ export function MentraOSTester() {
                 <ScrollArea className="h-[400px]">
                   <div className="space-y-3">
                     {notifications?.map((notification) => (
-                      <NotificationCard key={notification.id} notification={notification} />
+                      <NotificationCard
+                        key={notification.id}
+                        notification={notification}
+                      />
                     ))}
                   </div>
                 </ScrollArea>
@@ -408,11 +437,11 @@ export function MentraOSTester() {
                     <div
                       key={index}
                       className={`p-2 rounded ${
-                        result.includes('✅') 
-                          ? 'bg-green-50 text-green-800' 
-                          : result.includes('❌') 
-                          ? 'bg-red-50 text-red-800'
-                          : 'bg-blue-50 text-blue-800'
+                        result.includes('✅')
+                          ? 'bg-green-50 text-green-800'
+                          : result.includes('❌')
+                            ? 'bg-red-50 text-red-800'
+                            : 'bg-blue-50 text-blue-800'
                       }`}
                     >
                       {result}
@@ -436,11 +465,19 @@ export function MentraOSTester() {
 // Sub-components
 
 interface GlassRegistrationFormProps {
-  onSubmit: (data: { glassId: string; glassName: string; deviceModel?: string; apiEndpoint?: string }) => void;
+  onSubmit: (data: {
+    glassId: string;
+    glassName: string;
+    deviceModel?: string;
+    apiEndpoint?: string;
+  }) => void;
   isLoading: boolean;
 }
 
-function GlassRegistrationForm({ onSubmit, isLoading }: GlassRegistrationFormProps) {
+function GlassRegistrationForm({
+  onSubmit,
+  isLoading,
+}: GlassRegistrationFormProps) {
   const [formData, setFormData] = useState({
     glassId: '',
     glassName: '',
@@ -452,7 +489,12 @@ function GlassRegistrationForm({ onSubmit, isLoading }: GlassRegistrationFormPro
     e.preventDefault();
     if (formData.glassId && formData.glassName) {
       onSubmit(formData);
-      setFormData({ glassId: '', glassName: '', deviceModel: 'evenrealities G1', apiEndpoint: '' });
+      setFormData({
+        glassId: '',
+        glassName: '',
+        deviceModel: 'evenrealities G1',
+        apiEndpoint: '',
+      });
     }
   };
 
@@ -463,7 +505,9 @@ function GlassRegistrationForm({ onSubmit, isLoading }: GlassRegistrationFormPro
         <Input
           id="glassId"
           value={formData.glassId}
-          onChange={(e) => setFormData({ ...formData, glassId: e.target.value })}
+          onChange={(e) =>
+            setFormData({ ...formData, glassId: e.target.value })
+          }
           placeholder="Enter glass identifier"
           required
         />
@@ -473,7 +517,9 @@ function GlassRegistrationForm({ onSubmit, isLoading }: GlassRegistrationFormPro
         <Input
           id="glassName"
           value={formData.glassName}
-          onChange={(e) => setFormData({ ...formData, glassName: e.target.value })}
+          onChange={(e) =>
+            setFormData({ ...formData, glassName: e.target.value })
+          }
           placeholder="My Smartglasses"
           required
         />
@@ -483,7 +529,9 @@ function GlassRegistrationForm({ onSubmit, isLoading }: GlassRegistrationFormPro
         <Input
           id="deviceModel"
           value={formData.deviceModel}
-          onChange={(e) => setFormData({ ...formData, deviceModel: e.target.value })}
+          onChange={(e) =>
+            setFormData({ ...formData, deviceModel: e.target.value })
+          }
           placeholder="evenrealities G1"
         />
       </div>
@@ -492,7 +540,9 @@ function GlassRegistrationForm({ onSubmit, isLoading }: GlassRegistrationFormPro
         <Input
           id="apiEndpoint"
           value={formData.apiEndpoint}
-          onChange={(e) => setFormData({ ...formData, apiEndpoint: e.target.value })}
+          onChange={(e) =>
+            setFormData({ ...formData, apiEndpoint: e.target.value })
+          }
           placeholder="https://api.mentra.glass/..."
         />
       </div>
@@ -547,7 +597,12 @@ interface NotificationTesterProps {
   isLoading: boolean;
 }
 
-function NotificationTester({ glasses, onSendNotification, onSendImage, isLoading }: NotificationTesterProps) {
+function NotificationTester({
+  glasses,
+  onSendNotification,
+  onSendImage,
+  isLoading,
+}: NotificationTesterProps) {
   const [selectedGlass, setSelectedGlass] = useState('');
   const [notificationForm, setNotificationForm] = useState({
     type: 'text' as 'text' | 'image',
@@ -556,7 +611,7 @@ function NotificationTester({ glasses, onSendNotification, onSendImage, isLoadin
     imageUrl: '',
   });
 
-  const activeGlasses = glasses.filter(g => g.isActive);
+  const activeGlasses = glasses.filter((g) => g.isActive);
 
   const handleSendNotification = () => {
     if (!selectedGlass || !notificationForm.title) return;
@@ -633,7 +688,10 @@ function NotificationTester({ glasses, onSendNotification, onSendImage, isLoadin
               id="title"
               value={notificationForm.title}
               onChange={(e) =>
-                setNotificationForm({ ...notificationForm, title: e.target.value })
+                setNotificationForm({
+                  ...notificationForm,
+                  title: e.target.value,
+                })
               }
               placeholder="Notification title"
             />
@@ -645,7 +703,10 @@ function NotificationTester({ glasses, onSendNotification, onSendImage, isLoadin
               id="message"
               value={notificationForm.message}
               onChange={(e) =>
-                setNotificationForm({ ...notificationForm, message: e.target.value })
+                setNotificationForm({
+                  ...notificationForm,
+                  message: e.target.value,
+                })
               }
               placeholder="Notification message"
               rows={3}
@@ -659,7 +720,10 @@ function NotificationTester({ glasses, onSendNotification, onSendImage, isLoadin
                 id="imageUrl"
                 value={notificationForm.imageUrl}
                 onChange={(e) =>
-                  setNotificationForm({ ...notificationForm, imageUrl: e.target.value })
+                  setNotificationForm({
+                    ...notificationForm,
+                    imageUrl: e.target.value,
+                  })
                 }
                 placeholder="https://example.com/image.jpg"
               />
@@ -753,7 +817,11 @@ function VoiceCommandCard({ command }: { command: VoiceCommand }) {
   );
 }
 
-function NotificationCard({ notification }: { notification: GlassNotification }) {
+function NotificationCard({
+  notification,
+}: {
+  notification: GlassNotification;
+}) {
   return (
     <div className="p-3 border rounded-lg space-y-2">
       <div className="flex items-center justify-between">
@@ -775,10 +843,14 @@ function NotificationCard({ notification }: { notification: GlassNotification })
       <div>
         <p className="text-sm font-medium">{notification.title}</p>
         {notification.message && (
-          <p className="text-xs text-muted-foreground">{notification.message}</p>
+          <p className="text-xs text-muted-foreground">
+            {notification.message}
+          </p>
         )}
         {notification.imageUrl && (
-          <p className="text-xs text-blue-600">Image: {notification.imageUrl}</p>
+          <p className="text-xs text-blue-600">
+            Image: {notification.imageUrl}
+          </p>
         )}
       </div>
       <p className="text-xs text-muted-foreground">

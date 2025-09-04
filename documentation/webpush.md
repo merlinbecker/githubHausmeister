@@ -1,6 +1,7 @@
 # Web Push Benachrichtigungen - Analyse Report
 
 ## Problem
+
 Webhook-Benachrichtigungen von GitHub werden nicht an den Browser des Clients gesendet. Das erwartete Verhalten ist, dass bei einem eingehenden Webhook vom GitHub eine Web Push Benachrichtigung an das Gerät des Clients gesendet wird, unabhängig davon, ob der Browser geöffnet ist oder nicht.
 
 ## Analyse der vorhandenen Infrastruktur
@@ -8,6 +9,7 @@ Webhook-Benachrichtigungen von GitHub werden nicht an den Browser des Clients ge
 ### ✅ Vorhandene Komponenten
 
 #### 1. Service Worker (`client/public/sw.js`)
+
 - **Status**: ✅ Implementiert und funktionsfähig
 - **Features**:
   - Push Event Handler registriert
@@ -16,6 +18,7 @@ Webhook-Benachrichtigungen von GitHub werden nicht an den Browser des Clients ge
   - Unterstützt Notification-Aktionen ("Öffnen")
 
 #### 2. Web Push Server-Infrastruktur (`server/lib/webPush.ts`)
+
 - **Status**: ✅ Implementiert mit VAPID-Unterstützung
 - **Features**:
   - VAPID Key Validierung
@@ -24,6 +27,7 @@ Webhook-Benachrichtigungen von GitHub werden nicht an den Browser des Clients ge
   - Proper Error Handling
 
 #### 3. Notification Service (`server/lib/notificationService.ts`)
+
 - **Status**: ✅ Umfassende Implementierung
 - **Notification Types**:
   - `TASK_STARTED`, `TASK_COMPLETED`, `TASK_FAILED`
@@ -35,6 +39,7 @@ Webhook-Benachrichtigungen von GitHub werden nicht an den Browser des Clients ge
   - Contextualisierte Nachrichten
 
 #### 4. Push Subscription Management
+
 - **Status**: ✅ Database-backed mit PostgreSQL
 - **Features**:
   - Benutzer-spezifische Subscriptions
@@ -42,6 +47,7 @@ Webhook-Benachrichtigungen von GitHub werden nicht an den Browser des Clients ge
   - Endpoint-Management
 
 #### 5. VAPID Key System (`server/lib/vapid.ts`)
+
 - **Status**: ✅ Implementiert mit Schlüsselgenerierung
 - **Features**:
   - Automatische Key-Generierung
@@ -51,6 +57,7 @@ Webhook-Benachrichtigungen von GitHub werden nicht an den Browser des Clients ge
 ### 🔍 Webhook Event Handling Analyse
 
 #### Webhook Endpoint (`server/routes.ts`, Zeile 990-1071)
+
 - **Status**: ✅ Basis-Implementierung vorhanden
 - **Verarbeitet Events**:
   - `pull_request`
@@ -61,21 +68,25 @@ Webhook-Benachrichtigungen von GitHub werden nicht an den Browser des Clients ge
 #### Event Handler Funktionen
 
 ##### 1. `handlePullRequestEvent()` (Zeile 1073-1138)
+
 - **Benachrichtigungen**: ✅ Sendet `PR_CREATED` Notification
 - **Trigger**: Bei `action === 'opened'`
 - **Mechanismus**: Ruft `NotificationService.sendNotification()` auf
 
 ##### 2. `handleCIEvent()` - **🚨 FEHLT**
+
 - **Status**: ❌ Nicht implementiert
 - **Sollte senden**: `CI_STATUS_CHANGED` Notifications
 
 ##### 3. `handleIssuesEvent()` - **🚨 FEHLT**
-- **Status**: ❌ Nicht implementiert  
+
+- **Status**: ❌ Nicht implementiert
 - **Sollte senden**: Notifications für Issue-Updates
 
 ## 🔥 Identifizierte Probleme
 
 ### 1. **Haupt-Problem: Fehlende Event Handler Implementierungen**
+
 ```typescript
 // In server/routes.ts Zeile 1061-1064:
 } else if (event === 'workflow_run' || event === 'check_suite' || event === 'check_run') {
@@ -86,19 +97,23 @@ Webhook-Benachrichtigungen von GitHub werden nicht an den Browser des Clients ge
 ```
 
 ### 2. **Begrenzte Webhook Event Abdeckung**
+
 - Nur `pull_request` Events senden Benachrichtigungen
 - Andere wichtige Events (`issues`, `workflow_run`, etc.) werden nicht verarbeitet
 
 ### 3. **Fehlende allgemeine Webhook Notifications**
+
 - Kein generischer Mechanismus für beliebige Webhook Events
 - Keine Benachrichtigung über allgemeine Repository-Aktivitäten
 
 ### 4. **Abhängigkeit von Active Tasks**
+
 ```typescript
 // handlePullRequestEvent() Zeile 1083-1084:
 const activeTask = await databaseStorage.getActiveTask(userRepo.userId);
-if (!activeTask || !activeTask.issueNumber) return;  // ❌ Zu restriktiv
+if (!activeTask || !activeTask.issueNumber) return; // ❌ Zu restriktiv
 ```
+
 - Notifications nur bei vorhandenen aktiven Tasks
 - Beschränkt die Benachrichtigungen auf Hausmeister-verwaltete Issues
 
@@ -107,25 +122,33 @@ if (!activeTask || !activeTask.issueNumber) return;  // ❌ Zu restriktiv
 ### Phase 1: Implementierung fehlender Event Handler
 
 #### 1. `handleCIEvent()` implementieren
+
 ```typescript
 async function handleCIEvent(payload: any) {
   const owner = payload.repository?.owner?.login;
   const repo = payload.repository?.name;
-  
+
   // Alle Benutzer des Repositories benachrichtigen
-  const userRepos = await databaseStorage.getUserRepositoriesByName(owner, repo);
-  
+  const userRepos = await databaseStorage.getUserRepositoriesByName(
+    owner,
+    repo
+  );
+
   for (const userRepo of userRepos) {
-    await NotificationService.sendNotification(NotificationType.CI_STATUS_CHANGED, {
-      userId: userRepo.userId,
-      repositoryName: `${owner}/${repo}`,
-      // ... weitere Context-Daten
-    });
+    await NotificationService.sendNotification(
+      NotificationType.CI_STATUS_CHANGED,
+      {
+        userId: userRepo.userId,
+        repositoryName: `${owner}/${repo}`,
+        // ... weitere Context-Daten
+      }
+    );
   }
 }
 ```
 
 #### 2. `handleIssuesEvent()` implementieren
+
 ```typescript
 async function handleIssuesEvent(payload: any) {
   // Issue-Aktivitäten (opened, closed, assigned, etc.)
@@ -134,6 +157,7 @@ async function handleIssuesEvent(payload: any) {
 ```
 
 #### 3. Generischer Webhook Event Handler
+
 ```typescript
 async function handleGenericWebhookEvent(event: string, payload: any) {
   // Für alle anderen Webhook Events
@@ -142,6 +166,7 @@ async function handleGenericWebhookEvent(event: string, payload: any) {
 ```
 
 ### Phase 2: Erweiterte Notification Types
+
 ```typescript
 export enum NotificationType {
   // Bestehende...
@@ -152,12 +177,14 @@ export enum NotificationType {
 ```
 
 ### Phase 3: Benutzer-Repository Mapping verbessern
+
 - Alle Benutzer eines Repositories benachrichtigen, nicht nur bei aktiven Tasks
 - Flexible Notification-Regeln basierend auf Benutzereinstellungen
 
 ## 🧪 Test-Strategie
 
 ### 1. Webhook Event Simulation
+
 ```bash
 # Test verschiedene GitHub Webhook Events
 curl -X POST http://localhost:5000/api/webhook \
@@ -167,6 +194,7 @@ curl -X POST http://localhost:5000/api/webhook \
 ```
 
 ### 2. Push Notification Verifikation
+
 - Browser DevTools Console für Service Worker Logs
 - Network Tab für Web Push Requests
 - Notification Panel für angezeigte Benachrichtigungen
@@ -174,43 +202,48 @@ curl -X POST http://localhost:5000/api/webhook \
 ## 🎯 Prioritäten
 
 1. **Hoch**: `handleCIEvent()` und `handleIssuesEvent()` implementieren
-2. **Mittel**: Generischen Webhook Handler hinzufügen  
+2. **Mittel**: Generischen Webhook Handler hinzufügen
 3. **Niedrig**: Benutzereinstellungen für Webhook-Benachrichtigungen erweitern
 
 ## Fazit
 
-Die Web Push Infrastruktur ist vollständig implementiert und funktionsfähig. Das Hauptproblem lag in den **fehlenden Event Handler Implementierungen** für CI- und Issue-Events. 
+Die Web Push Infrastruktur ist vollständig implementiert und funktionsfähig. Das Hauptproblem lag in den **fehlenden Event Handler Implementierungen** für CI- und Issue-Events.
 
 ## ✅ Problem behoben
 
 Die folgenden Änderungen wurden implementiert:
 
 ### 1. Neue Datenbankfunktion
+
 - `getUserRepositoriesByName()` hinzugefügt um ALLE Benutzer eines Repositories zu finden
 - Ermöglicht Benachrichtigung mehrerer Benutzer bei Webhook-Events
 
 ### 2. CI Event Handler erweitert
+
 - Sendet jetzt `CI_STATUS_CHANGED` Benachrichtigungen an alle Benutzer des Repositories
 - Behält bestehende Auto-Merge Funktionalität bei
 - Inkludiert Workflow-Details und Status in der Benachrichtigung
 
 ### 3. Issues Event Handler implementiert
+
 - Verarbeitet Issue-Events (opened, closed, assigned, etc.)
-- Erkennt Hausmeister-verwaltete Issues automatisch  
+- Erkennt Hausmeister-verwaltete Issues automatisch
 - Verwendet passende Notification-Types (`TASK_COMPLETED`, `COPILOT_ASSIGNED`)
 
 ### 4. Generischer Webhook Handler hinzugefügt
+
 - Behandelt andere Webhook-Events für zukünftige Erweiterungen
 - Filtert häufige/nicht-relevante Events heraus
 - Loggt Aktivitäten für Debugging
 
 ### 5. NotificationContext Interface erweitert
+
 - `data?: any` Feld für zusätzliche Kontextinformationen
 
 ## 🧪 Testing bestätigt
 
 - Alle bestehenden Tests laufen erfolgreich durch
-- Build-Prozess funktioniert einwandfrei  
+- Build-Prozess funktioniert einwandfrei
 - VAPID-Keys können generiert und konfiguriert werden
 - Webhook-Payload-Tests zeigen korrekte Event-Verarbeitung
 

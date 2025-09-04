@@ -1,15 +1,13 @@
-
 import { ListChecks, List, TrendingUp, CheckCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import type { AppState } from "@/lib/api";
-import type { StatsData } from "@/lib/api";
+import type { AppState } from '@/lib/api';
+import type { StatsData } from '@/lib/api';
 
 interface StatusOverviewProps {
   appState?: AppState;
 }
 
 export default function StatusOverview({ appState }: StatusOverviewProps) {
-
   const { data: stats } = useQuery<StatsData>({
     queryKey: ['/api/stats'],
 

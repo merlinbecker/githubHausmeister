@@ -116,11 +116,13 @@ This error occurs when:
 ### When to Upload Coverage
 
 ✅ **Upload on**:
+
 - Pull requests (for comparison)
 - Main/develop branch pushes
 - Release branches
 
 ❌ **Skip on**:
+
 - Feature branches (to save API quota)
 - Draft PRs (until ready for review)
 - Failed test runs

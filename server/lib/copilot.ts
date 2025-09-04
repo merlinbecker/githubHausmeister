@@ -1,6 +1,5 @@
 import { gql } from './github-graphql';
 
-
 /**
  * @deprecated Use CopilotAssignmentService from './copilot-assignment' instead.
  * This function will be removed in a future version.
@@ -37,7 +36,6 @@ export async function getCopilotNodeId(token: string): Promise<string> {
   );
 }
 
-
 /**
  * @deprecated Use CopilotAssignmentService.assignViaGraphQL from './copilot-assignment' instead.
  * This function will be removed in a future version.
@@ -47,7 +45,6 @@ export async function addAssignee(
   assigneeNodeId: string,
   token: string
 ) {
-
   const mutation = `
     mutation($assignableId: ID!, $assigneeIds: [ID!]!) {
       addAssigneesToAssignable(input: {assignableId: $assignableId, assigneeIds: $assigneeIds}) {
@@ -61,7 +58,6 @@ export async function addAssignee(
       }
     }`;
 
-
   return gql(
     mutation,
     {
@@ -70,5 +66,4 @@ export async function addAssignee(
     },
     token
   );
-
 }

@@ -76,7 +76,8 @@ export class MentraService {
   public static async registerGlass(
     pairingRequest: GlassPairingRequest
   ): Promise<{ glass: MentraGlass; pairingToken: string }> {
-    const { userId, glassId, glassName, deviceModel, apiEndpoint } = pairingRequest;
+    const { userId, glassId, glassName, deviceModel, apiEndpoint } =
+      pairingRequest;
 
     // Check if glass is already registered
     const existingGlass = await databaseStorage.getGlassByGlassId(glassId);
@@ -101,7 +102,7 @@ export class MentraService {
     };
 
     const glass = await databaseStorage.addGlass(glassData);
-    
+
     console.log(`✅ Glass registered: ${glassId} for user ${userId}`);
     return { glass, pairingToken };
   }
@@ -143,7 +144,7 @@ export class MentraService {
     };
 
     await databaseStorage.createSession(sessionData);
-    
+
     // Update last seen timestamp
     await databaseStorage.updateGlass(glass.id, { lastSeen: new Date() });
 
@@ -198,12 +199,18 @@ export class MentraService {
     const normalizedText = voiceText.toLowerCase().trim();
 
     // Status check commands
-    if (normalizedText.includes('status') || normalizedText.includes('wie geht')) {
+    if (
+      normalizedText.includes('status') ||
+      normalizedText.includes('wie geht')
+    ) {
       return { commandType: VoiceCommandType.STATUS_CHECK, params: {} };
     }
 
     // Task creation commands
-    if (normalizedText.includes('erstelle') || normalizedText.includes('create task')) {
+    if (
+      normalizedText.includes('erstelle') ||
+      normalizedText.includes('create task')
+    ) {
       return {
         commandType: VoiceCommandType.TASK_CREATE,
         params: { originalText: voiceText },
@@ -211,12 +218,18 @@ export class MentraService {
     }
 
     // Task listing commands
-    if (normalizedText.includes('aufgaben') || normalizedText.includes('list tasks')) {
+    if (
+      normalizedText.includes('aufgaben') ||
+      normalizedText.includes('list tasks')
+    ) {
       return { commandType: VoiceCommandType.TASK_LIST, params: {} };
     }
 
     // Repository status commands
-    if (normalizedText.includes('repository') || normalizedText.includes('repo')) {
+    if (
+      normalizedText.includes('repository') ||
+      normalizedText.includes('repo')
+    ) {
       return { commandType: VoiceCommandType.REPO_STATUS, params: {} };
     }
 
@@ -226,7 +239,10 @@ export class MentraService {
     }
 
     // Unknown command
-    return { commandType: VoiceCommandType.UNKNOWN, params: { originalText: voiceText } };
+    return {
+      commandType: VoiceCommandType.UNKNOWN,
+      params: { originalText: voiceText },
+    };
   }
 
   /**
@@ -257,24 +273,30 @@ export class MentraService {
     const voiceCommand = await databaseStorage.addVoiceCommand(commandData);
 
     // Execute command asynchronously
-    this.executeVoiceCommand(voiceCommand).catch(error => {
+    this.executeVoiceCommand(voiceCommand).catch((error) => {
       console.error(`Error executing voice command ${voiceCommand.id}:`, error);
     });
 
-    console.log(`📢 Voice command received: ${commandType} from glass ${glassId}`);
+    console.log(
+      `📢 Voice command received: ${commandType} from glass ${glassId}`
+    );
     return voiceCommand;
   }
 
   /**
    * Execute a voice command and update its status
    */
-  private static async executeVoiceCommand(command: VoiceCommand): Promise<void> {
+  private static async executeVoiceCommand(
+    command: VoiceCommand
+  ): Promise<void> {
     try {
       let result: Record<string, any> = {};
 
       switch (command.commandType) {
         case VoiceCommandType.STATUS_CHECK: {
-          const userState = await databaseStorage.getUserSystemState(command.userId);
+          const userState = await databaseStorage.getUserSystemState(
+            command.userId
+          );
           result = {
             monthlyDone: userState.monthlyDone,
             systemRunning: userState.systemRunning,
@@ -284,20 +306,31 @@ export class MentraService {
         }
 
         case VoiceCommandType.TASK_LIST: {
-          const userTasks = await databaseStorage.getUserTasks(command.userId, 5);
+          const userTasks = await databaseStorage.getUserTasks(
+            command.userId,
+            5
+          );
           result = {
             taskCount: userTasks.length,
-            recentTasks: userTasks.map(t => ({ title: t.title, status: t.status })),
+            recentTasks: userTasks.map((t) => ({
+              title: t.title,
+              status: t.status,
+            })),
             message: `${userTasks.length} aktuelle Aufgaben gefunden.`,
           };
           break;
         }
 
         case VoiceCommandType.REPO_STATUS: {
-          const userRepos = await databaseStorage.getUserRepositories(command.userId);
+          const userRepos = await databaseStorage.getUserRepositories(
+            command.userId
+          );
           result = {
             repositoryCount: userRepos.length,
-            repositories: userRepos.map(r => ({ name: `${r.owner}/${r.repo}`, active: r.isActive })),
+            repositories: userRepos.map((r) => ({
+              name: `${r.owner}/${r.repo}`,
+              active: r.isActive,
+            })),
             message: `${userRepos.length} Repositories überwacht.`,
           };
           break;
@@ -320,7 +353,8 @@ export class MentraService {
         default:
           result = {
             message: 'Befehl wurde empfangen, aber noch nicht implementiert.',
-            suggestion: 'Versuchen Sie: Status, Aufgaben, Repository oder Hilfe',
+            suggestion:
+              'Versuchen Sie: Status, Aufgaben, Repository oder Hilfe',
           };
           break;
       }
@@ -340,10 +374,10 @@ export class MentraService {
           message: result.message || 'Befehl ausgeführt',
         },
       });
-
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
-      
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unbekannter Fehler';
+
       await databaseStorage.updateVoiceCommandStatus(command.id, {
         executionStatus: 'failed',
         errorMessage,
@@ -362,7 +396,7 @@ export class MentraService {
   ): Promise<GlassNotification> {
     const { glassId, notification } = pushRequest;
 
-    // Find glass by glassId  
+    // Find glass by glassId
     const glass = await databaseStorage.getGlassByGlassId(glassId);
     if (!glass) {
       throw new Error('Glass not found');
@@ -384,7 +418,8 @@ export class MentraService {
       deliveryStatus: 'pending',
     };
 
-    const glassNotification = await databaseStorage.addGlassNotification(notificationData);
+    const glassNotification =
+      await databaseStorage.addGlassNotification(notificationData);
 
     // TODO: Integrate with actual mentraOS API to send notification
     // For now, we'll simulate the sending process
@@ -392,18 +427,26 @@ export class MentraService {
       try {
         // Simulate API call to mentraOS
         const mentraMessageId = `mentra_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        
-        await databaseStorage.updateGlassNotificationStatus(glassNotification.id, {
-          deliveryStatus: 'sent',
-          mentraMessageId,
-          sentAt: new Date(),
-        });
 
-        console.log(`📱 Notification sent to glass ${glassId}: ${notification.title}`);
+        await databaseStorage.updateGlassNotificationStatus(
+          glassNotification.id,
+          {
+            deliveryStatus: 'sent',
+            mentraMessageId,
+            sentAt: new Date(),
+          }
+        );
+
+        console.log(
+          `📱 Notification sent to glass ${glassId}: ${notification.title}`
+        );
       } catch (error) {
-        await databaseStorage.updateGlassNotificationStatus(glassNotification.id, {
-          deliveryStatus: 'failed',
-        });
+        await databaseStorage.updateGlassNotificationStatus(
+          glassNotification.id,
+          {
+            deliveryStatus: 'failed',
+          }
+        );
         console.error('Failed to send notification to glass:', error);
       }
     }, 1000);
@@ -420,8 +463,13 @@ export class MentraService {
     recentCommands: VoiceCommand[];
   }> {
     const glasses = await databaseStorage.getUserGlasses(userId);
-    const recentCommands = await databaseStorage.getUserVoiceCommands(userId, 10);
-    const totalNotifications = (await databaseStorage.getUserGlassNotifications(userId)).length;
+    const recentCommands = await databaseStorage.getUserVoiceCommands(
+      userId,
+      10
+    );
+    const totalNotifications = (
+      await databaseStorage.getUserGlassNotifications(userId)
+    ).length;
 
     return {
       glasses,

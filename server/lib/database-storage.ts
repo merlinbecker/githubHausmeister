@@ -151,7 +151,7 @@ export class DatabaseStorage {
       .from(userRepositories)
       .where(
         and(
-          eq(userRepositories.owner, owner), 
+          eq(userRepositories.owner, owner),
           eq(userRepositories.repo, repo),
           eq(userRepositories.isActive, true)
         )
@@ -161,7 +161,6 @@ export class DatabaseStorage {
 
   // Task operations
   async createTask(taskData: InsertTask): Promise<Task> {
-
     const dataToInsert = {
       ...taskData,
       labels: taskData.labels as string[] | null,
@@ -177,11 +176,11 @@ export class DatabaseStorage {
       .from(tasks)
       .where(eq(tasks.userId, userId))
       .orderBy(desc(tasks.createdAt));
-      
+
     if (limit) {
       return query.limit(limit);
     }
-    
+
     return query;
   }
 
@@ -232,7 +231,7 @@ export class DatabaseStorage {
       .values(delivery)
       .onConflictDoNothing()
       .returning();
-    return recorded || delivery as WebhookDelivery;
+    return recorded || (delivery as WebhookDelivery);
   }
 
   async isDeliveryProcessed(deliveryId: string): Promise<boolean> {
@@ -243,11 +242,14 @@ export class DatabaseStorage {
     return delivery?.processed ?? false;
   }
 
-  async getUserWebhookDeliveries(userId: string, limit: number = 50): Promise<WebhookDelivery[]> {
+  async getUserWebhookDeliveries(
+    userId: string,
+    limit: number = 50
+  ): Promise<WebhookDelivery[]> {
     // Get user's repositories
     const userRepos = await this.getUserRepositories(userId);
-    const repoNames = userRepos.map(repo => `${repo.owner}/${repo.repo}`);
-    
+    const repoNames = userRepos.map((repo) => `${repo.owner}/${repo.repo}`);
+
     if (repoNames.length === 0) {
       return [];
     }
@@ -262,9 +264,11 @@ export class DatabaseStorage {
         .limit(limit);
 
       // Filter to only include user's repositories
-      return deliveries.filter(delivery => {
+      return deliveries.filter((delivery) => {
         if (!delivery.repositoryOwner || !delivery.repositoryName) return false;
-        return repoNames.includes(`${delivery.repositoryOwner}/${delivery.repositoryName}`);
+        return repoNames.includes(
+          `${delivery.repositoryOwner}/${delivery.repositoryName}`
+        );
       });
     } catch (error) {
       console.error('Error querying webhook deliveries:', error);
@@ -382,7 +386,9 @@ export class DatabaseStorage {
   }
 
   // Notification settings operations
-  async getUserNotificationSettings(userId: string): Promise<NotificationSettings> {
+  async getUserNotificationSettings(
+    userId: string
+  ): Promise<NotificationSettings> {
     const [settings] = await db
       .select()
       .from(notificationSettings)
@@ -425,10 +431,7 @@ export class DatabaseStorage {
       .select()
       .from(mentraGlasses)
       .where(
-        and(
-          eq(mentraGlasses.userId, userId),
-          eq(mentraGlasses.isActive, true)
-        )
+        and(eq(mentraGlasses.userId, userId), eq(mentraGlasses.isActive, true))
       );
   }
 
@@ -469,7 +472,9 @@ export class DatabaseStorage {
   }
 
   // mentraOS Session operations
-  async createSession(sessionData: InsertMentraSession): Promise<MentraSession> {
+  async createSession(
+    sessionData: InsertMentraSession
+  ): Promise<MentraSession> {
     const [session] = await db
       .insert(mentraSessions)
       .values(sessionData)
@@ -507,7 +512,9 @@ export class DatabaseStorage {
   }
 
   // Voice Commands operations
-  async addVoiceCommand(commandData: InsertVoiceCommand): Promise<VoiceCommand> {
+  async addVoiceCommand(
+    commandData: InsertVoiceCommand
+  ): Promise<VoiceCommand> {
     const [command] = await db
       .insert(voiceCommands)
       .values(commandData)
@@ -592,7 +599,9 @@ export class DatabaseStorage {
     return updated;
   }
 
-  async getGlassNotification(notificationId: string): Promise<GlassNotification | undefined> {
+  async getGlassNotification(
+    notificationId: string
+  ): Promise<GlassNotification | undefined> {
     const [notification] = await db
       .select()
       .from(glassNotifications)

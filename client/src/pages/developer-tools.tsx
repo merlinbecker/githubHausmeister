@@ -7,10 +7,7 @@ import { ArrowLeft, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function DeveloperTools() {
-  const {
-    data: _appState,
-    refetch: _refetch,
-  } = useQuery({
+  const { data: _appState, refetch: _refetch } = useQuery({
     queryKey: ['/api/status'],
     queryFn: getStatus,
     refetchInterval: 30000, // Refresh every 30 seconds
@@ -47,7 +44,8 @@ export default function DeveloperTools() {
             Notification Debugging
           </h2>
           <p className="text-github-muted text-sm mb-4">
-            Umfassende Tests für Push-Benachrichtigungen, Browser-Kompatibilität und verzögerte Benachrichtigungen.
+            Umfassende Tests für Push-Benachrichtigungen, Browser-Kompatibilität
+            und verzögerte Benachrichtigungen.
           </p>
         </div>
 

@@ -1,8 +1,6 @@
-
 import { GitBranch, CheckCircle, UserPlus, Edit } from 'lucide-react';
 
-import type { WebhookConfig } from "@shared/schema";
-
+import type { WebhookConfig } from '@shared/schema';
 
 export default function WebhookStatus() {
   // This component will show webhook configuration info
@@ -20,7 +18,6 @@ export default function WebhookStatus() {
     token: '***',
     copilotAgent: 'github-copilot',
     monitoredRepos: 0,
-
   };
 
   return (

@@ -78,7 +78,7 @@ export default function Dashboard() {
                 GitHub Connected
               </span>
             </div>
-            
+
             {/* Developer Tools Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -96,7 +96,7 @@ export default function Dashboard() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            
+
             {user && (
               <div className="flex items-center space-x-3">
                 <div className="flex items-center space-x-2">
@@ -171,7 +171,6 @@ export default function Dashboard() {
         <PushNotificationTester />
 
         <MentraOSTester />
-
       </main>
 
       {/* Footer */}

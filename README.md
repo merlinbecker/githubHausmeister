@@ -79,7 +79,7 @@ Configure these environment variables in Replit Secrets:
 ### GitHub OAuth (Optional)
 
 - `GITHUB_CLIENT_ID`: GitHub OAuth App Client ID
-- `GITHUB_CLIENT_SECRET`: GitHub OAuth App Client Secret  
+- `GITHUB_CLIENT_SECRET`: GitHub OAuth App Client Secret
 - `GITHUB_REDIRECT_URI`: OAuth redirect URI
 
 ### PWA Push Notifications (Optional)
@@ -106,7 +106,7 @@ Configure these environment variables in Replit Secrets:
 
 ### 1. Prerequisites
 
-- Node.js 20+ 
+- Node.js 20+
 - PostgreSQL database (e.g., Neon serverless)
 - GitHub Personal Access Token with required permissions
 
@@ -137,11 +137,11 @@ To enable push notifications for real-time task updates:
    ```bash
    npm run generate-vapid-keys
    ```
-   
 2. **Configure environment variables** with the generated keys:
+
    ```bash
    VAPID_PUBLIC_KEY=your_generated_public_key
-   VAPID_PRIVATE_KEY=your_generated_private_key  
+   VAPID_PRIVATE_KEY=your_generated_private_key
    VAPID_SUBJECT=mailto:your-email@example.com
    ```
 
@@ -153,6 +153,7 @@ To enable push notifications for real-time task updates:
 **Note**: Push notifications work on all modern browsers and can be received even when the app is closed.
 
 **PWA Icons**: To complete the PWA setup, add icon files to `client/public/`:
+
 - `icon-192.png` (192x192px) - For app installation and notifications
 - `icon-512.png` (512x512px) - For app installation
 - `screenshot-narrow.png` (720x1280px) - Mobile app store preview
@@ -161,16 +162,18 @@ To enable push notifications for real-time task updates:
 ### 5. Repository Setup
 
 Each managed repository needs:
+
 1. CI workflow (`.github/workflows/ci.yml`)
 2. Webhook configuration (see above)
 3. Optional: Branch protection rules
 
 Example CI workflow:
+
 ```yaml
 name: CI
 on:
   pull_request:
-    branches: [ main ]
+    branches: [main]
 jobs:
   node:
     runs-on: ubuntu-latest
@@ -186,6 +189,7 @@ jobs:
 ## Build and Test Commands
 
 ### Development
+
 ```bash
 # Start development server (frontend + backend)
 npm run dev
@@ -195,6 +199,7 @@ npm run check
 ```
 
 ### Building
+
 ```bash
 # Build for production
 npm run build
@@ -204,6 +209,7 @@ npm start
 ```
 
 ### Testing
+
 ```bash
 # Run tests once
 npm run test:run
@@ -211,7 +217,7 @@ npm run test:run
 # Run tests in watch mode
 npm test
 
-# Run tests with UI interface  
+# Run tests with UI interface
 npm run test:ui
 
 # Run tests with coverage report
@@ -219,6 +225,7 @@ npm run test:coverage
 ```
 
 ### Database
+
 ```bash
 # Push schema changes to database
 npm run db:push
@@ -234,11 +241,13 @@ GitHub Hausmeister is a fully-featured Progressive Web App that can be installed
 ### Installation
 
 **Desktop (Chrome, Edge, Safari):**
+
 1. Visit the application URL
 2. Look for the "Install" icon in the address bar
 3. Click "Install" or use Browser Menu → "Install GitHub Hausmeister"
 
 **Mobile (iOS Safari, Android Chrome):**
+
 1. Open the application in your mobile browser
 2. **iOS**: Tap Share → "Add to Home Screen"
 3. **Android**: Tap Menu → "Add to Home Screen" or "Install App"
@@ -253,15 +262,15 @@ GitHub Hausmeister is a fully-featured Progressive Web App that can be installed
 
 ### Push Notification Types
 
-| Event | Notification | Can be Disabled |
-|-------|-------------|-----------------|
-| Task Started | 🚀 Task gestartet | ✅ |
-| Task Completed | ✅ Task abgeschlossen | ✅ |
-| Task Failed | ❌ Task fehlgeschlagen | ✅ |
-| PR Created | 📝 Pull Request erstellt | ✅ |
-| PR Merged | 🎉 Pull Request gemergt | ✅ |
-| CI Status Changed | 🔄 CI-Status geändert | ✅ |
-| Copilot Assigned | 🤖 Copilot zugewiesen | ✅ |
+| Event             | Notification             | Can be Disabled |
+| ----------------- | ------------------------ | --------------- |
+| Task Started      | 🚀 Task gestartet        | ✅              |
+| Task Completed    | ✅ Task abgeschlossen    | ✅              |
+| Task Failed       | ❌ Task fehlgeschlagen   | ✅              |
+| PR Created        | 📝 Pull Request erstellt | ✅              |
+| PR Merged         | 🎉 Pull Request gemergt  | ✅              |
+| CI Status Changed | 🔄 CI-Status geändert    | ✅              |
+| Copilot Assigned  | 🤖 Copilot zugewiesen    | ✅              |
 
 ## Deployment
 
@@ -295,7 +304,7 @@ For deployment on other platforms:
 2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
 3. **Install dependencies**: `npm install`
 4. **Make changes**: Follow the coding guidelines
-5. **Run tests**: `npm run test:run` 
+5. **Run tests**: `npm run test:run`
 6. **Build the project**: `npm run build`
 7. **Commit changes**: Use descriptive commit messages
 8. **Push to branch**: `git push origin feature/amazing-feature`
@@ -327,6 +336,7 @@ For deployment on other platforms:
 ### Running Tests
 
 Before submitting a PR:
+
 ```bash
 # Run all tests
 npm run test:run
@@ -341,6 +351,7 @@ npm run build
 ### Debugging
 
 For development debugging:
+
 ```bash
 # Start with development server
 npm run dev
@@ -356,6 +367,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Support
 
 For support and questions:
+
 - Review the [arc42 documentation](documentation/arc42.md) for technical details
 - Check existing [Issues](https://github.com/merlinbecker/githubHausmeister/issues)
 - Create a new issue for bugs or feature requests

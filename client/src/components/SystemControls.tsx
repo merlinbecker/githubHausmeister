@@ -18,7 +18,7 @@ export default function SystemControls({
   onRefresh,
 }: SystemControlsProps) {
   const { toast } = useToast();
-const { data: stats } = useQuery<StatsData>({
+  const { data: stats } = useQuery<StatsData>({
     queryKey: ['/api/stats'],
 
     refetchInterval: 30000, // Refresh every 30 seconds
