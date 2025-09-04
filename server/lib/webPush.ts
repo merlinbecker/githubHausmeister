@@ -21,7 +21,7 @@ export interface NotificationPayload {
 export function initializeWebPush() {
   const publicKey = process.env.VAPID_PUBLIC_KEY;
   const privateKey = process.env.VAPID_PRIVATE_KEY;
-  const subject = process.env.VAPID_SUBJECT || 'mailto:admin@example.com';
+  const subject = process.env.VAPID_SUBJECT || 'mailto:merlinbecker@users.noreply.github.com';
 
   if (!publicKey || !privateKey) {
     console.warn('VAPID keys not configured. Push notifications disabled.');
@@ -73,10 +73,36 @@ export async function sendPushNotification(
   payload: NotificationPayload
 ): Promise<boolean> {
   try {
-    await webpush.sendNotification(subscription, JSON.stringify(payload));
+    // Log details for debugging
+    console.log('Sending push notification to:', subscription.endpoint);
+    
+    // Check if this is a Windows WNS endpoint
+    const isWNS = subscription.endpoint.includes('notify.windows.com');
+    if (isWNS) {
+      console.log('🟡 WNS endpoint detected - Microsoft additional auth may be required');
+    }
+    
+    const options = {
+      TTL: 86400, // 24 hours
+      vapidDetails: {
+        subject: process.env.VAPID_SUBJECT || 'mailto:merlinbecker@users.noreply.github.com',
+        publicKey: process.env.VAPID_PUBLIC_KEY!,
+        privateKey: process.env.VAPID_PRIVATE_KEY!,
+      }
+    };
+    
+    await webpush.sendNotification(subscription, JSON.stringify(payload), options);
+    console.log('✅ Push notification sent successfully');
     return true;
   } catch (error) {
-    console.error('Failed to send push notification:', error);
+    console.error('❌ Failed to send push notification:', error);
+    
+    // More detailed error logging for WNS
+    if (error instanceof Error && error.message.includes('401')) {
+      console.log('🔍 JWT Authentication failed - this is common with Windows WNS endpoints');
+      console.log('💡 Windows WNS requires Microsoft Store Dashboard registration + Package SID');
+    }
+    
     return false;
   }
 }
