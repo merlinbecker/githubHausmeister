@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getStatus } from '@/lib/api';
 import { logout } from '@/lib/auth';
 import { useAuth } from '@/hooks/useAuth';
+import { Link } from 'wouter';
 import StatusOverview from '@/components/StatusOverview';
 import ActiveTaskCard from '@/components/ActiveTaskCard';
 import TaskQueue from '@/components/TaskQueue';
@@ -12,8 +13,14 @@ import WebhookMonitor from '@/components/WebhookMonitor';
 import SystemControls from '@/components/SystemControls';
 import { NotificationSettings } from '@/components/NotificationSettings';
 import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
-import { PushNotificationTester } from '@/components/PushNotificationTester';
-import { Github, LogOut, User } from 'lucide-react';
+import { Github, LogOut, User, Wrench } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -68,6 +75,25 @@ export default function Dashboard() {
                 GitHub Connected
               </span>
             </div>
+            
+            {/* Developer Tools Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <Wrench className="h-4 w-4 mr-2" />
+                  Dev Tools
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem asChild>
+                  <Link href="/dev-tools" className="cursor-pointer">
+                    <Wrench className="h-4 w-4 mr-2" />
+                    Notification Tests
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
             {user && (
               <div className="flex items-center space-x-3">
                 <div className="flex items-center space-x-2">
@@ -138,8 +164,6 @@ export default function Dashboard() {
           <NotificationSettings />
           <PWAInstallPrompt />
         </div>
-
-        <PushNotificationTester />
       </main>
 
       {/* Footer */}

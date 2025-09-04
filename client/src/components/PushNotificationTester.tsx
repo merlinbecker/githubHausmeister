@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Alert, AlertDescription } from './ui/alert';
-import { Smartphone, CheckCircle, XCircle, AlertCircle, Bell, BellOff } from 'lucide-react';
+import { Smartphone, CheckCircle, XCircle, AlertCircle, Bell } from 'lucide-react';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 
 export function PushNotificationTester() {
