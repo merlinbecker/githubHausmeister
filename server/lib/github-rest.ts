@@ -229,6 +229,10 @@ export async function listAllCollaborators(
   }
 }
 
+/**
+ * @deprecated Use CopilotAssignmentService.findCopilotAgent from './copilot-assignment' instead.
+ * This function will be removed in a future version.
+ */
 export async function checkCopilotAvailability(
   token: string,
   owner: string,
@@ -300,6 +304,10 @@ export async function checkCopilotAvailability(
   return { available: false };
 }
 
+/**
+ * @deprecated Use CopilotAssignmentService from './copilot-assignment' instead.
+ * This function will be removed in a future version.
+ */
 export async function assignCopilotToIssue(
   token: string,
   owner: string,
@@ -388,6 +396,10 @@ export async function assignCopilotToIssue(
   }
 }
 
+/**
+ * @deprecated Use CopilotAssignmentService.verifyAssignment from './copilot-assignment' instead.
+ * This function will be removed in a future version.
+ */
 export async function verifyCopilotAssignment(
   token: string,
   owner: string,

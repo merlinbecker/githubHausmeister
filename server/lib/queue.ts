@@ -55,11 +55,11 @@ export async function startNextIfIdle(userId: string): Promise<void> {
         `Duplicate issue found for task ${nextTask.id}: Issue #${duplicateCheck.existingIssue?.number}`
       );
 
-      // Try to assign Copilot agent to existing issue
+      // Try to assign Copilot agent to existing issue using unified service
       console.log(
         `🔄 [QUEUE] Attempting Copilot assignment to EXISTING issue #${duplicateCheck.existingIssue.number}`
       );
-      const { assignCopilotToIssue } = await import('./github-rest');
+      const { assignCopilotToIssue } = await import('./copilot-assignment');
       const assignmentResult = await assignCopilotToIssue(
         user.accessToken,
         nextTask.owner,
@@ -113,12 +113,12 @@ export async function startNextIfIdle(userId: string): Promise<void> {
       nextTask.labels || []
     );
 
-    // Assign Copilot agent using improved method
+    // Assign Copilot agent using unified service
     console.log(
       `🔄 [QUEUE] Attempting Copilot assignment to NEW issue #${issue.number}`
     );
     const { assignCopilotToIssue, verifyCopilotAssignment } = await import(
-      './github-rest'
+      './copilot-assignment'
     );
     const assignmentResult = await assignCopilotToIssue(
       user.accessToken,
