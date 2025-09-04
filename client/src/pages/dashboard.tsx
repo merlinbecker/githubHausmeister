@@ -16,8 +16,6 @@ import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
 
 import { PushNotificationTester } from '@/components/PushNotificationTester';
 import { MentraOSTester } from '@/components/MentraOSTester';
-import { Github, LogOut, User } from 'lucide-react';
-
 import { Github, LogOut, User, Wrench } from 'lucide-react';
 import {
   DropdownMenu,
