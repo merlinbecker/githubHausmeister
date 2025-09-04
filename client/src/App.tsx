@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useAuth } from '@/hooks/useAuth';
 import Dashboard from '@/pages/dashboard';
+import DeveloperTools from '@/pages/developer-tools';
 import Login from '@/pages/login';
 import NotFound from '@/pages/not-found';
 import { StartupNotificationPrompt } from '@/components/StartupNotificationPrompt';
@@ -29,6 +30,7 @@ function Router() {
         {isAuthenticated ? (
           <>
             <Route path="/" component={Dashboard} />
+            <Route path="/dev-tools" component={DeveloperTools} />
             <Route component={NotFound} />
           </>
         ) : (

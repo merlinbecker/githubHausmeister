@@ -883,6 +883,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Schedule delayed test notification endpoint
+  app.post(
+    '/api/push/schedule-delayed-test',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { delaySeconds, message, testId } = req.body;
+
+        if (!delaySeconds || typeof delaySeconds !== 'number' || delaySeconds < 1 || delaySeconds > 300) {
+          return res.status(400).json({
+            error: 'Invalid delay seconds (must be 1-300)',
+          });
+        }
+
+        if (!message || typeof message !== 'string') {
+          return res.status(400).json({
+            error: 'Message is required',
+          });
+        }
+
+        const subscriptions = await databaseStorage.getUserPushSubscriptions(
+          req.user!.id
+        );
+
+        if (subscriptions.length === 0) {
+          return res.status(404).json({
+            error: 'No active subscriptions found',
+          });
+        }
+
+        // Schedule the notification
+        setTimeout(async () => {
+          try {
+            console.log(`🔔 Sending delayed notification after ${delaySeconds}s for user ${req.user!.id}`);
+            
+            const payload = {
+              title: 'Verzögerte Test-Benachrichtigung',
+              body: message,
+              icon: '/icon-192.png',
+              url: '/',
+              tag: `delayed-test-${testId}`,
+              badge: '/icon-192.png',
+              requireInteraction: true,
+              // Enhanced mobile and browser compatibility
+              vibrate: [200, 100, 200], // Vibration pattern for mobile
+              timestamp: Date.now(),
+              renotify: false, // Don't re-notify for same tag
+              silent: false, // Allow sound
+              actions: [
+                {
+                  action: 'open',
+                  title: 'App öffnen',
+                  icon: '/icon-192.png'
+                }
+              ]
+            };
+
+            const { sendPushToMultipleSubscriptions } = await import('./lib/webPush');
+            const results = await sendPushToMultipleSubscriptions(
+              subscriptions.map((sub) => ({
+                endpoint: sub.endpoint,
+                keys: {
+                  p256dh: sub.p256dhKey,
+                  auth: sub.authKey,
+                },
+              })),
+              payload
+            );
+
+            console.log(`✅ Delayed notification sent - Success: ${results.successful}, Failed: ${results.failed}`);
+          } catch (error) {
+            console.error('❌ Error sending delayed notification:', error);
+          }
+        }, delaySeconds * 1000);
+
+        res.json({
+          success: true,
+          message: `Delayed notification scheduled for ${delaySeconds} seconds`,
+          testId,
+          scheduledAt: new Date().toISOString(),
+        });
+      } catch (error) {
+        console.error('Error scheduling delayed notification:', error);
+        res.status(500).json({ error: 'Failed to schedule delayed notification' });
+      }
+    }
+  );
+
   // Get webhook deliveries for monitoring
   app.get(
     '/api/webhooks/deliveries',
