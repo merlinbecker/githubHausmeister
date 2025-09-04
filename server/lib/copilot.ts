@@ -1,6 +1,10 @@
 import { gql } from './github-graphql';
 
 
+/**
+ * @deprecated Use CopilotAssignmentService from './copilot-assignment' instead.
+ * This function will be removed in a future version.
+ */
 export async function getCopilotNodeId(token: string): Promise<string> {
   const configured =
     process.env.COPILOT_ACTOR_ID || process.env.COPILOT_ACTOR_ID_ENV_VAR;
@@ -34,6 +38,10 @@ export async function getCopilotNodeId(token: string): Promise<string> {
 }
 
 
+/**
+ * @deprecated Use CopilotAssignmentService.assignViaGraphQL from './copilot-assignment' instead.
+ * This function will be removed in a future version.
+ */
 export async function addAssignee(
   issueNodeId: string,
   assigneeNodeId: string,
