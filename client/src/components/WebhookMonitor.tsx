@@ -42,7 +42,7 @@ export default function WebhookMonitor({
   } = useQuery({
     queryKey: ['webhook-deliveries'],
     queryFn: () => getWebhookDeliveries(100),
-    refetchInterval: autoRefresh ? 5000 : false, // Refetch every 5 seconds if auto-refresh is on
+    refetchInterval: autoRefresh ? 30000 : false, // Refetch every 30 seconds if auto-refresh is on
     refetchOnWindowFocus: true,
   });
 
