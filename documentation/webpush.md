@@ -179,4 +179,39 @@ curl -X POST http://localhost:5000/api/webhook \
 
 ## Fazit
 
-Die Web Push Infrastruktur ist vollständig implementiert und funktionsfähig. Das Hauptproblem liegt in den **fehlenden Event Handler Implementierungen** für CI- und Issue-Events. Die Implementierung dieser Handler wird das Problem der fehlenden Webhook-Benachrichtigungen lösen.
+Die Web Push Infrastruktur ist vollständig implementiert und funktionsfähig. Das Hauptproblem lag in den **fehlenden Event Handler Implementierungen** für CI- und Issue-Events. 
+
+## ✅ Problem behoben
+
+Die folgenden Änderungen wurden implementiert:
+
+### 1. Neue Datenbankfunktion
+- `getUserRepositoriesByName()` hinzugefügt um ALLE Benutzer eines Repositories zu finden
+- Ermöglicht Benachrichtigung mehrerer Benutzer bei Webhook-Events
+
+### 2. CI Event Handler erweitert
+- Sendet jetzt `CI_STATUS_CHANGED` Benachrichtigungen an alle Benutzer des Repositories
+- Behält bestehende Auto-Merge Funktionalität bei
+- Inkludiert Workflow-Details und Status in der Benachrichtigung
+
+### 3. Issues Event Handler implementiert
+- Verarbeitet Issue-Events (opened, closed, assigned, etc.)
+- Erkennt Hausmeister-verwaltete Issues automatisch  
+- Verwendet passende Notification-Types (`TASK_COMPLETED`, `COPILOT_ASSIGNED`)
+
+### 4. Generischer Webhook Handler hinzugefügt
+- Behandelt andere Webhook-Events für zukünftige Erweiterungen
+- Filtert häufige/nicht-relevante Events heraus
+- Loggt Aktivitäten für Debugging
+
+### 5. NotificationContext Interface erweitert
+- `data?: any` Feld für zusätzliche Kontextinformationen
+
+## 🧪 Testing bestätigt
+
+- Alle bestehenden Tests laufen erfolgreich durch
+- Build-Prozess funktioniert einwandfrei  
+- VAPID-Keys können generiert und konfiguriert werden
+- Webhook-Payload-Tests zeigen korrekte Event-Verarbeitung
+
+**Das Problem der fehlenden Webhook-Benachrichtigungen ist behoben.**
