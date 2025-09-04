@@ -1154,6 +1154,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         console.error('Error deactivating glass:', error);
         res.status(500).json({ error: 'Failed to deactivate glass' });
+      }
+    }
+  );
 
   // Schedule delayed test notification endpoint
   app.post(
