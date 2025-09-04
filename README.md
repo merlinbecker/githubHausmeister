@@ -1,6 +1,6 @@
 # GitHub Hausmeister
 
-An automated GitHub maintenance application that creates chore issues, assigns them to GitHub Copilot, and automatically merges PRs after CI passes.
+An automated GitHub maintenance Progressive Web App (PWA) that creates chore issues, assigns them to GitHub Copilot, and automatically merges PRs after CI passes. Features real-time push notifications and can be installed on any device.
 
 ## Features
 
@@ -13,7 +13,12 @@ An automated GitHub maintenance application that creates chore issues, assigns t
   - Comments on PRs when auto-merge fails
 - **Webhook Integration**: Real-time handling of GitHub events (issues, PRs, CI completion, check runs)
 - **Task Queue Management**: Single-task concurrency with configurable monthly limits
-- **Mobile-First UI**: Dark GitHub-themed dashboard for monitoring and control
+- **Progressive Web App (PWA)**: Installable mobile-first application with offline capabilities
+- **Push Notifications**: Real-time VAPID-based push notifications for task updates, PR status, and CI events
+  - Cross-platform notifications (desktop, mobile, even when app is closed)
+  - Configurable notification settings per event type
+  - Test notification functionality for debugging
+- **Mobile-First UI**: Dark GitHub-themed responsive dashboard for monitoring and control
 
 ## Automated CI/CD Workflow
 
@@ -77,6 +82,12 @@ Configure these environment variables in Replit Secrets:
 - `GITHUB_CLIENT_SECRET`: GitHub OAuth App Client Secret  
 - `GITHUB_REDIRECT_URI`: OAuth redirect URI
 
+### PWA Push Notifications (Optional)
+
+- `VAPID_PUBLIC_KEY`: VAPID public key for push notifications (generate with `npm run generate-vapid-keys`)
+- `VAPID_PRIVATE_KEY`: VAPID private key for push notifications (generate with `npm run generate-vapid-keys`)
+- `VAPID_SUBJECT`: VAPID subject email or URL (e.g., `mailto:admin@example.com`)
+
 ### Optional Configuration
 
 - `COPILOT_ACTOR_ID`: GitHub Copilot agent node ID (auto-detected if not provided)
@@ -118,7 +129,36 @@ npm run db:push
    - **Secret**: Same as `GITHUB_WEBHOOK_SECRET`
    - **Content Type**: `application/json`
 
-### 4. Repository Setup
+### 4. PWA Push Notifications Setup (Optional)
+
+To enable push notifications for real-time task updates:
+
+1. **Generate VAPID keys**:
+   ```bash
+   npm run generate-vapid-keys
+   ```
+   
+2. **Configure environment variables** with the generated keys:
+   ```bash
+   VAPID_PUBLIC_KEY=your_generated_public_key
+   VAPID_PRIVATE_KEY=your_generated_private_key  
+   VAPID_SUBJECT=mailto:your-email@example.com
+   ```
+
+3. **Enable notifications in browser**:
+   - Open the application
+   - Allow notifications when prompted
+   - Or enable in Settings → Notifications
+
+**Note**: Push notifications work on all modern browsers and can be received even when the app is closed.
+
+**PWA Icons**: To complete the PWA setup, add icon files to `client/public/`:
+- `icon-192.png` (192x192px) - For app installation and notifications
+- `icon-512.png` (512x512px) - For app installation
+- `screenshot-narrow.png` (720x1280px) - Mobile app store preview
+- `screenshot-wide.png` (1280x720px) - Desktop app store preview
+
+### 5. Repository Setup
 
 Each managed repository needs:
 1. CI workflow (`.github/workflows/ci.yml`)
@@ -182,7 +222,46 @@ npm run test:coverage
 ```bash
 # Push schema changes to database
 npm run db:push
+
+# Generate VAPID keys for push notifications
+npm run generate-vapid-keys
 ```
+
+## Progressive Web App (PWA)
+
+GitHub Hausmeister is a fully-featured Progressive Web App that can be installed on any device:
+
+### Installation
+
+**Desktop (Chrome, Edge, Safari):**
+1. Visit the application URL
+2. Look for the "Install" icon in the address bar
+3. Click "Install" or use Browser Menu → "Install GitHub Hausmeister"
+
+**Mobile (iOS Safari, Android Chrome):**
+1. Open the application in your mobile browser
+2. **iOS**: Tap Share → "Add to Home Screen"
+3. **Android**: Tap Menu → "Add to Home Screen" or "Install App"
+
+### PWA Features
+
+- **Offline Mode**: Core functionality works without internet connection
+- **Push Notifications**: Real-time notifications even when app is closed
+- **Responsive Design**: Optimized for all screen sizes
+- **Fast Loading**: Cached resources for instant startup
+- **Native Feel**: Behaves like a native mobile app
+
+### Push Notification Types
+
+| Event | Notification | Can be Disabled |
+|-------|-------------|-----------------|
+| Task Started | 🚀 Task gestartet | ✅ |
+| Task Completed | ✅ Task abgeschlossen | ✅ |
+| Task Failed | ❌ Task fehlgeschlagen | ✅ |
+| PR Created | 📝 Pull Request erstellt | ✅ |
+| PR Merged | 🎉 Pull Request gemergt | ✅ |
+| CI Status Changed | 🔄 CI-Status geändert | ✅ |
+| Copilot Assigned | 🤖 Copilot zugewiesen | ✅ |
 
 ## Deployment
 
