@@ -159,23 +159,28 @@ export function MentraOSTester() {
   const [_selectedGlass, _setSelectedGlass] = useState<string>('');
   const [testResults, setTestResults] = useState<string[]>([]);
 
-  // Queries
-  const { data: glassStatus, isLoading: statusLoading } = useQuery({
+  // Queries - No automatic polling, only manual refresh
+  const { data: glassStatus, isLoading: statusLoading, error: statusError, refetch: refetchStatus } = useQuery({
     queryKey: ['mentra-status'],
     queryFn: api.getGlassStatus,
-    refetchInterval: 5000, // Refresh every 5 seconds
+    retry: 1, // Only retry once on failure
+    refetchOnWindowFocus: false, // Don't refetch when window gains focus
   });
 
-  const { data: voiceCommands } = useQuery({
+  const { data: voiceCommands, error: voiceError, refetch: refetchVoiceCommands } = useQuery({
     queryKey: ['mentra-voice-commands'],
     queryFn: api.getVoiceCommands,
-    refetchInterval: 3000,
+    retry: 1,
+    refetchOnWindowFocus: false,
+    enabled: false, // Don't auto-fetch on mount
   });
 
-  const { data: notifications } = useQuery({
+  const { data: notifications, error: notificationsError, refetch: refetchNotifications } = useQuery({
     queryKey: ['mentra-notifications'],
     queryFn: api.getNotifications,
-    refetchInterval: 3000,
+    retry: 1,
+    refetchOnWindowFocus: false,
+    enabled: false, // Don't auto-fetch on mount
   });
 
   // Mutations
