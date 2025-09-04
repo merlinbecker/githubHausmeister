@@ -165,6 +165,115 @@ export const notificationSettings = pgTable(
   (table) => [index('notification_settings_user_id_idx').on(table.userId)]
 );
 
+// mentraOS Smartglasses table
+export const mentraGlasses = pgTable(
+  'mentra_glasses',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    glassId: text('glass_id').notNull().unique(), // mentraOS glass identifier
+    glassName: text('glass_name').notNull(), // User-friendly name
+    deviceModel: text('device_model').default('evenrealities G1'),
+    pairingToken: text('pairing_token'), // For secure pairing process
+    isActive: boolean('is_active').default(true),
+    lastSeen: timestamp('last_seen').defaultNow(),
+    apiEndpoint: text('api_endpoint'), // mentraOS API endpoint for this glass
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => [
+    index('mentra_glasses_user_id_idx').on(table.userId),
+    index('mentra_glasses_glass_id_idx').on(table.glassId),
+  ]
+);
+
+// mentraOS Session Management
+export const mentraSessions = pgTable(
+  'mentra_sessions',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    glassId: varchar('glass_id')
+      .notNull()
+      .references(() => mentraGlasses.id, { onDelete: 'cascade' }),
+    sessionToken: text('session_token').notNull(),
+    isActive: boolean('is_active').default(true),
+    startedAt: timestamp('started_at').defaultNow(),
+    lastActivity: timestamp('last_activity').defaultNow(),
+    expiresAt: timestamp('expires_at'), // Session expiration
+  },
+  (table) => [
+    index('mentra_sessions_glass_id_idx').on(table.glassId),
+    index('mentra_sessions_token_idx').on(table.sessionToken),
+  ]
+);
+
+// Voice Commands Log
+export const voiceCommands = pgTable(
+  'voice_commands',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    glassId: varchar('glass_id')
+      .notNull()
+      .references(() => mentraGlasses.id, { onDelete: 'cascade' }),
+    originalText: text('original_text').notNull(), // Raw voice-to-text
+    normalizedCommand: text('normalized_command'), // Parsed/cleaned command
+    commandType: text('command_type'), // e.g., 'task_create', 'status_check'
+    commandParams: json('command_params').$type<Record<string, any>>(), // Command parameters
+    executionStatus: text('execution_status').default('pending'), // pending, executed, failed
+    result: json('result').$type<Record<string, any>>(), // Command execution result
+    errorMessage: text('error_message'),
+    processedAt: timestamp('processed_at'),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => [
+    index('voice_commands_user_id_idx').on(table.userId),
+    index('voice_commands_glass_id_idx').on(table.glassId),
+    index('voice_commands_status_idx').on(table.executionStatus),
+  ]
+);
+
+// Glass Notifications Log
+export const glassNotifications = pgTable(
+  'glass_notifications',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    glassId: varchar('glass_id')
+      .notNull()
+      .references(() => mentraGlasses.id, { onDelete: 'cascade' }),
+    notificationType: text('notification_type').notNull(), // text, image, combined
+    title: text('title'),
+    message: text('message'),
+    imageUrl: text('image_url'), // For image notifications
+    imageData: text('image_data'), // Base64 encoded image data
+    deliveryStatus: text('delivery_status').default('pending'), // pending, sent, delivered, failed
+    mentraMessageId: text('mentra_message_id'), // mentraOS message ID
+    sentAt: timestamp('sent_at'),
+    acknowledgedAt: timestamp('acknowledged_at'), // When user acknowledged on glass
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => [
+    index('glass_notifications_user_id_idx').on(table.userId),
+    index('glass_notifications_glass_id_idx').on(table.glassId),
+    index('glass_notifications_status_idx').on(table.deliveryStatus),
+  ]
+);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   repositories: many(userRepositories),
@@ -172,6 +281,9 @@ export const usersRelations = relations(users, ({ many }) => ({
   systemState: many(userSystemState),
   pushSubscriptions: many(pushSubscriptions),
   notificationSettings: many(notificationSettings),
+  mentraGlasses: many(mentraGlasses),
+  voiceCommands: many(voiceCommands),
+  glassNotifications: many(glassNotifications),
 }));
 
 export const userRepositoriesRelations = relations(
@@ -222,6 +334,58 @@ export const notificationSettingsRelations = relations(
     user: one(users, {
       fields: [notificationSettings.userId],
       references: [users.id],
+    }),
+  })
+);
+
+// mentraOS Relations
+export const mentraGlassesRelations = relations(
+  mentraGlasses,
+  ({ one, many }) => ({
+    user: one(users, {
+      fields: [mentraGlasses.userId],
+      references: [users.id],
+    }),
+    sessions: many(mentraSessions),
+    voiceCommands: many(voiceCommands),
+    notifications: many(glassNotifications),
+  })
+);
+
+export const mentraSessionsRelations = relations(
+  mentraSessions,
+  ({ one }) => ({
+    glass: one(mentraGlasses, {
+      fields: [mentraSessions.glassId],
+      references: [mentraGlasses.id],
+    }),
+  })
+);
+
+export const voiceCommandsRelations = relations(
+  voiceCommands,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [voiceCommands.userId],
+      references: [users.id],
+    }),
+    glass: one(mentraGlasses, {
+      fields: [voiceCommands.glassId],
+      references: [mentraGlasses.id],
+    }),
+  })
+);
+
+export const glassNotificationsRelations = relations(
+  glassNotifications,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [glassNotifications.userId],
+      references: [users.id],
+    }),
+    glass: one(mentraGlasses, {
+      fields: [glassNotifications.glassId],
+      references: [mentraGlasses.id],
     }),
   })
 );
@@ -293,6 +457,48 @@ export const insertNotificationSettingsSchema = createInsertSchema(
   copilotAssigned: true,
 });
 
+// mentraOS Insert Schemas
+export const insertMentraGlassSchema = createInsertSchema(mentraGlasses).pick({
+  userId: true,
+  glassId: true,
+  glassName: true,
+  deviceModel: true,
+  pairingToken: true,
+  isActive: true,
+  apiEndpoint: true,
+});
+
+export const insertMentraSessionSchema = createInsertSchema(mentraSessions).pick({
+  glassId: true,
+  sessionToken: true,
+  isActive: true,
+  expiresAt: true,
+});
+
+export const insertVoiceCommandSchema = createInsertSchema(voiceCommands).pick({
+  userId: true,
+  glassId: true,
+  originalText: true,
+  normalizedCommand: true,
+  commandType: true,
+  commandParams: true,
+  executionStatus: true,
+  result: true,
+  errorMessage: true,
+});
+
+export const insertGlassNotificationSchema = createInsertSchema(glassNotifications).pick({
+  userId: true,
+  glassId: true,
+  notificationType: true,
+  title: true,
+  message: true,
+  imageUrl: true,
+  imageData: true,
+  deliveryStatus: true,
+  mentraMessageId: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -307,6 +513,16 @@ export type PushSubscription = typeof pushSubscriptions.$inferSelect;
 export type InsertPushSubscription = z.infer<typeof insertPushSubscriptionSchema>;
 export type NotificationSettings = typeof notificationSettings.$inferSelect;
 export type InsertNotificationSettings = z.infer<typeof insertNotificationSettingsSchema>;
+
+// mentraOS Types
+export type MentraGlass = typeof mentraGlasses.$inferSelect;
+export type InsertMentraGlass = z.infer<typeof insertMentraGlassSchema>;
+export type MentraSession = typeof mentraSessions.$inferSelect;
+export type InsertMentraSession = z.infer<typeof insertMentraSessionSchema>;
+export type VoiceCommand = typeof voiceCommands.$inferSelect;
+export type InsertVoiceCommand = z.infer<typeof insertVoiceCommandSchema>;
+export type GlassNotification = typeof glassNotifications.$inferSelect;
+export type InsertGlassNotification = z.infer<typeof insertGlassNotificationSchema>;
 
 // API Response types
 export interface AppState {

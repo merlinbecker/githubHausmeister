@@ -26,6 +26,7 @@ import {
   type AuthenticatedRequest,
 } from './lib/auth-middleware';
 import { initializeWebPush } from './lib/webPush';
+import { MentraService } from './lib/mentraService';
 
 // Extend session types
 declare module 'express-session' {
@@ -879,6 +880,279 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         console.error('Error sending test notification:', error);
         res.status(500).json({ error: 'Failed to send test' });
+      }
+    }
+  );
+
+  // ======================================
+  // mentraOS Smartglasses API Endpoints
+  // ======================================
+
+  // Register a new glass with user account
+  app.post(
+    '/api/mentra/register',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { glassId, glassName, deviceModel, apiEndpoint } = req.body;
+
+        if (!glassId || !glassName) {
+          return res.status(400).json({
+            error: 'glassId and glassName are required',
+          });
+        }
+
+        const { glass, pairingToken } = await MentraService.registerGlass({
+          userId: req.user!.id,
+          glassId,
+          glassName,
+          deviceModel,
+          apiEndpoint,
+        });
+
+        res.json({
+          success: true,
+          glass: {
+            id: glass.id,
+            glassId: glass.glassId,
+            glassName: glass.glassName,
+            deviceModel: glass.deviceModel,
+            isActive: glass.isActive,
+            createdAt: glass.createdAt,
+          },
+          pairingToken,
+        });
+      } catch (error) {
+        console.error('Error registering glass:', error);
+        const message = error instanceof Error ? error.message : 'Failed to register glass';
+        res.status(400).json({ error: message });
+      }
+    }
+  );
+
+  // Create a session for a registered glass (used by mentraOS app)
+  app.post('/api/mentra/pair', async (req, res) => {
+    try {
+      const { glassId, pairingToken } = req.body;
+
+      if (!glassId || !pairingToken) {
+        return res.status(400).json({
+          error: 'glassId and pairingToken are required',
+        });
+      }
+
+      const { sessionToken, expiresAt } = await MentraService.createSession(
+        glassId,
+        pairingToken
+      );
+
+      res.json({
+        success: true,
+        sessionToken,
+        expiresAt,
+      });
+    } catch (error) {
+      console.error('Error pairing glass:', error);
+      const message = error instanceof Error ? error.message : 'Failed to pair glass';
+      res.status(400).json({ error: message });
+    }
+  });
+
+  // Receive voice commands from glasses
+  app.post('/api/mentra/voice', async (req, res) => {
+    try {
+      const { glassId, sessionToken, voiceText, timestamp } = req.body;
+
+      if (!glassId || !sessionToken || !voiceText) {
+        return res.status(400).json({
+          error: 'glassId, sessionToken, and voiceText are required',
+        });
+      }
+
+      const voiceCommand = await MentraService.processVoiceCommand({
+        glassId,
+        sessionToken,
+        voiceText,
+        timestamp,
+      });
+
+      res.json({
+        success: true,
+        commandId: voiceCommand.id,
+        commandType: voiceCommand.commandType,
+        status: voiceCommand.executionStatus,
+      });
+    } catch (error) {
+      console.error('Error processing voice command:', error);
+      const message = error instanceof Error ? error.message : 'Failed to process voice command';
+      res.status(400).json({ error: message });
+    }
+  });
+
+  // Send push notification to a specific glass
+  app.post(
+    '/api/mentra/push',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { glassId, notification } = req.body;
+
+        if (!glassId || !notification) {
+          return res.status(400).json({
+            error: 'glassId and notification are required',
+          });
+        }
+
+        if (!notification.type || !notification.title || !notification.message) {
+          return res.status(400).json({
+            error: 'notification must have type, title, and message',
+          });
+        }
+
+        const glassNotification = await MentraService.sendNotificationToGlass({
+          glassId,
+          notification,
+        });
+
+        res.json({
+          success: true,
+          notificationId: glassNotification.id,
+          deliveryStatus: glassNotification.deliveryStatus,
+        });
+      } catch (error) {
+        console.error('Error sending notification to glass:', error);
+        const message = error instanceof Error ? error.message : 'Failed to send notification';
+        res.status(400).json({ error: message });
+      }
+    }
+  );
+
+  // Send image notification to glass
+  app.post(
+    '/api/mentra/image',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { glassId, title, message, imageUrl, imageData } = req.body;
+
+        if (!glassId || !title) {
+          return res.status(400).json({
+            error: 'glassId and title are required',
+          });
+        }
+
+        if (!imageUrl && !imageData) {
+          return res.status(400).json({
+            error: 'Either imageUrl or imageData must be provided',
+          });
+        }
+
+        const notification = {
+          type: 'image' as const,
+          title,
+          message: message || '',
+          imageUrl,
+          imageData,
+        };
+
+        const glassNotification = await MentraService.sendNotificationToGlass({
+          glassId,
+          notification,
+        });
+
+        res.json({
+          success: true,
+          notificationId: glassNotification.id,
+          deliveryStatus: glassNotification.deliveryStatus,
+        });
+      } catch (error) {
+        console.error('Error sending image to glass:', error);
+        const message = error instanceof Error ? error.message : 'Failed to send image';
+        res.status(400).json({ error: message });
+      }
+    }
+  );
+
+  // Get user's registered glasses and status
+  app.get(
+    '/api/mentra/glasses',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const glassStatus = await MentraService.getGlassStatus(req.user!.id);
+        res.json(glassStatus);
+      } catch (error) {
+        console.error('Error getting glass status:', error);
+        res.status(500).json({ error: 'Failed to get glass status' });
+      }
+    }
+  );
+
+  // Get voice command history
+  app.get(
+    '/api/mentra/voice-commands',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const limit = parseInt(req.query.limit as string) || 50;
+        const commands = await databaseStorage.getUserVoiceCommands(
+          req.user!.id,
+          limit
+        );
+        res.json(commands);
+      } catch (error) {
+        console.error('Error getting voice commands:', error);
+        res.status(500).json({ error: 'Failed to get voice commands' });
+      }
+    }
+  );
+
+  // Get glass notification history
+  app.get(
+    '/api/mentra/notifications',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const limit = parseInt(req.query.limit as string) || 50;
+        const notifications = await databaseStorage.getUserGlassNotifications(
+          req.user!.id,
+          limit
+        );
+        res.json(notifications);
+      } catch (error) {
+        console.error('Error getting glass notifications:', error);
+        res.status(500).json({ error: 'Failed to get notifications' });
+      }
+    }
+  );
+
+  // Deactivate/remove a glass
+  app.delete(
+    '/api/mentra/glasses/:glassId',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { glassId } = req.params;
+        
+        // Find the glass and verify ownership
+        const glass = await databaseStorage.getGlassByGlassId(glassId);
+        if (!glass) {
+          return res.status(404).json({ error: 'Glass not found' });
+        }
+        
+        if (glass.userId !== req.user!.id) {
+          return res.status(403).json({ error: 'Glass belongs to another user' });
+        }
+
+        const success = await databaseStorage.deactivateGlass(glass.id);
+        if (success) {
+          res.json({ success: true, message: 'Glass deactivated' });
+        } else {
+          res.status(400).json({ error: 'Failed to deactivate glass' });
+        }
+      } catch (error) {
+        console.error('Error deactivating glass:', error);
+        res.status(500).json({ error: 'Failed to deactivate glass' });
       }
     }
   );

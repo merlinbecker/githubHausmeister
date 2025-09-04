@@ -8,6 +8,10 @@ import {
   userSystemState,
   pushSubscriptions,
   notificationSettings,
+  mentraGlasses,
+  mentraSessions,
+  voiceCommands,
+  glassNotifications,
   type User,
   type InsertUser,
   type UserRepository,
@@ -21,6 +25,14 @@ import {
   type InsertPushSubscription,
   type NotificationSettings,
   type InsertNotificationSettings,
+  type MentraGlass,
+  type InsertMentraGlass,
+  type MentraSession,
+  type InsertMentraSession,
+  type VoiceCommand,
+  type InsertVoiceCommand,
+  type GlassNotification,
+  type InsertGlassNotification,
   type AppState,
 } from '@shared/schema';
 
@@ -160,12 +172,18 @@ export class DatabaseStorage {
     return task;
   }
 
-  async getUserTasks(userId: string): Promise<Task[]> {
-    return db
+  async getUserTasks(userId: string, limit?: number): Promise<Task[]> {
+    const query = db
       .select()
       .from(tasks)
       .where(eq(tasks.userId, userId))
       .orderBy(desc(tasks.createdAt));
+      
+    if (limit) {
+      return query.limit(limit);
+    }
+    
+    return query;
   }
 
   async getQueuedTasks(userId: string): Promise<Task[]> {
@@ -392,6 +410,195 @@ export class DatabaseStorage {
       .where(eq(notificationSettings.userId, userId))
       .returning();
     return updated;
+  }
+
+  // mentraOS Smartglasses operations
+  async addGlass(glassData: InsertMentraGlass): Promise<MentraGlass> {
+    const [glass] = await db
+      .insert(mentraGlasses)
+      .values(glassData)
+      .returning();
+    return glass;
+  }
+
+  async getUserGlasses(userId: string): Promise<MentraGlass[]> {
+    return db
+      .select()
+      .from(mentraGlasses)
+      .where(
+        and(
+          eq(mentraGlasses.userId, userId),
+          eq(mentraGlasses.isActive, true)
+        )
+      );
+  }
+
+  async getGlassByGlassId(glassId: string): Promise<MentraGlass | undefined> {
+    const [glass] = await db
+      .select()
+      .from(mentraGlasses)
+      .where(eq(mentraGlasses.glassId, glassId));
+    return glass;
+  }
+
+  async getGlassById(id: string): Promise<MentraGlass | undefined> {
+    const [glass] = await db
+      .select()
+      .from(mentraGlasses)
+      .where(eq(mentraGlasses.id, id));
+    return glass;
+  }
+
+  async updateGlass(
+    glassId: string,
+    updates: Partial<MentraGlass>
+  ): Promise<MentraGlass> {
+    const [updated] = await db
+      .update(mentraGlasses)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(mentraGlasses.id, glassId))
+      .returning();
+    return updated;
+  }
+
+  async deactivateGlass(glassId: string): Promise<boolean> {
+    const result = await db
+      .update(mentraGlasses)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(mentraGlasses.id, glassId));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // mentraOS Session operations
+  async createSession(sessionData: InsertMentraSession): Promise<MentraSession> {
+    const [session] = await db
+      .insert(mentraSessions)
+      .values(sessionData)
+      .returning();
+    return session;
+  }
+
+  async getActiveSession(glassId: string): Promise<MentraSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(mentraSessions)
+      .where(
+        and(
+          eq(mentraSessions.glassId, glassId),
+          eq(mentraSessions.isActive, true)
+        )
+      );
+    return session;
+  }
+
+  async updateSessionActivity(sessionId: string): Promise<boolean> {
+    const result = await db
+      .update(mentraSessions)
+      .set({ lastActivity: new Date() })
+      .where(eq(mentraSessions.id, sessionId));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async deactivateSession(sessionId: string): Promise<boolean> {
+    const result = await db
+      .update(mentraSessions)
+      .set({ isActive: false })
+      .where(eq(mentraSessions.id, sessionId));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Voice Commands operations
+  async addVoiceCommand(commandData: InsertVoiceCommand): Promise<VoiceCommand> {
+    const [command] = await db
+      .insert(voiceCommands)
+      .values(commandData)
+      .returning();
+    return command;
+  }
+
+  async getUserVoiceCommands(
+    userId: string,
+    limit: number = 50
+  ): Promise<VoiceCommand[]> {
+    return db
+      .select()
+      .from(voiceCommands)
+      .where(eq(voiceCommands.userId, userId))
+      .orderBy(desc(voiceCommands.createdAt))
+      .limit(limit);
+  }
+
+  async getVoiceCommand(commandId: string): Promise<VoiceCommand | undefined> {
+    const [command] = await db
+      .select()
+      .from(voiceCommands)
+      .where(eq(voiceCommands.id, commandId));
+    return command;
+  }
+
+  async updateVoiceCommandStatus(
+    commandId: string,
+    updates: {
+      executionStatus?: string;
+      result?: Record<string, any>;
+      errorMessage?: string;
+      processedAt?: Date;
+    }
+  ): Promise<VoiceCommand> {
+    const [updated] = await db
+      .update(voiceCommands)
+      .set(updates)
+      .where(eq(voiceCommands.id, commandId))
+      .returning();
+    return updated;
+  }
+
+  // Glass Notifications operations
+  async addGlassNotification(
+    notificationData: InsertGlassNotification
+  ): Promise<GlassNotification> {
+    const [notification] = await db
+      .insert(glassNotifications)
+      .values(notificationData)
+      .returning();
+    return notification;
+  }
+
+  async getUserGlassNotifications(
+    userId: string,
+    limit: number = 50
+  ): Promise<GlassNotification[]> {
+    return db
+      .select()
+      .from(glassNotifications)
+      .where(eq(glassNotifications.userId, userId))
+      .orderBy(desc(glassNotifications.createdAt))
+      .limit(limit);
+  }
+
+  async updateGlassNotificationStatus(
+    notificationId: string,
+    updates: {
+      deliveryStatus?: string;
+      mentraMessageId?: string;
+      sentAt?: Date;
+      acknowledgedAt?: Date;
+    }
+  ): Promise<GlassNotification> {
+    const [updated] = await db
+      .update(glassNotifications)
+      .set(updates)
+      .where(eq(glassNotifications.id, notificationId))
+      .returning();
+    return updated;
+  }
+
+  async getGlassNotification(notificationId: string): Promise<GlassNotification | undefined> {
+    const [notification] = await db
+      .select()
+      .from(glassNotifications)
+      .where(eq(glassNotifications.id, notificationId));
+    return notification;
   }
 }
 
