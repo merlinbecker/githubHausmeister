@@ -13,6 +13,7 @@ import SystemControls from '@/components/SystemControls';
 import { NotificationSettings } from '@/components/NotificationSettings';
 import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
 import { PushNotificationTester } from '@/components/PushNotificationTester';
+import { MentraOSTester } from '@/components/MentraOSTester';
 import { Github, LogOut, User } from 'lucide-react';
 
 export default function Dashboard() {
@@ -140,6 +141,8 @@ export default function Dashboard() {
         </div>
 
         <PushNotificationTester />
+
+        <MentraOSTester />
       </main>
 
       {/* Footer */}
