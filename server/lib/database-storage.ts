@@ -131,6 +131,23 @@ export class DatabaseStorage {
     return repository;
   }
 
+  async getUserRepositoriesByName(
+    owner: string,
+    repo: string
+  ): Promise<UserRepository[]> {
+    const repositories = await db
+      .select()
+      .from(userRepositories)
+      .where(
+        and(
+          eq(userRepositories.owner, owner), 
+          eq(userRepositories.repo, repo),
+          eq(userRepositories.isActive, true)
+        )
+      );
+    return repositories;
+  }
+
   // Task operations
   async createTask(taskData: InsertTask): Promise<Task> {
 
