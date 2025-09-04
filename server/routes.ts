@@ -39,12 +39,9 @@ declare module 'express-session' {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize web-push with VAPID keys
-  try {
-    initializeWebPush();
-    console.log('✅ Web-push initialized with VAPID keys');
-  } catch (error) {
-    console.warn('⚠️ Web-push initialization failed:', error);
-    console.warn('Push notifications will not be available');
+  const webPushInitialized = initializeWebPush();
+  if (!webPushInitialized) {
+    console.warn('⚠️ Push notifications will not be available');
   }
 
   // Session configuration

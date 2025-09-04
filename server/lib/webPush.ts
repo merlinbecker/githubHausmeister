@@ -73,13 +73,7 @@ export async function sendPushNotification(
   payload: NotificationPayload
 ): Promise<boolean> {
   try {
-    await webpush.sendNotification(subscription, JSON.stringify(payload), {
-      vapidDetails: {
-        subject: process.env.VAPID_SUBJECT || 'mailto:admin@example.com',
-        publicKey: process.env.VAPID_PUBLIC_KEY!,
-        privateKey: process.env.VAPID_PRIVATE_KEY!,
-      },
-    });
+    await webpush.sendNotification(subscription, JSON.stringify(payload));
     return true;
   } catch (error) {
     console.error('Failed to send push notification:', error);
