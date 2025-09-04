@@ -68,12 +68,17 @@ self.addEventListener('push', (event) => {
       icon: notificationData.icon,
       badge: notificationData.badge,
       tag: notificationData.tag,
-      data: notificationData.data,
-      requireInteraction: false,
-      actions: notificationData.url ? [{
+      data: notificationData,
+      requireInteraction: notificationData.requireInteraction || false,
+      vibrate: notificationData.vibrate || [200, 100, 200],
+      timestamp: notificationData.timestamp || Date.now(),
+      renotify: notificationData.renotify || false,
+      silent: notificationData.silent || false,
+      actions: notificationData.actions || (notificationData.url ? [{
         action: 'open',
-        title: 'Öffnen'
-      }] : []
+        title: 'Öffnen',
+        icon: notificationData.icon
+      }] : [])
     })
   );
 });
@@ -84,6 +89,11 @@ self.addEventListener('notificationclick', (event) => {
 
   event.notification.close();
 
+  // Handle action clicks
+  if (event.action === 'open') {
+    console.log('Action clicked: open');
+  }
+
   const urlToOpen = event.notification.data?.url || '/';
 
   event.waitUntil(
@@ -93,12 +103,16 @@ self.addEventListener('notificationclick', (event) => {
         for (const client of clientList) {
           if (client.url.includes(self.location.origin) && 'focus' in client) {
             client.focus();
-            client.navigate(urlToOpen);
+            if ('navigate' in client) {
+              client.navigate(urlToOpen);
+            } else {
+              // Fallback for older browsers
+              client.postMessage({ type: 'NAVIGATE', url: urlToOpen });
+            }
             return;
           }
         }
-
-        // Open new window if app is not open
+        // If no window is open, open a new one
         if (clients.openWindow) {
           return clients.openWindow(urlToOpen);
         }

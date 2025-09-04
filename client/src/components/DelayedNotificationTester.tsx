@@ -161,15 +161,28 @@ Die Benachrichtigung wird in ${delaySeconds} Sekunden gesendet, auch wenn der Br
           <Bell className="h-4 w-4" />
           <AlertDescription>
             <div className="space-y-2">
-              <p className="font-medium">Browser-Kompatibilität:</p>
+              <p className="font-medium">Browser-Kompatibilität für Push-Benachrichtigungen:</p>
               <ul className="text-sm space-y-1 ml-4">
-                <li>✅ <strong>Chrome/Edge:</strong> Vollständige Unterstützung</li>
-                <li>✅ <strong>Firefox:</strong> Vollständige Unterstützung</li>
+                <li>✅ <strong>Chrome (63+):</strong> Vollständige Unterstützung inkl. Background Sync</li>
+                <li>✅ <strong>Microsoft Edge (17+):</strong> Vollständige Unterstützung</li>
+                <li>✅ <strong>Firefox (44+):</strong> Vollständige Unterstützung</li>
                 <li>✅ <strong>Safari (iOS 16.4+):</strong> Nur als PWA (zum Homescreen hinzufügen)</li>
-                <li>✅ <strong>Mobile Browser:</strong> Unterstützt auf modernen Geräten</li>
+                <li>✅ <strong>Samsung Internet (4.0+):</strong> Vollständige Unterstützung</li>
+                <li>✅ <strong>Mobile Chrome/Firefox:</strong> Unterstützt auf modernen Android-Geräten</li>
+                <li>⚠️ <strong>iOS Safari (Web):</strong> Nicht unterstützt im Browser, nur als PWA</li>
               </ul>
+              <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-950 rounded text-xs">
+                <p className="font-medium mb-1">Mobile Optimierungen:</p>
+                <ul className="space-y-1">
+                  <li>• <code>requireInteraction: true</code> - Notification bleibt sichtbar</li>
+                  <li>• <code>badge</code> - App-Icon in der Benachrichtigung</li>
+                  <li>• <code>tag</code> - Vermeidet Duplikate</li>
+                  <li>• <code>icon</code> - Große Notification-Icons</li>
+                </ul>
+              </div>
               <p className="text-xs text-muted-foreground mt-2">
                 Für optimale Funktionalität auf mobilen Geräten sollte die App als PWA installiert werden.
+                Microsoft Edge unterstützt Push-Benachrichtigungen vollständig seit Version 17.
               </p>
             </div>
           </AlertDescription>

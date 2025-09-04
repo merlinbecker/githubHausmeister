@@ -926,6 +926,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
               tag: `delayed-test-${testId}`,
               badge: '/icon-192.png',
               requireInteraction: true,
+              // Enhanced mobile and browser compatibility
+              vibrate: [200, 100, 200], // Vibration pattern for mobile
+              timestamp: Date.now(),
+              renotify: false, // Don't re-notify for same tag
+              silent: false, // Allow sound
+              actions: [
+                {
+                  action: 'open',
+                  title: 'App öffnen',
+                  icon: '/icon-192.png'
+                }
+              ]
             };
 
             const { sendPushToMultipleSubscriptions } = await import('./lib/webPush');

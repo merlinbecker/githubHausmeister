@@ -33,6 +33,26 @@ export function PushNotificationTester() {
       }
       addTestResult('✅ Browser unterstützt Push-Benachrichtigungen');
 
+      // 1.1. Detect Browser for specific compatibility info
+      const userAgent = navigator.userAgent;
+      const isChrome = userAgent.includes('Chrome') && !userAgent.includes('Edg');
+      const isEdge = userAgent.includes('Edg');
+      const isFirefox = userAgent.includes('Firefox');
+      const isSafari = userAgent.includes('Safari') && !userAgent.includes('Chrome');
+      const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+      
+      let browserInfo = '';
+      if (isEdge) browserInfo = 'Microsoft Edge - Vollständige Unterstützung';
+      else if (isChrome) browserInfo = 'Google Chrome - Vollständige Unterstützung';
+      else if (isFirefox) browserInfo = 'Firefox - Vollständige Unterstützung';
+      else if (isSafari) browserInfo = 'Safari - Nur als PWA unterstützt (iOS 16.4+)';
+      else browserInfo = 'Unbekannter Browser';
+      
+      addTestResult(`🌐 Browser erkannt: ${browserInfo}`);
+      if (isMobile) {
+        addTestResult('📱 Mobiles Gerät erkannt - PWA Installation empfohlen');
+      }
+
       // 2. Check Permission
       addTestResult(`🔒 Berechtigung-Status: ${push.permission}`);
       if (push.permission === 'denied') {
