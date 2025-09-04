@@ -23,6 +23,7 @@ export interface NotificationContext {
   copilotAgent?: string;
   error?: string;
   url?: string;
+  data?: any;
 }
 
 export class NotificationService {

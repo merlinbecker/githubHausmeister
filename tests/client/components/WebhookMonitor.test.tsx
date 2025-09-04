@@ -124,7 +124,10 @@ describe('WebhookMonitor', () => {
   it('allows testing webhooks', async () => {
     const { getWebhookDeliveries, testWebhook } = await import('@/lib/api');
     vi.mocked(getWebhookDeliveries).mockResolvedValue([]);
-    vi.mocked(testWebhook).mockResolvedValue({ success: true });
+    vi.mocked(testWebhook).mockResolvedValue({ 
+      ok: true,
+      json: async () => ({ success: true })
+    } as Response);
 
     renderWithQueryClient(
       <WebhookMonitor repositories={mockRepositories} />

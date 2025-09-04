@@ -1061,6 +1061,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await handleCIEvent(payload);
       } else if (event === 'issues') {
         await handleIssuesEvent(payload);
+      } else {
+        // Handle other webhook events with generic notifications
+        await handleGenericWebhookEvent(event, payload);
       }
 
       res.json({ ok: true, delivery, event });
@@ -1195,14 +1198,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   async function handleCIEvent(payload: any) {
-    // Get repository info to find user
+    // Get repository info to find users
     const repoFullName = payload.repository?.full_name;
     if (!repoFullName) return;
 
     const [owner, repo] = repoFullName.split('/');
-    const userRepo = await databaseStorage.getUserRepositoryByName(owner, repo);
-    if (!userRepo) return;
+    const userRepos = await databaseStorage.getUserRepositoriesByName(owner, repo);
+    if (userRepos.length === 0) return;
 
+    // Send CI status change notifications to all users monitoring this repository
+    const ciStatus = payload.check_suite?.conclusion || 
+                    payload.workflow_run?.conclusion || 
+                    payload.check_run?.conclusion || 
+                    'unknown';
+    
+    const workflowName = payload.workflow_run?.name || 
+                        payload.check_suite?.app?.name ||
+                        payload.check_run?.name ||
+                        'CI Check';
+
+    // Send notifications to all users
+    for (const userRepo of userRepos) {
+      try {
+        const { NotificationService, NotificationType } = await import('./lib/notificationService');
+        await NotificationService.sendNotification(NotificationType.CI_STATUS_CHANGED, {
+          userId: userRepo.userId,
+          repositoryName: `${owner}/${repo}`,
+          url: payload.workflow_run?.html_url || payload.check_suite?.url || payload.check_run?.html_url,
+          data: {
+            status: ciStatus,
+            workflow: workflowName,
+            event: payload.workflow_run ? 'workflow_run' : payload.check_suite ? 'check_suite' : 'check_run'
+          }
+        });
+      } catch (error) {
+        console.warn(`Failed to send CI notification to user ${userRepo.userId}:`, error);
+      }
+    }
+
+    // Continue with existing auto-merge logic for active tasks
+    const userRepo = userRepos[0]; // Use first user for compatibility
     const activeTask = await databaseStorage.getActiveTask(userRepo.userId);
     if (!activeTask || !activeTask.pullNumber || !activeTask.headSha) return;
 
@@ -1252,10 +1287,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   async function handleIssuesEvent(payload: any) {
-    // Could be used for additional issue-related automation
-    console.log(
-      `Issue event: ${payload.action} for issue #${payload.issue?.number}`
-    );
+    const action = payload.action;
+    const issue = payload.issue;
+    const owner = payload.repository?.owner?.login;
+    const repo = payload.repository?.name;
+    
+    if (!owner || !repo || !issue) return;
+
+    // Get all users monitoring this repository
+    const userRepos = await databaseStorage.getUserRepositoriesByName(owner, repo);
+    if (userRepos.length === 0) return;
+
+    // Define which issue actions should trigger notifications
+    const notifiableActions = ['opened', 'closed', 'reopened', 'assigned', 'unassigned', 'labeled', 'unlabeled'];
+    
+    if (!notifiableActions.includes(action)) {
+      console.log(`Issue event: ${action} for issue #${issue.number} (not notifiable)`);
+      return;
+    }
+
+    console.log(`Issue event: ${action} for issue #${issue.number} - sending notifications`);
+
+    // Send notifications to all users monitoring this repository
+    for (const userRepo of userRepos) {
+      try {
+        // Check if this is a Copilot-managed issue by looking for our labels
+        const isHausmeisterIssue = issue.labels?.some((label: any) => 
+          ['hausmeister', 'chore'].includes(label.name?.toLowerCase())
+        );
+        
+        // Use different notification types based on context
+        let notificationType;
+        if (isHausmeisterIssue && action === 'closed') {
+          notificationType = await import('./lib/notificationService').then(m => m.NotificationType.TASK_COMPLETED);
+        } else if (isHausmeisterIssue && ['assigned'].includes(action)) {
+          notificationType = await import('./lib/notificationService').then(m => m.NotificationType.COPILOT_ASSIGNED);
+        } else {
+          // Generic repository activity
+          continue; // Skip for now, could add REPOSITORY_ACTIVITY notification type
+        }
+
+        const { NotificationService } = await import('./lib/notificationService');
+        await NotificationService.sendNotification(notificationType, {
+          userId: userRepo.userId,
+          repositoryName: `${owner}/${repo}`,
+          issueNumber: issue.number,
+          url: issue.html_url,
+          copilotAgent: issue.assignee?.login || 'GitHub Copilot',
+          taskTitle: issue.title,
+          data: {
+            action,
+            issueState: issue.state,
+            issueTitle: issue.title
+          }
+        });
+      } catch (error) {
+        console.warn(`Failed to send issue notification to user ${userRepo.userId}:`, error);
+      }
+    }
+  }
+
+  async function handleGenericWebhookEvent(event: string, payload: any) {
+    const owner = payload.repository?.owner?.login;
+    const repo = payload.repository?.name;
+    
+    if (!owner || !repo) return;
+
+    // Skip events that are too frequent or not user-relevant
+    const skipEvents = [
+      'ping', 'push', 'create', 'delete', 'fork', 'watch', 'star',
+      'repository', 'member', 'team', 'organization', 'installation'
+    ];
+    
+    if (skipEvents.includes(event)) return;
+
+    // Get all users monitoring this repository  
+    const userRepos = await databaseStorage.getUserRepositoriesByName(owner, repo);
+    if (userRepos.length === 0) return;
+
+    console.log(`Generic webhook event: ${event} for ${owner}/${repo} - notifying ${userRepos.length} users`);
+
+    // Send generic repository activity notifications
+    for (const userRepo of userRepos) {
+      try {
+        // For now, we'll use a simple notification for unhandled events
+        // Later this could be expanded with a REPOSITORY_ACTIVITY notification type
+        console.log(`Webhook ${event} received for ${owner}/${repo} (user: ${userRepo.userId})`);
+      } catch (error) {
+        console.warn(`Failed to process generic webhook for user ${userRepo.userId}:`, error);
+      }
+    }
   }
 
   const httpServer = createServer(app);
