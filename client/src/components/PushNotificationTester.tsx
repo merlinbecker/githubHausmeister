@@ -248,23 +248,32 @@ export function PushNotificationTester() {
             Client Test
           </Button>
 
-          {push.isSubscribed && (
-            <Button 
-              onClick={async () => {
-                const success = await push.unsubscribe();
-                if (success) {
-                  addTestResult('✅ Push-Subscription erfolgreich entfernt');
-                  addTestResult('💡 Für frischen Start bitte Browser-Cache leeren (Ctrl+Shift+R)');
-                } else {
-                  addTestResult('❌ Fehler beim Entfernen der Push-Subscription');
-                }
-              }} 
-              variant="destructive" 
-              size="sm"
-            >
-              Subscription entfernen
-            </Button>
-          )}
+          <Button 
+            onClick={async () => {
+              addTestResult('🔄 Starte kompletten Service Worker + Push Reset...');
+              
+              // Importiere reset Funktion
+              const { resetServiceWorkerAndSubscriptions } = await import('../lib/serviceWorker');
+              const success = await resetServiceWorkerAndSubscriptions();
+              
+              if (success) {
+                addTestResult('✅ Service Worker + Push komplett zurückgesetzt');
+                addTestResult('🔄 Lade Seite neu für frischen Start...');
+                
+                // Seite neu laden für frischen Start
+                setTimeout(() => {
+                  window.location.reload();
+                }, 2000);
+              } else {
+                addTestResult('❌ Fehler beim Service Worker Reset');
+                addTestResult('💡 Versuche Browser-Cache manuell zu leeren (Ctrl+Shift+R)');
+              }
+            }} 
+            variant="destructive" 
+            size="sm"
+          >
+            🔧 Complete Reset
+          </Button>
 
           <Button onClick={clearTestResults} variant="ghost" size="sm">
             Clear Log

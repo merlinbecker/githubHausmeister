@@ -74,19 +74,36 @@ export async function sendPushNotification(
 ): Promise<boolean> {
   try {
     // Log details for debugging
-    console.log('Sending push notification to:', subscription.endpoint);
+    console.log('🔔 Sending push notification to:', subscription.endpoint);
+    
+    // Parse endpoint URL to get correct aud claim
+    const endpointUrl = new URL(subscription.endpoint);
+    const audience = `${endpointUrl.protocol}//${endpointUrl.host}`;
+    
+    console.log('🎯 JWT audience (aud):', audience);
     
     // Check if this is a Windows WNS endpoint
     const isWNS = subscription.endpoint.includes('notify.windows.com');
+    const isFCM = subscription.endpoint.includes('fcm.googleapis.com');
+    
     if (isWNS) {
-      console.log('🟡 WNS endpoint detected - Microsoft additional auth may be required');
+      console.log('🟡 WNS endpoint detected - Microsoft auth challenges expected');
+    } else if (isFCM) {
+      console.log('🟢 FCM endpoint detected - Standard VAPID should work');
     }
     
+    // Create options with explicit VAPID details for debugging
     const options = {
-      TTL: 86400, // 24 hours  
-      // Note: vapidDetails werden global mit setVapidDetails() gesetzt
-      // NICHT hier nochmal setzen - das verursacht JWT-Signatur-Konflikte!
+      TTL: 86400, // 24 hours
+      vapidDetails: {
+        subject: process.env.VAPID_SUBJECT || 'mailto:merlinbecker@users.noreply.github.com',
+        publicKey: process.env.VAPID_PUBLIC_KEY!,
+        privateKey: process.env.VAPID_PRIVATE_KEY!
+      }
     };
+    
+    console.log('🔑 VAPID Subject:', options.vapidDetails.subject);
+    console.log('🔑 VAPID Public Key (first 20 chars):', options.vapidDetails.publicKey.substring(0, 20) + '...');
     
     await webpush.sendNotification(subscription, JSON.stringify(payload), options);
     console.log('✅ Push notification sent successfully');
@@ -94,10 +111,19 @@ export async function sendPushNotification(
   } catch (error) {
     console.error('❌ Failed to send push notification:', error);
     
-    // More detailed error logging for WNS
-    if (error instanceof Error && error.message.includes('401')) {
-      console.log('🔍 JWT Authentication failed - this is common with Windows WNS endpoints');
-      console.log('💡 Windows WNS requires Microsoft Store Dashboard registration + Package SID');
+    // Detailed error analysis
+    if (error instanceof Error) {
+      if (error.message.includes('401') || error.message.includes('JWT')) {
+        console.log('🔍 JWT Authentication failed:');
+        console.log('   - Endpoint:', subscription.endpoint);
+        console.log('   - Check if VAPID keys match between client and server');
+        console.log('   - Check if aud claim matches endpoint origin');
+      }
+      if (error.message.includes('403')) {
+        console.log('🔍 Permission denied - invalid JWT:');
+        console.log('   - VAPID signature verification failed');
+        console.log('   - Public/private key mismatch possible');
+      }
     }
     
     return false;
