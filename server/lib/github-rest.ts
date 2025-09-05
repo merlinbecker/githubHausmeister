@@ -110,10 +110,46 @@ export async function listPRsForIssue(
   issue_number: number
 ) {
   const octokit = new Octokit({ auth: token });
-  const { data } = await octokit.rest.search.issuesAndPullRequests({
-    q: `repo:${owner}/${repo} type:pr in:body is:open "${`#${issue_number}`}"`,
-  });
-  return data.items;
+  
+  // Use the updated search approach - query for pull requests that reference the issue
+  const searchQuery = `repo:${owner}/${repo} type:pr is:open "${`#${issue_number}`}"`;
+  
+  try {
+    const { data } = await octokit.rest.search.issuesAndPullRequests({
+      q: searchQuery,
+      per_page: 100, // Increase limit for better results
+    });
+    
+    // Additional filtering to ensure the PRs actually reference the issue
+    const filteredItems = data.items.filter(item => 
+      item.body?.includes(`#${issue_number}`) || 
+      item.title?.includes(`#${issue_number}`)
+    );
+    
+    return filteredItems;
+  } catch (error: any) {
+    console.warn(`Warning: Search API call failed for issue #${issue_number}:`, error.message);
+    
+    // Fallback: Try to get PRs via the pulls endpoint and filter manually
+    try {
+      const { data: pulls } = await octokit.rest.pulls.list({
+        owner,
+        repo,
+        state: 'open',
+        per_page: 100,
+      });
+      
+      const referencingPRs = pulls.filter(pr => 
+        pr.body?.includes(`#${issue_number}`) || 
+        pr.title?.includes(`#${issue_number}`)
+      );
+      
+      return referencingPRs;
+    } catch (fallbackError: any) {
+      console.error(`Error fetching PRs for issue #${issue_number}:`, fallbackError.message);
+      return [];
+    }
+  }
 }
 
 export async function registerWebhook(
@@ -490,11 +526,35 @@ export async function findSimilarOpenIssues(
     try {
       const { data } = await octokit.rest.search.issuesAndPullRequests({
         q: query!,
-        per_page: 10,
+        per_page: 30, // Increase the limit for better results
       });
       allResults.push(...data.items);
-    } catch (error) {
-      console.warn('Error searching for similar issues:', error);
+    } catch (error: any) {
+      console.warn('Warning: Search API call failed for similar issues:', error.message);
+      
+      // Fallback: Get issues directly and filter manually
+      try {
+        const { data: issues } = await octokit.rest.issues.listForRepo({
+          owner,
+          repo,
+          state: 'open',
+          per_page: 100,
+          labels: labels.length > 0 ? labels.join(',') : undefined,
+        });
+        
+        // Simple text matching for keywords
+        if (keywords.length > 0) {
+          const matchingIssues = issues.filter(issue => {
+            const issueText = `${issue.title} ${issue.body || ''}`.toLowerCase();
+            return keywords.some(keyword => issueText.includes(keyword));
+          });
+          allResults.push(...matchingIssues);
+        } else {
+          allResults.push(...issues);
+        }
+      } catch (fallbackError: any) {
+        console.warn('Fallback search also failed:', fallbackError.message);
+      }
     }
   }
 

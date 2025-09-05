@@ -4,7 +4,10 @@ import App from './App';
 import './index.css';
 import { registerServiceWorker } from './lib/serviceWorker';
 
-createRoot(document.getElementById('root')!).render(<App />);
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  createRoot(rootElement).render(<App />);
+}
 
 // Register service worker after app initialization
 // Enable in development for Replit since it provides HTTPS

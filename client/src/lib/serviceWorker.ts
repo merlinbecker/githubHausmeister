@@ -56,7 +56,7 @@ export async function resetServiceWorkerAndSubscriptions(): Promise<boolean> {
     
     // 6. Re-register service worker
     console.log('🔄 Re-registering Service Worker...');
-    const newRegistration = await navigator.serviceWorker.register('/sw.js', {
+    const _newRegistration = await navigator.serviceWorker.register('/sw.js', {
       scope: '/',
     });
     

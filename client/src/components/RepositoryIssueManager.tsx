@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, GitBranch } from 'lucide-react';
+import { GitBranch } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 

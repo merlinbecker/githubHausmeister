@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DatabaseStorage } from '../../../server/lib/database-storage';
-import type { InsertUser, InsertUserRepository, InsertTask } from '@shared/schema';
+import type { InsertUser, InsertTask } from '@shared/schema';
 
 // Mock the database
 vi.mock('../../../server/db', () => ({
