@@ -93,109 +93,172 @@ export default function IssueList({ repository }: IssueListProps) {
   const isCopilotAssigned = (issue: Issue) => {
     return issue.assignees?.some(assignee => 
       assignee.login.toLowerCase().includes('copilot') || 
-      assignee.login.toLowerCase().includes('github-actions')
+      assignee.login.toLowerCase().includes('github-actions') ||
+      assignee.login.toLowerCase().includes('swe-agent')
     );
   };
 
-  const renderIssueCard = (issue: Issue) => (
-    <Card key={issue.id} className="mb-4">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3 flex-1">
-            {getStateIcon(issue.state, issue.hasOpenPR || false)}
-            <div className="flex-1 min-w-0">
-              <CardTitle className="text-lg leading-6 mb-2">
-                <a 
-                  href={issue.html_url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="hover:underline text-github-text"
-                >
-                  #{issue.number}: {issue.title}
-                </a>
-              </CardTitle>
-              <div className="flex flex-wrap items-center gap-2 text-sm text-github-text-secondary">
-                <Badge variant={getStateBadgeVariant(issue.state, issue.hasOpenPR || false)}>
-                  {getStateBadgeText(issue.state, issue.hasOpenPR || false)}
-                </Badge>
-                {issue.labels.map(label => (
-                  <Badge 
-                    key={label.id}
-                    variant="outline" 
-                    className="text-xs"
-                    style={{ borderColor: `#${label.color}`, color: `#${label.color}` }}
+  const getCopilotAssignee = (issue: Issue) => {
+    return issue.assignees?.find(assignee => 
+      assignee.login.toLowerCase().includes('copilot') || 
+      assignee.login.toLowerCase().includes('github-actions') ||
+      assignee.login.toLowerCase().includes('swe-agent')
+    );
+  };
+
+  const getWorkflowStatus = (issue: Issue) => {
+    if (issue.hasOpenPR && issue.openPRs && issue.openPRs.length > 0) {
+      return {
+        status: 'in_progress',
+        text: 'PR in progress',
+        icon: GitPullRequest,
+        color: 'text-blue-600',
+        bgColor: 'bg-blue-50 border-blue-200'
+      };
+    }
+    
+    const copilotAssignee = getCopilotAssignee(issue);
+    if (copilotAssignee) {
+      return {
+        status: 'assigned',
+        text: `Assigned to ${copilotAssignee.login}`,
+        icon: Bot,
+        color: 'text-purple-600',
+        bgColor: 'bg-purple-50 border-purple-200'
+      };
+    }
+    
+    if (issue.assignees && issue.assignees.length > 0) {
+      return {
+        status: 'assigned_human',
+        text: `Assigned to ${issue.assignees[0].login}`,
+        icon: User,
+        color: 'text-green-600',
+        bgColor: 'bg-green-50 border-green-200'
+      };
+    }
+    
+    return {
+      status: 'unassigned',
+      text: 'Available for assignment',
+      icon: AlertCircle,
+      color: 'text-gray-500',
+      bgColor: 'bg-gray-50 border-gray-200'
+    };
+  };
+
+  const renderIssueCard = (issue: Issue) => {
+    const workflowStatus = getWorkflowStatus(issue);
+    const StatusIcon = workflowStatus.icon;
+    
+    return (
+      <Card key={issue.id} className="mb-4">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3 flex-1">
+              {getStateIcon(issue.state, issue.hasOpenPR || false)}
+              <div className="flex-1 min-w-0">
+                <CardTitle className="text-lg leading-6 mb-2">
+                  <a 
+                    href={issue.html_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="hover:underline text-github-text"
                   >
-                    {label.name}
+                    #{issue.number}: {issue.title}
+                  </a>
+                </CardTitle>
+                <div className="flex flex-wrap items-center gap-2 text-sm text-github-text-secondary mb-2">
+                  <Badge variant={getStateBadgeVariant(issue.state, issue.hasOpenPR || false)}>
+                    {getStateBadgeText(issue.state, issue.hasOpenPR || false)}
                   </Badge>
-                ))}
-                <span className="flex items-center gap-1">
-                  <Calendar className="h-3 w-3" />
-                  {new Date(issue.created_at).toLocaleDateString()}
-                </span>
+                  {issue.labels.map(label => (
+                    <Badge 
+                      key={label.id}
+                      variant="outline" 
+                      className="text-xs"
+                      style={{ borderColor: `#${label.color}`, color: `#${label.color}` }}
+                    >
+                      {label.name}
+                    </Badge>
+                  ))}
+                  <span className="flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    {new Date(issue.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+                
+                {/* Enhanced workflow status display */}
+                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium border ${workflowStatus.bgColor} ${workflowStatus.color}`}>
+                  <StatusIcon className="h-4 w-4" />
+                  {workflowStatus.text}
+                </div>
               </div>
             </div>
+            <div className="flex flex-col items-end gap-2">
+              {issue.assignees && issue.assignees.length > 0 && (
+                <div className="flex items-center gap-1">
+                  {issue.assignees.map(assignee => (
+                    <Avatar key={assignee.id} className="h-6 w-6">
+                      <AvatarImage src={assignee.avatar_url} alt={assignee.login} />
+                      <AvatarFallback>{assignee.login[0].toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                  ))}
+                </div>
+              )}
+              {issue.state === 'open' && !isCopilotAssigned(issue) && !issue.hasOpenPR && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleAssignToCopilot(issue.number)}
+                  disabled={assigningIssue === issue.number}
+                  className="text-xs"
+                >
+                  {assigningIssue === issue.number ? (
+                    <>
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current mr-1"></div>
+                      Assigning...
+                    </>
+                  ) : (
+                    <>
+                      <Bot className="h-3 w-3 mr-1" />
+                      Assign to Copilot
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
           </div>
-          <div className="flex flex-col items-end gap-2">
-            {issue.assignees && issue.assignees.length > 0 && (
-              <div className="flex items-center gap-1">
-                {issue.assignees.map(assignee => (
-                  <Avatar key={assignee.id} className="h-6 w-6">
-                    <AvatarImage src={assignee.avatar_url} alt={assignee.login} />
-                    <AvatarFallback>{assignee.login[0].toUpperCase()}</AvatarFallback>
-                  </Avatar>
+        </CardHeader>
+        {issue.hasOpenPR && issue.openPRs && issue.openPRs.length > 0 && (
+          <CardContent className="pt-0">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="text-sm text-blue-800">
+                <p className="flex items-center gap-1 mb-2 font-medium">
+                  <GitBranch className="h-3 w-3" />
+                  {issue.openPRs.length === 1 ? 'Open Pull Request:' : `${issue.openPRs.length} Open Pull Requests:`}
+                </p>
+                {issue.openPRs.map(pr => (
+                  <div key={pr.id} className="ml-4 flex items-center gap-2 py-1">
+                    <GitPullRequest className="h-3 w-3" />
+                    <a 
+                      href={pr.html_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="hover:underline font-medium"
+                    >
+                      #{pr.number}: {pr.title}
+                    </a>
+                    <span className="text-xs bg-blue-100 px-2 py-1 rounded">by {pr.user.login}</span>
+                  </div>
                 ))}
               </div>
-            )}
-            {issue.state === 'open' && !isCopilotAssigned(issue) && !issue.hasOpenPR && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleAssignToCopilot(issue.number)}
-                disabled={assigningIssue === issue.number}
-                className="text-xs"
-              >
-                {assigningIssue === issue.number ? (
-                  <>
-                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current mr-1"></div>
-                    Assigning...
-                  </>
-                ) : (
-                  <>
-                    <Bot className="h-3 w-3 mr-1" />
-                    Assign to Copilot
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
-        </div>
-      </CardHeader>
-      {issue.hasOpenPR && issue.openPRs && issue.openPRs.length > 0 && (
-        <CardContent className="pt-0">
-          <div className="text-sm text-github-text-secondary">
-            <p className="flex items-center gap-1 mb-2">
-              <GitBranch className="h-3 w-3" />
-              Open Pull Requests:
-            </p>
-            {issue.openPRs.map(pr => (
-              <div key={pr.id} className="ml-4 flex items-center gap-2">
-                <GitPullRequest className="h-3 w-3" />
-                <a 
-                  href={pr.html_url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="hover:underline"
-                >
-                  #{pr.number}: {pr.title}
-                </a>
-                <span className="text-xs">by {pr.user.login}</span>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      )}
-    </Card>
-  );
+            </div>
+          </CardContent>
+        )}
+      </Card>
+    );
+  };
 
   if (isLoading) {
     return (
