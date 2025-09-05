@@ -17,6 +17,9 @@ import {
   markPRReadyForReview,
   commentOnPR,
   getPullRequest,
+  listRepositoryIssues,
+  listRepositoryCollaborators,
+  listPRsForIssue,
 } from './lib/github-rest';
 import { isPRGreen } from './lib/ci';
 import { GitHubOAuth } from './lib/github-oauth';
@@ -1413,6 +1416,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         console.error('Error creating test webhook:', error);
         res.status(500).json({ error: 'Failed to create test webhook' });
+      }
+    }
+  );
+
+  // Repository Issues Management Routes
+
+  // Get repository issues (open + latest 10 closed)
+  app.get(
+    '/api/repositories/:owner/:repo/issues',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { owner, repo } = req.params;
+        const user = req.user!;
+
+        // Check if user has access to this repository
+        const userRepos = await databaseStorage.getUserRepositories(user.id);
+        const userRepo = userRepos.find(r => r.owner === owner && r.repo === repo);
+        if (!userRepo) {
+          return res.status(404).json({ error: 'Repository not found or no access' });
+        }
+
+        const issues = await listRepositoryIssues(user.accessToken, owner, repo);
+        
+        // For each open issue, check if it has associated PRs
+        const openIssuesWithPRs = await Promise.all(
+          issues.open.map(async (issue) => {
+            try {
+              const prs = await listPRsForIssue(user.accessToken, owner, repo, issue.number);
+              return {
+                ...issue,
+                hasOpenPR: prs.length > 0,
+                openPRs: prs
+              };
+            } catch (error) {
+              console.warn(`Error checking PRs for issue #${issue.number}:`, error);
+              return {
+                ...issue,
+                hasOpenPR: false,
+                openPRs: []
+              };
+            }
+          })
+        );
+
+        res.json({
+          open: openIssuesWithPRs,
+          closed: issues.closed
+        });
+      } catch (error) {
+        console.error('Error fetching repository issues:', error);
+        res.status(500).json({ error: 'Failed to fetch repository issues' });
+      }
+    }
+  );
+
+  // Get repository collaborators
+  app.get(
+    '/api/repositories/:owner/:repo/collaborators',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { owner, repo } = req.params;
+        const user = req.user!;
+
+        // Check if user has access to this repository
+        const userRepos = await databaseStorage.getUserRepositories(user.id);
+        const userRepo = userRepos.find(r => r.owner === owner && r.repo === repo);
+        if (!userRepo) {
+          return res.status(404).json({ error: 'Repository not found or no access' });
+        }
+
+        const collaborators = await listRepositoryCollaborators(user.accessToken, owner, repo);
+        res.json(collaborators);
+      } catch (error) {
+        console.error('Error fetching repository collaborators:', error);
+        res.status(500).json({ error: 'Failed to fetch repository collaborators' });
+      }
+    }
+  );
+
+  // Assign issue to Copilot
+  app.post(
+    '/api/repositories/:owner/:repo/issues/:issueNumber/assign',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { owner, repo, issueNumber } = req.params;
+        const user = req.user!;
+
+        // Check if user has access to this repository
+        const userRepos = await databaseStorage.getUserRepositories(user.id);
+        const userRepo = userRepos.find(r => r.owner === owner && r.repo === repo);
+        if (!userRepo) {
+          return res.status(404).json({ error: 'Repository not found or no access' });
+        }
+
+        // Use the existing Copilot assignment service
+        const { CopilotAssignmentService } = await import('./lib/copilot-assignment');
+        const copilotService = new CopilotAssignmentService(user.accessToken);
+        
+        const result = await copilotService.assignToIssue(owner, repo, parseInt(issueNumber));
+        
+        if (result.success) {
+          res.json({
+            success: true,
+            assignedAgent: result.assignedAgent,
+            message: `Issue #${issueNumber} assigned to ${result.assignedAgent}`
+          });
+        } else {
+          res.status(400).json({
+            success: false,
+            error: result.error,
+            message: `Failed to assign issue #${issueNumber}: ${result.error}`
+          });
+        }
+      } catch (error) {
+        console.error('Error assigning issue to Copilot:', error);
+        res.status(500).json({ error: 'Failed to assign issue to Copilot' });
+      }
+    }
+  );
+
+  // Get PRs for specific issue
+  app.get(
+    '/api/repositories/:owner/:repo/issues/:issueNumber/prs',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { owner, repo, issueNumber } = req.params;
+        const user = req.user!;
+
+        // Check if user has access to this repository
+        const userRepos = await databaseStorage.getUserRepositories(user.id);
+        const userRepo = userRepos.find(r => r.owner === owner && r.repo === repo);
+        if (!userRepo) {
+          return res.status(404).json({ error: 'Repository not found or no access' });
+        }
+
+        const prs = await listPRsForIssue(user.accessToken, owner, repo, parseInt(issueNumber));
+        res.json(prs);
+      } catch (error) {
+        console.error('Error fetching PRs for issue:', error);
+        res.status(500).json({ error: 'Failed to fetch PRs for issue' });
       }
     }
   );
