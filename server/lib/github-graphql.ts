@@ -9,6 +9,7 @@ export async function gql<T>(
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
+      'X-Github-Next-Global-ID': '1',
     },
     body: JSON.stringify({ query, variables }),
   });
@@ -49,9 +50,61 @@ export async function getCopilotNodeId(
   owner: string,
   repo: string
 ): Promise<string> {
-  // Method 1: Check suggested actors for repository (most reliable)
+  // Method 1: Check suggested actors for repository using GitHub's recommended approach
   try {
     const suggestedActorsQuery = `
+      query($owner: String!, $repo: String!) {
+        repository(owner: $owner, name: $repo) {
+          suggestedActors(capabilities: [CAN_BE_ASSIGNED], first: 100) {
+            nodes {
+              __typename
+              login
+              ... on Bot {
+                id
+              }
+              ... on User {
+                id
+              }
+            }
+          }
+        }
+      }`;
+
+    const actorsData: any = await gql(
+      suggestedActorsQuery,
+      { owner, repo },
+      token
+    );
+    const suggestedActors = actorsData.repository?.suggestedActors?.nodes || [];
+
+    // Look for Copilot Bot agent specifically
+    for (const actor of suggestedActors) {
+      if (
+        actor.__typename === 'Bot' &&
+        actor.login === 'copilot-swe-agent'
+      ) {
+        console.log('Found Copilot Bot agent via suggestedActors:', actor.login);
+        return actor.id;
+      }
+    }
+
+    // Fallback: Look for other known Copilot agents
+    for (const actor of suggestedActors) {
+      if (
+        actor.login === 'github-copilot[bot]' ||
+        actor.login.includes('copilot')
+      ) {
+        console.log('Found Copilot agent via suggestedActors:', actor.login);
+        return actor.id;
+      }
+    }
+  } catch (error) {
+    console.log('Suggested actors method failed:', error);
+  }
+
+  // Method 2: Fallback to assignable users (legacy approach)
+  try {
+    const assignableUsersQuery = `
       query($owner: String!, $repo: String!) {
         repository(owner: $owner, name: $repo) {
           assignableUsers(first: 100) {
@@ -64,14 +117,14 @@ export async function getCopilotNodeId(
         }
       }`;
 
-    const actorsData: any = await gql(
-      suggestedActorsQuery,
+    const usersData: any = await gql(
+      assignableUsersQuery,
       { owner, repo },
       token
     );
-    const assignableUsers = actorsData.repository?.assignableUsers?.nodes || [];
+    const assignableUsers = usersData.repository?.assignableUsers?.nodes || [];
 
-    // Look for Copilot agents
+    // Look for Copilot agents in assignable users
     for (const user of assignableUsers) {
       if (
         user.login === 'copilot-swe-agent' ||
@@ -83,10 +136,10 @@ export async function getCopilotNodeId(
       }
     }
   } catch (error) {
-    console.log('Suggested actors method failed:', error);
+    console.log('Assignable users method failed:', error);
   }
 
-  // Method 2: Direct search for copilot-swe-agent
+  // Method 3: Direct search for copilot-swe-agent
   try {
     const searchQuery = `
       query {
@@ -116,7 +169,7 @@ export async function getCopilotNodeId(
     console.log('Search method failed:', error);
   }
 
-  // Method 3: Try REST API with correct bot username
+  // Method 4: Try REST API with correct bot username
   try {
     const octokit = await import('octokit');
     const client = new octokit.Octokit({ auth: token });
@@ -158,7 +211,7 @@ export async function getCopilotNodeId(
     console.log('REST fallback failed:', error);
   }
 
-  // Method 4: Fallback to current user
+  // Method 5: Fallback to current user
   console.log('Using current user as assignee fallback');
   const fallbackQuery = `
     query {
@@ -182,10 +235,19 @@ export async function addAssignee(
   assigneeNodeId: string
 ): Promise<void> {
   const mutation = `
-    mutation($input: AddAssigneesToAssignableInput!) {
-      addAssigneesToAssignable(input: $input) {
+    mutation($input: ReplaceActorsForAssignableInput!) {
+      replaceActorsForAssignable(input: $input) {
         assignable {
           __typename
+          ... on Issue {
+            id
+            assignees(first: 10) {
+              nodes {
+                login
+                id
+              }
+            }
+          }
         }
       }
     }`;
@@ -195,7 +257,7 @@ export async function addAssignee(
     {
       input: {
         assignableId: issueNodeId,
-        assigneeIds: [assigneeNodeId],
+        actorIds: [assigneeNodeId],
       },
     },
     token

@@ -50,7 +50,7 @@ export class CopilotAssignmentService {
   ) {
     this.config = {
       // Default configuration
-      preferredAgents: ['copilot', 'github-copilot[bot]', 'copilot-swe-agent'],
+      preferredAgents: ['copilot-swe-agent', 'github-copilot[bot]', 'copilot'],
       enableSearch: true,
       fallbackToUser: false,
       retryAttempts: 3,
@@ -232,10 +232,10 @@ export class CopilotAssignmentService {
     agentNodeId: string
   ): Promise<{ success: boolean; assignedLogin?: string }> {
     const mutation = `
-      mutation($assignableId: ID!, $assigneeIds: [ID!]!) {
-        addAssigneesToAssignable(input: {
+      mutation($assignableId: ID!, $actorIds: [ID!]!) {
+        replaceActorsForAssignable(input: {
           assignableId: $assignableId,
-          assigneeIds: $assigneeIds
+          actorIds: $actorIds
         }) {
           assignable {
             ... on Issue {
@@ -258,19 +258,19 @@ export class CopilotAssignmentService {
       mutation,
       {
         assignableId: issueNodeId,
-        assigneeIds: [agentNodeId],
+        actorIds: [agentNodeId],
       },
       this.token
     );
 
     // Try to verify the assignment worked by checking if the agent is in the assignees list
-    const assignees = result?.addAssigneesToAssignable?.assignable?.assignees?.nodes || [];
+    const assignees = result?.replaceActorsForAssignable?.assignable?.assignees?.nodes || [];
     const assignedAgent = assignees.find((assignee: any) => assignee.id === agentNodeId);
     
     if (assignedAgent) {
       console.log(`✅ [COPILOT ASSIGNMENT] GraphQL assignment verified: ${assignedAgent.login} is now assigned`);
       return { success: true, assignedLogin: assignedAgent.login };
-    } else if (assignees.length === 0 && result?.addAssigneesToAssignable?.assignable) {
+    } else if (assignees.length === 0 && result?.replaceActorsForAssignable?.assignable) {
       // If no assignees are returned but the mutation succeeded, assume it worked
       // This handles cases where the GraphQL response doesn't include assignees (like in tests)
       console.log(`✅ [COPILOT ASSIGNMENT] GraphQL assignment completed (no assignees in response)`);
@@ -361,35 +361,98 @@ export class CopilotAssignmentService {
     owner: string,
     repo: string
   ): Promise<AgentInfo | null> {
-    const query = `
-      query($owner: String!, $repo: String!) {
-        repository(owner: $owner, name: $repo) {
-          assignableUsers(first: 100) {
-            nodes {
-              id
-              login
-              __typename
+    // First try the recommended suggestedActors approach
+    try {
+      const suggestedActorsQuery = `
+        query($owner: String!, $repo: String!) {
+          repository(owner: $owner, name: $repo) {
+            suggestedActors(capabilities: [CAN_BE_ASSIGNED], first: 100) {
+              nodes {
+                __typename
+                login
+                ... on Bot {
+                  id
+                }
+                ... on User {
+                  id
+                }
+              }
             }
           }
         }
-      }
-    `;
+      `;
 
-    const data: any = await gql(query, { owner, repo }, this.token);
-    const assignableUsers = data.repository?.assignableUsers?.nodes || [];
+      const data: any = await gql(suggestedActorsQuery, { owner, repo }, this.token);
+      const suggestedActors = data.repository?.suggestedActors?.nodes || [];
 
-    // Look for Copilot agents in assignable users
-    for (const user of assignableUsers) {
-      if (this.isCopilotAgent(user.login)) {
-        console.log(
-          `🎯 [COPILOT AGENT] Found agent in repository: ${user.login}`
-        );
-        return {
-          nodeId: user.id,
-          login: user.login,
-          source: 'repository',
-        };
+      // Look for Copilot Bot agent specifically (recommended approach)
+      for (const actor of suggestedActors) {
+        if (
+          actor.__typename === 'Bot' &&
+          actor.login === 'copilot-swe-agent'
+        ) {
+          console.log(
+            `🎯 [COPILOT AGENT] Found Copilot Bot agent in suggestedActors: ${actor.login}`
+          );
+          return {
+            nodeId: actor.id,
+            login: actor.login,
+            source: 'repository',
+          };
+        }
       }
+
+      // Fallback: Look for other Copilot agents in suggestedActors
+      for (const actor of suggestedActors) {
+        if (this.isCopilotAgent(actor.login)) {
+          console.log(
+            `🎯 [COPILOT AGENT] Found Copilot agent in suggestedActors: ${actor.login}`
+          );
+          return {
+            nodeId: actor.id,
+            login: actor.login,
+            source: 'repository',
+          };
+        }
+      }
+    } catch (error) {
+      console.warn(`🎯 [COPILOT AGENT] suggestedActors query failed: ${error}`);
+    }
+
+    // Fallback to assignableUsers (legacy approach)
+    try {
+      const assignableUsersQuery = `
+        query($owner: String!, $repo: String!) {
+          repository(owner: $owner, name: $repo) {
+            assignableUsers(first: 100) {
+              nodes {
+                id
+                login
+                __typename
+              }
+            }
+          }
+        }
+      `;
+
+      const data: any = await gql(assignableUsersQuery, { owner, repo }, this.token);
+      const assignableUsers = data.repository?.assignableUsers?.nodes || [];
+
+      // Look for Copilot agents in assignable users
+      for (const user of assignableUsers) {
+        if (this.isCopilotAgent(user.login)) {
+          console.log(
+            `🎯 [COPILOT AGENT] Found agent in assignableUsers: ${user.login}`
+          );
+          return {
+            nodeId: user.id,
+            login: user.login,
+            source: 'repository',
+          };
+        }
+      }
+    } catch (error) {
+      console.warn(`🎯 [COPILOT AGENT] assignableUsers query failed: ${error}`);
     }
 
     return null;
@@ -457,6 +520,7 @@ export class CopilotAssignmentService {
   private isCopilotAgent(login: string): boolean {
     const lowerLogin = login.toLowerCase();
     return (
+      login === 'copilot-swe-agent' || // Prioritize the specific Copilot SWE agent
       lowerLogin.includes('copilot') ||
       this.config.preferredAgents.includes(login) ||
       lowerLogin.includes('bot')

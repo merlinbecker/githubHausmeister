@@ -64,7 +64,7 @@ describe('CopilotAssignmentService', () => {
       mockGql
         .mockResolvedValueOnce({ node: { login: 'copilot-agent' } }) // getLoginFromNodeId
         .mockResolvedValueOnce({ 
-          addAssigneesToAssignable: {
+          replaceActorsForAssignable: {
             assignable: {
               id: 'issue-id',
               number: 123,
@@ -107,7 +107,15 @@ describe('CopilotAssignmentService', () => {
       mockGql
         .mockRejectedValueOnce(new Error('Invalid node ID')) // getLoginFromNodeId fails
         .mockResolvedValueOnce({
-          // findAgentInRepository
+          // findAgentInRepository - suggestedActors first
+          repository: {
+            suggestedActors: {
+              nodes: [], // No suggested actors
+            },
+          },
+        })
+        .mockResolvedValueOnce({
+          // findAgentInRepository - assignableUsers fallback
           repository: {
             assignableUsers: {
               nodes: [
@@ -118,7 +126,7 @@ describe('CopilotAssignmentService', () => {
           },
         })
         .mockResolvedValueOnce({ 
-          addAssigneesToAssignable: {
+          replaceActorsForAssignable: {
             assignable: {
               id: 'issue-id',
               number: 123,
@@ -152,7 +160,15 @@ describe('CopilotAssignmentService', () => {
 
       mockGql
         .mockResolvedValueOnce({
-          // findAgentInRepository (no agents found)
+          // findAgentInRepository - suggestedActors first (no agents found)
+          repository: {
+            suggestedActors: {
+              nodes: [],
+            },
+          },
+        })
+        .mockResolvedValueOnce({
+          // findAgentInRepository - assignableUsers fallback (no agents found)
           repository: {
             assignableUsers: {
               nodes: [{ id: 'user1-id', login: 'regular-user' }],
@@ -161,17 +177,17 @@ describe('CopilotAssignmentService', () => {
         })
         .mockResolvedValueOnce({
           // findAgentByGlobalSearch
-          user: { id: 'copilot-global-id', login: 'copilot' },
+          user: { id: 'copilot-global-id', login: 'copilot-swe-agent' },
         })
         .mockResolvedValueOnce({ 
-          addAssigneesToAssignable: {
+          replaceActorsForAssignable: {
             assignable: {
               id: 'issue-id',
               number: 123,
               title: 'Test Issue',
               assignees: {
                 nodes: [
-                  { id: 'copilot-global-id', login: 'copilot' }
+                  { id: 'copilot-global-id', login: 'copilot-swe-agent' }
                 ]
               }
             }
@@ -188,7 +204,7 @@ describe('CopilotAssignmentService', () => {
       );
 
       expect(result.success).toBe(true);
-      expect(result.assignedAgent).toBe('copilot');
+      expect(result.assignedAgent).toBe('copilot-swe-agent');
       expect(result.agentInfo?.source).toBe('search');
     });
 
@@ -202,23 +218,31 @@ describe('CopilotAssignmentService', () => {
 
       mockGql
         .mockResolvedValueOnce({
-          // findAgentInRepository (no agents found)
+          // findAgentInRepository - suggestedActors first (no agents found)
+          repository: {
+            suggestedActors: {
+              nodes: [],
+            },
+          },
+        })
+        .mockResolvedValueOnce({
+          // findAgentInRepository - assignableUsers fallback (no agents found)
           repository: {
             assignableUsers: {
               nodes: [],
             },
           },
         })
-        // findAgentByGlobalSearch tries 3 preferred agents by default: 'copilot', 'github-copilot[bot]', 'copilot-swe-agent'
-        .mockRejectedValueOnce(new Error('No user found')) // copilot search fails
-        .mockRejectedValueOnce(new Error('No user found')) // github-copilot[bot] search fails
+        // findAgentByGlobalSearch tries 3 preferred agents by default: 'copilot-swe-agent', 'github-copilot[bot]', 'copilot'
         .mockRejectedValueOnce(new Error('No user found')) // copilot-swe-agent search fails
+        .mockRejectedValueOnce(new Error('No user found')) // github-copilot[bot] search fails
+        .mockRejectedValueOnce(new Error('No user found')) // copilot search fails
         .mockResolvedValueOnce({
           // getCurrentUser
           viewer: { id: 'current-user-id', login: 'current-user' },
         })
         .mockResolvedValueOnce({ 
-          addAssigneesToAssignable: {
+          replaceActorsForAssignable: {
             assignable: {
               id: 'issue-id',
               number: 123,
@@ -251,7 +275,15 @@ describe('CopilotAssignmentService', () => {
 
       mockGql
         .mockResolvedValueOnce({
-          // findAgentInRepository (no agents found)
+          // findAgentInRepository - suggestedActors first (no agents found)
+          repository: {
+            suggestedActors: {
+              nodes: [],
+            },
+          },
+        })
+        .mockResolvedValueOnce({
+          // findAgentInRepository - assignableUsers fallback (no agents found)
           repository: {
             assignableUsers: {
               nodes: [],
@@ -378,7 +410,7 @@ describe('CopilotAssignmentService', () => {
       mockGql
         .mockResolvedValueOnce({ node: { login: 'copilot-agent' } }) // First call
         .mockResolvedValue({ 
-          addAssigneesToAssignable: {
+          replaceActorsForAssignable: {
             assignable: {
               id: 'issue-id',
               number: 123,
@@ -427,7 +459,7 @@ describe('CopilotAssignmentService', () => {
       mockGql
         .mockResolvedValueOnce({ node: { login: 'copilot-agent' } })
         .mockResolvedValueOnce({ 
-          addAssigneesToAssignable: {
+          replaceActorsForAssignable: {
             assignable: {
               id: 'issue-id',
               number: 123,

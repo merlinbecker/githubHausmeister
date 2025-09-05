@@ -35,6 +35,7 @@ describe('GitHub GraphQL Functions', () => {
         headers: {
           Authorization: 'Bearer test-token',
           'Content-Type': 'application/json',
+          'X-Github-Next-Global-ID': '1',
         },
         body: JSON.stringify({ query, variables }),
       });
@@ -86,6 +87,7 @@ describe('GitHub GraphQL Functions', () => {
         headers: {
           Authorization: 'Bearer test-token',
           'Content-Type': 'application/json',
+          'X-Github-Next-Global-ID': '1',
         },
         body: JSON.stringify({ query, variables: {} }),
       });
@@ -126,6 +128,7 @@ describe('GitHub GraphQL Functions', () => {
         headers: {
           Authorization: 'Bearer test-token',
           'Content-Type': 'application/json',
+          'X-Github-Next-Global-ID': '1',
         },
         body: JSON.stringify({
           query: expectedQuery,
@@ -136,21 +139,21 @@ describe('GitHub GraphQL Functions', () => {
   });
 
   describe('getCopilotNodeId', () => {
-    it('should return copilot node ID from assignable users', async () => {
+    it('should return copilot node ID from suggested actors', async () => {
       const mockResponse = {
         ok: true,
         json: vi.fn().mockResolvedValue({
           data: {
             repository: {
-              assignableUsers: {
+              suggestedActors: {
                 nodes: [
-                  { id: 'user-1', login: 'regular-user', __typename: 'User' },
+                  { __typename: 'User', login: 'regular-user', id: 'user-1' },
                   {
-                    id: 'copilot-2',
-                    login: 'github-copilot[bot]',
                     __typename: 'Bot',
+                    login: 'copilot-swe-agent',
+                    id: 'copilot-2',
                   },
-                  { id: 'user-3', login: 'another-user', __typename: 'User' },
+                  { __typename: 'User', login: 'another-user', id: 'user-3' },
                 ],
               },
             },
@@ -164,16 +167,16 @@ describe('GitHub GraphQL Functions', () => {
       expect(result).toBe('copilot-2');
     });
 
-    it('should fallback to search when copilot not found in assignable users', async () => {
-      // First call - no copilot in assignable users
+    it('should fallback to assignable users when copilot not found in suggested actors', async () => {
+      // First call - no copilot in suggested actors
       const mockFirstResponse = {
         ok: true,
         json: vi.fn().mockResolvedValue({
           data: {
             repository: {
-              assignableUsers: {
+              suggestedActors: {
                 nodes: [
-                  { id: 'user-1', login: 'regular-user', __typename: 'User' },
+                  { __typename: 'User', login: 'regular-user', id: 'user-1' },
                 ],
               },
             },
@@ -181,15 +184,18 @@ describe('GitHub GraphQL Functions', () => {
         }),
       };
 
-      // Second call - search for copilot
+      // Second call - assignable users fallback
       const mockSecondResponse = {
         ok: true,
         json: vi.fn().mockResolvedValue({
           data: {
-            search: {
-              nodes: [
-                { id: 'copilot-search-id', login: 'github-copilot[bot]' },
-              ],
+            repository: {
+              assignableUsers: {
+                nodes: [
+                  { id: 'user-1', login: 'regular-user', __typename: 'User' },
+                  { id: 'copilot-fallback-id', login: 'github-copilot[bot]', __typename: 'Bot' },
+                ],
+              },
             },
           },
         }),
@@ -201,7 +207,7 @@ describe('GitHub GraphQL Functions', () => {
 
       const result = await getCopilotNodeId('test-token', 'owner', 'repo');
 
-      expect(result).toBe('copilot-search-id');
+      expect(result).toBe('copilot-fallback-id');
       expect(fetch).toHaveBeenCalledTimes(2);
     });
 
@@ -213,9 +219,9 @@ describe('GitHub GraphQL Functions', () => {
         json: vi.fn().mockResolvedValue({
           data: {
             repository: {
-              assignableUsers: {
+              suggestedActors: {
                 nodes: [
-                  { id: 'user-1', login: 'regular-user', __typename: 'User' },
+                  { __typename: 'User', login: 'regular-user', id: 'user-1' },
                 ],
               },
             },
@@ -223,14 +229,16 @@ describe('GitHub GraphQL Functions', () => {
         }),
       };
 
-      const mockSearchResponse = {
+      const mockFallbackResponse = {
         ok: true,
         json: vi.fn().mockResolvedValue({
           data: {
-            search: {
-              nodes: [
-                { id: 'copilot-search-id', login: 'github-copilot[bot]' },
-              ],
+            repository: {
+              assignableUsers: {
+                nodes: [
+                  { id: 'copilot-fallback-id', login: 'github-copilot[bot]', __typename: 'Bot' },
+                ],
+              },
             },
           },
         }),
@@ -238,23 +246,29 @@ describe('GitHub GraphQL Functions', () => {
 
       vi.mocked(fetch)
         .mockResolvedValueOnce(mockResponse as any)
-        .mockResolvedValueOnce(mockSearchResponse as any);
+        .mockResolvedValueOnce(mockFallbackResponse as any);
 
       const result = await getCopilotNodeId('test-token', 'owner', 'repo');
 
-      expect(result).toBe('copilot-search-id');
+      expect(result).toBe('copilot-fallback-id');
     });
   });
 
   describe('addAssignee', () => {
-    it('should add assignee to issue', async () => {
+    it('should assign using replaceActorsForAssignable mutation', async () => {
       const mockResponse = {
         ok: true,
         json: vi.fn().mockResolvedValue({
           data: {
-            addAssigneesToAssignable: {
+            replaceActorsForAssignable: {
               assignable: {
                 __typename: 'Issue',
+                id: 'issue-id',
+                assignees: {
+                  nodes: [
+                    { login: 'copilot-swe-agent', id: 'copilot-node-id' }
+                  ]
+                }
               },
             },
           },
@@ -268,10 +282,19 @@ describe('GitHub GraphQL Functions', () => {
       ).resolves.toBeUndefined();
 
       const expectedMutation = `
-    mutation($input: AddAssigneesToAssignableInput!) {
-      addAssigneesToAssignable(input: $input) {
+    mutation($input: ReplaceActorsForAssignableInput!) {
+      replaceActorsForAssignable(input: $input) {
         assignable {
           __typename
+          ... on Issue {
+            id
+            assignees(first: 10) {
+              nodes {
+                login
+                id
+              }
+            }
+          }
         }
       }
     }`;
@@ -281,13 +304,14 @@ describe('GitHub GraphQL Functions', () => {
         headers: {
           Authorization: 'Bearer test-token',
           'Content-Type': 'application/json',
+          'X-Github-Next-Global-ID': '1',
         },
         body: JSON.stringify({
           query: expectedMutation,
           variables: {
             input: {
               assignableId: 'issue-node-id',
-              assigneeIds: ['copilot-node-id'],
+              actorIds: ['copilot-node-id'],
             },
           },
         }),
