@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
 const STORAGE_KEY = 'gh-hausmeister-notification-prompted';
 

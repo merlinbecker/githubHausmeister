@@ -57,7 +57,7 @@ export function validatePushSubscription(subscription: any): {
         error: `Auth key too short: ${authKeyBuffer.length} bytes (minimum 16 required)`,
       };
     }
-  } catch (error) {
+  } catch {
     return {
       valid: false,
       error: 'Invalid auth key format (not valid base64url)',
@@ -73,7 +73,7 @@ export function validatePushSubscription(subscription: any): {
         error: `Invalid p256dh key length: ${p256dhBuffer.length} bytes (expected 65)`,
       };
     }
-  } catch (error) {
+  } catch {
     return {
       valid: false,
       error: 'Invalid p256dh key format (not valid base64url)',
@@ -83,7 +83,7 @@ export function validatePushSubscription(subscription: any): {
   // Validate endpoint URL
   try {
     new URL(subscription.endpoint);
-  } catch (error) {
+  } catch {
     return { valid: false, error: 'Invalid endpoint URL format' };
   }
 

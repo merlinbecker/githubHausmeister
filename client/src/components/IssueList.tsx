@@ -28,7 +28,7 @@ interface IssueListProps {
 
 export default function IssueList({ repository }: IssueListProps) {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
+  const _queryClient = useQueryClient();
   const [assigningIssue, setAssigningIssue] = useState<number | null>(null);
 
   const { 
@@ -56,7 +56,7 @@ export default function IssueList({ repository }: IssueListProps) {
       refetch();
       setAssigningIssue(null);
     },
-    onError: (error: any, issueNumber) => {
+    onError: (error: any, _issueNumber) => {
       toast({
         title: 'Assignment Failed',
         description: error.message || 'Failed to assign issue to Copilot',

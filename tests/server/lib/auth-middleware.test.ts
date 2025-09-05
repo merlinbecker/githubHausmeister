@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { requireAuth, AuthenticatedRequest } from '../../../server/lib/auth-middleware';
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { Session } from 'express-session';
 
 // Mock database storage

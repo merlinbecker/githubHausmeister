@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Users, Shield, Settings, Eye } from 'lucide-react';
-import { getRepositoryCollaborators, type Collaborator, type UserRepository } from '@/lib/api';
+import { getRepositoryCollaborators, type UserRepository } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
