@@ -57,14 +57,27 @@ export function initializeWebPush() {
     }
 
     console.log('✅ VAPID keys validation successful');
+    
+    // Additional validation: check if the first byte of public key is 0x04 (uncompressed point indicator)
+    if (publicKeyBuffer[0] !== 0x04) {
+      console.error('❌ Invalid VAPID public key format: missing 0x04 prefix for uncompressed point');
+      console.log('Please regenerate VAPID keys using: npm run generate-vapid-keys');
+      return false;
+    }
+    
+    console.log('✅ VAPID public key format validation successful');
   } catch (error) {
     console.error('Invalid VAPID key format:', error);
     return false;
   }
 
   try {
+    // Use web-push library's built-in JWT generation with explicit logging
     webpush.setVapidDetails(subject, publicKey, privateKey);
-    console.log('✅ Web-push initialized with VAPID keys');
+    console.log('✅ Web-push initialized with VAPID details:');
+    console.log(`   Subject: ${subject}`);
+    console.log(`   Public Key Length: ${Buffer.from(publicKey, 'base64url').length} bytes`);
+    console.log(`   Private Key Length: ${Buffer.from(privateKey, 'base64url').length} bytes`);
     return true;
   } catch (error) {
     console.error('Failed to set VAPID details:', error);
@@ -84,25 +97,27 @@ export async function sendPushNotification(
     const endpointUrl = new URL(subscription.endpoint);
     const audience = `${endpointUrl.protocol}//${endpointUrl.host}`;
     
-    console.log('🎯 JWT audience (aud):', audience);
+    console.log('🎯 Expected JWT audience (aud):', audience);
     
     // Check if this is a Windows WNS endpoint
     const isWNS = subscription.endpoint.includes('notify.windows.com');
     const isFCM = subscription.endpoint.includes('fcm.googleapis.com');
     
     if (isWNS) {
-      console.log('🟡 WNS endpoint detected - Microsoft auth challenges expected');
+      console.log('🟡 WNS endpoint detected - Windows Push Notification Service');
     } else if (isFCM) {
-      console.log('🟢 FCM endpoint detected - Standard VAPID should work');
+      console.log('🟢 FCM endpoint detected - Firebase Cloud Messaging');
+    } else {
+      console.log('🔵 Other push service detected:', endpointUrl.host);
     }
     
-    // Use global VAPID settings (set in initializeWebPush)
+    // Use web-push library's built-in JWT generation (the default and most tested approach)
     const options = {
       TTL: 86400 // 24 hours
-      // No local vapidDetails - use global setVapidDetails()
+      // Let web-push handle VAPID JWT generation automatically
     };
     
-    console.log('🔑 Using global VAPID settings from initializeWebPush()');
+    console.log('🔑 Using web-push library default VAPID JWT generation');
     
     await webpush.sendNotification(subscription, JSON.stringify(payload), options);
     console.log('✅ Push notification sent successfully');
@@ -110,18 +125,39 @@ export async function sendPushNotification(
   } catch (error) {
     console.error('❌ Failed to send push notification:', error);
     
-    // Detailed error analysis
+    // Enhanced error analysis
     if (error instanceof Error) {
+      console.log('🔍 Detailed Error Analysis:');
+      console.log('   Error Type:', error.constructor.name);
+      console.log('   Error Message:', error.message);
+      
+      // Check for specific web-push error properties
+      const webPushError = error as any;
+      if (webPushError.statusCode) {
+        console.log('   Status Code:', webPushError.statusCode);
+      }
+      if (webPushError.headers) {
+        console.log('   Response Headers:', JSON.stringify(webPushError.headers, null, 2));
+      }
+      if (webPushError.body) {
+        console.log('   Response Body:', webPushError.body);
+      }
+      
       if (error.message.includes('401') || error.message.includes('JWT')) {
         console.log('🔍 JWT Authentication failed:');
-        console.log('   - Endpoint:', subscription.endpoint);
-        console.log('   - Check if VAPID keys match between client and server');
-        console.log('   - Check if aud claim matches endpoint origin');
+        console.log('   - This suggests VAPID keys or JWT generation issues');
+        console.log('   - Check if keys were generated correctly');
+        console.log('   - Ensure VAPID_SUBJECT is in correct format');
       }
       if (error.message.includes('403')) {
-        console.log('🔍 Permission denied - invalid JWT:');
-        console.log('   - VAPID signature verification failed');
-        console.log('   - Public/private key mismatch possible');
+        console.log('🔍 Permission denied:');
+        console.log('   - Push service rejected the JWT token');
+        console.log('   - Verify VAPID key pair matches');
+      }
+      if (error.message.includes('410')) {
+        console.log('🔍 Subscription expired or invalid:');
+        console.log('   - The subscription is no longer valid');
+        console.log('   - Client should resubscribe');
       }
     }
     
