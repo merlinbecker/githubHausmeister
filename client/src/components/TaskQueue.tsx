@@ -1,6 +1,8 @@
+import React from 'react';
 import { Plus, X } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 import { deleteTask } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 import type { Task } from '@shared/schema';
 
 interface TaskQueueProps {
