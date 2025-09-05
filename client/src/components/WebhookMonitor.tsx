@@ -89,10 +89,10 @@ export default function WebhookMonitor({
     }
   };
 
-  const getEventColor = (event: string, payloadSummary: any) => {
+  const getEventColor = (event: string, payloadSummary: WebhookPayloadSummary | null) => {
     if (event === 'test') return 'text-blue-500';
 
-    const summary = payloadSummary as WebhookPayloadSummary;
+    const summary = payloadSummary;
     const conclusion = summary?.conclusion;
     if (conclusion === 'success') return 'text-green-500';
     if (conclusion === 'failure') return 'text-red-500';
@@ -224,7 +224,7 @@ export default function WebhookMonitor({
               const IconComponent = getEventIcon(delivery.event);
               const iconColor = getEventColor(
                 delivery.event,
-                delivery.payloadSummary
+                delivery.payloadSummary as WebhookPayloadSummary | null
               );
 
               return (
