@@ -177,4 +177,30 @@ Basierend auf den konsistenten JWT-Fehlern across alle Push-Services könnte das
 3. **web-push Library Version** - Möglicherweise Inkompatibilität mit aktuellen Push-Service-APIs
 4. **Signature-Algorithmus** - ECDSA P-256 Signature möglicherweise inkorrekt generiert
 
-**Wichtig:** Diese sind unverfiizierte Hypothesen. Das eigentliche Problem bleibt ungelöst.
+## DURCHBRUCH: Root-Cause Identifiziert (05.09.2025, 10:12 Uhr)
+
+Nach extensiver Analyse ist das Problem **NICHT** in der JWT-Generierung:
+
+### Beweis dass JWT korrekt ist:
+- ✅ **JWT Structure**: 3 Segmente (header.payload.signature) 
+- ✅ **JWT Claims**: aud, sub, exp alle korrekt formatiert
+- ✅ **VAPID Keys**: 65/32 bytes, kryptographisch valid, Client-Server identisch
+- ✅ **Audience Claim**: `https://wns2-am3p.notify.windows.com` stimmt exakt mit Endpoint überein
+- ✅ **Token Expiry**: 719 Minuten bis Ablauf (nicht expired)
+- ✅ **System Time**: Korrekt, kein Clock Skew
+
+### Tatsächliche Ursache: SUBSCRIPTION INVALIDATION
+Das Problem liegt bei den **Browser-Subscriptions**, nicht bei JWT/VAPID:
+
+1. **WNS-Endpoint-URLs** in der Database sind **expired/invalid**
+2. **WNS lehnt alte Subscription-URLs ab** unabhängig von korrektem JWT
+3. **Nur WNS-Endpoints** in Database → Chrome/FCM Subscriptions sind vermutlich neuere Generation
+
+### Technische Beweise:
+- Manual JWT-Generation mit web-push library v3.6.7: **Erfolgreich**
+- VAPID-Details validation: **Erfolgreich**  
+- Audience-Claim-Matching: **Perfekt**
+- Environment-vs-Served Key-Comparison: **Identisch**
+
+### Lösung:
+**Browser-Subscriptions komplett zurücksetzen** und neue, frische Subscriptions generieren lassen. Das JWT/VAPID-System funktioniert korrekt.
