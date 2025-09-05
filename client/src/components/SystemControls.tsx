@@ -34,7 +34,7 @@ export default function SystemControls({
       });
       onRefresh();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Error',
         description: error.message || 'Failed to pause system',
@@ -53,7 +53,7 @@ export default function SystemControls({
       });
       onRefresh();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Error',
         description: error.message || 'Failed to resume system',
@@ -71,7 +71,7 @@ export default function SystemControls({
       });
       onRefresh();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Error',
         description: error.message || 'Failed to clear queue',
@@ -120,7 +120,7 @@ export default function SystemControls({
         description: 'Your logs have been downloaded successfully.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Export Failed',
         description: error.message || 'Failed to export logs',

@@ -43,7 +43,7 @@ export default function RepositoryManager({
       onRefresh();
       queryClient.invalidateQueries({ queryKey: ['/api/repositories'] });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Error',
         description: error.message || 'Failed to add repository',
@@ -62,7 +62,7 @@ export default function RepositoryManager({
       });
       onRefresh();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Error',
         description: error.message || 'Failed to remove repository',

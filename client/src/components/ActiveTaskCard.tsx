@@ -12,7 +12,7 @@ import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
 interface ActiveTaskCardProps {
-  activeTask: any;
+  activeTask: any; // TODO: Create proper Task type
   onRefresh: () => void;
 }
 
@@ -42,7 +42,7 @@ export default function ActiveTaskCard({
       queryClient.invalidateQueries({ queryKey: ['/api/status'] });
       onRefresh();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Error',
         description: error.message || 'Failed to stop task',
