@@ -742,12 +742,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: AuthenticatedRequest, res) => {
       try {
         const { endpoint, keys } = req.body;
+        
+        // Import validation function
+        const { validatePushSubscription } = await import('./lib/webPush');
 
-        if (!endpoint || !keys?.p256dh || !keys?.auth) {
+        // Validate the subscription data
+        const subscriptionData = { endpoint, keys };
+        const validation = validatePushSubscription(subscriptionData);
+        
+        if (!validation.valid) {
+          console.error('❌ Invalid push subscription received:', validation.error);
           return res.status(400).json({
             error: 'Invalid subscription data',
+            details: validation.error
           });
         }
+
+        console.log('✅ Valid push subscription received from client');
 
         const subscription = await databaseStorage.addPushSubscription({
           userId: req.user!.id,
