@@ -96,18 +96,13 @@ export async function sendPushNotification(
       console.log('🟢 FCM endpoint detected - Standard VAPID should work');
     }
     
-    // Create options with explicit VAPID details for debugging
+    // Use global VAPID settings (set in initializeWebPush)
     const options = {
-      TTL: 86400, // 24 hours
-      vapidDetails: {
-        subject: process.env.VAPID_SUBJECT || 'mailto:merlinbecker@users.noreply.github.com',
-        publicKey: process.env.VAPID_PUBLIC_KEY!,
-        privateKey: process.env.VAPID_PRIVATE_KEY!
-      }
+      TTL: 86400 // 24 hours
+      // No local vapidDetails - use global setVapidDetails()
     };
     
-    console.log('🔑 VAPID Subject:', options.vapidDetails.subject);
-    console.log('🔑 VAPID Public Key (first 20 chars):', options.vapidDetails.publicKey.substring(0, 20) + '...');
+    console.log('🔑 Using global VAPID settings from initializeWebPush()');
     
     await webpush.sendNotification(subscription, JSON.stringify(payload), options);
     console.log('✅ Push notification sent successfully');
