@@ -17,6 +17,7 @@ import {
   Bell,
 } from 'lucide-react';
 import { usePushNotifications } from '../hooks/usePushNotifications';
+import { resetServiceWorkerAndSubscriptions } from '../lib/serviceWorker';
 
 export function PushNotificationTester() {
   const push = usePushNotifications();
@@ -252,8 +253,6 @@ export function PushNotificationTester() {
             onClick={async () => {
               addTestResult('🔄 Starte kompletten Service Worker + Push Reset...');
               
-              // Importiere reset Funktion
-              const { resetServiceWorkerAndSubscriptions } = await import('../lib/serviceWorker');
               const success = await resetServiceWorkerAndSubscriptions();
               
               if (success) {
