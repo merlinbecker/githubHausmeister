@@ -563,3 +563,72 @@ function calculateSimilarity(str1: string, str2: string): number {
 
   return commonWords.length / allWords.size;
 }
+
+/**
+ * List repository issues (open issues + latest 10 closed)
+ */
+export async function listRepositoryIssues(
+  token: string,
+  owner: string,
+  repo: string
+) {
+  const octokit = new Octokit({ auth: token });
+  
+  try {
+    // Get open issues
+    const openIssuesResponse = await octokit.rest.issues.listForRepo({
+      owner,
+      repo,
+      state: 'open',
+      sort: 'created',
+      direction: 'desc',
+      per_page: 100
+    });
+
+    // Get latest 10 closed issues
+    const closedIssuesResponse = await octokit.rest.issues.listForRepo({
+      owner,
+      repo,
+      state: 'closed',
+      sort: 'updated',
+      direction: 'desc',
+      per_page: 10
+    });
+
+    // Filter out pull requests (issues API returns both issues and PRs)
+    const openIssues = openIssuesResponse.data.filter(issue => !issue.pull_request);
+    const closedIssues = closedIssuesResponse.data.filter(issue => !issue.pull_request);
+
+    return {
+      open: openIssues,
+      closed: closedIssues
+    };
+  } catch (error) {
+    console.error('Error fetching repository issues:', error);
+    throw error;
+  }
+}
+
+/**
+ * List repository collaborators/assignable users
+ */
+export async function listRepositoryCollaborators(
+  token: string,
+  owner: string,
+  repo: string
+) {
+  const octokit = new Octokit({ auth: token });
+  
+  try {
+    const { data } = await octokit.rest.repos.listCollaborators({
+      owner,
+      repo,
+      per_page: 100
+    });
+    
+    return data;
+  } catch (error) {
+    console.error('Error fetching repository collaborators:', error);
+    throw error;
+  }
+}

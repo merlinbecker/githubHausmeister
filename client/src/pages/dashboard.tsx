@@ -8,6 +8,7 @@ import ActiveTaskCard from '@/components/ActiveTaskCard';
 import TaskQueue from '@/components/TaskQueue';
 import TaskCreationForm from '@/components/TaskCreationForm';
 import RepositoryManager from '@/components/RepositoryManager';
+import RepositoryIssueManager from '@/components/RepositoryIssueManager';
 import WebhookStatus from '@/components/WebhookStatus';
 import WebhookMonitor from '@/components/WebhookMonitor';
 import SystemControls from '@/components/SystemControls';
@@ -140,6 +141,10 @@ export default function Dashboard() {
         <RepositoryManager
           userRepositories={appState?.repositories || []}
           onRefresh={refetch}
+        />
+
+        <RepositoryIssueManager 
+          repositories={appState?.repositories || []}
         />
 
         <TaskQueue queue={appState?.queue || []} onRefresh={refetch} />

@@ -113,3 +113,113 @@ export async function getWebhookDeliveries(limit: number = 50): Promise<any[]> {
 export async function testWebhook(repositoryId: string) {
   return apiRequest('POST', '/api/webhooks/test', { repositoryId });
 }
+
+// Issue Management API
+
+export interface Issue {
+  id: number;
+  number: number;
+  title: string;
+  body?: string;
+  state: 'open' | 'closed';
+  assignee?: {
+    id: number;
+    login: string;
+    avatar_url: string;
+  };
+  assignees: Array<{
+    id: number;
+    login: string;
+    avatar_url: string;
+  }>;
+  labels: Array<{
+    id: number;
+    name: string;
+    color: string;
+  }>;
+  created_at: string;
+  updated_at: string;
+  html_url: string;
+  hasOpenPR?: boolean;
+  openPRs?: PullRequest[];
+}
+
+export interface PullRequest {
+  id: number;
+  number: number;
+  title: string;
+  state: 'open' | 'closed';
+  html_url: string;
+  user: {
+    login: string;
+    avatar_url: string;
+  };
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Collaborator {
+  id: number;
+  login: string;
+  avatar_url: string;
+  permissions: {
+    admin: boolean;
+    maintain?: boolean;
+    push: boolean;
+    triage?: boolean;
+    pull: boolean;
+  };
+  role_name: string;
+}
+
+export interface IssuesResponse {
+  open: Issue[];
+  closed: Issue[];
+}
+
+export async function getRepositoryIssues(owner: string, repo: string): Promise<IssuesResponse> {
+  const response = await fetch(`/api/repositories/${owner}/${repo}/issues`, {
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to get repository issues: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function getRepositoryCollaborators(owner: string, repo: string): Promise<Collaborator[]> {
+  const response = await fetch(`/api/repositories/${owner}/${repo}/collaborators`, {
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to get repository collaborators: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function assignIssueToCopilot(
+  owner: string, 
+  repo: string, 
+  issueNumber: number
+): Promise<{ success: boolean; assignedAgent?: string; error?: string; message?: string }> {
+  const response = await fetch(`/api/repositories/${owner}/${repo}/issues/${issueNumber}/assign`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+  
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.message || result.error || `Failed to assign issue: ${response.statusText}`);
+  }
+  return result;
+}
+
+export async function getIssuePRs(owner: string, repo: string, issueNumber: number): Promise<PullRequest[]> {
+  const response = await fetch(`/api/repositories/${owner}/${repo}/issues/${issueNumber}/prs`, {
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to get issue PRs: ${response.statusText}`);
+  }
+  return response.json();
+}
