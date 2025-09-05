@@ -40,6 +40,8 @@ export default function IssueList({ repository }: IssueListProps) {
     queryKey: ['repository-issues', repository.owner, repository.repo],
     queryFn: () => getRepositoryIssues(repository.owner, repository.repo),
     refetchInterval: 30000, // Refresh every 30 seconds
+    staleTime: 0, // Always fetch fresh data on app startup - GitHub is single source of truth
+    refetchOnWindowFocus: true, // Refetch when window comes into focus to stay synced with GitHub
   });
 
   const assignMutation = useMutation({
