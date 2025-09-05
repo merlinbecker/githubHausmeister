@@ -14,8 +14,6 @@ import SystemControls from '@/components/SystemControls';
 import { NotificationSettings } from '@/components/NotificationSettings';
 import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
 
-import { PushNotificationTester } from '@/components/PushNotificationTester';
-import { MentraOSTester } from '@/components/MentraOSTester';
 import { Github, LogOut, User, Wrench } from 'lucide-react';
 import {
   DropdownMenu,
@@ -91,7 +89,7 @@ export default function Dashboard() {
                 <DropdownMenuItem asChild>
                   <Link href="/dev-tools" className="cursor-pointer">
                     <Wrench className="h-4 w-4 mr-2" />
-                    Notification Tests
+                    Debug & Test Tools
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -168,9 +166,7 @@ export default function Dashboard() {
           <PWAInstallPrompt />
         </div>
 
-        <PushNotificationTester />
 
-        <MentraOSTester />
       </main>
 
       {/* Footer */}

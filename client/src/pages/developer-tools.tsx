@@ -3,6 +3,7 @@ import { getStatus } from '@/lib/api';
 import { Link } from 'wouter';
 import { PushNotificationTester } from '@/components/PushNotificationTester';
 import { DelayedNotificationTester } from '@/components/DelayedNotificationTester';
+import { MentraOSTester } from '@/components/MentraOSTester';
 import { ArrowLeft, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -54,6 +55,17 @@ export default function DeveloperTools() {
 
         {/* Delayed Notification Tester */}
         <DelayedNotificationTester />
+
+        {/* MentraOS Integration Tester */}
+        <div className="bg-github-surface border border-github-border rounded-lg p-4">
+          <h2 className="text-lg font-semibold text-github-text mb-2">
+            MentraOS Integration Testing
+          </h2>
+          <p className="text-github-muted text-sm mb-4">
+            Test and manage evenrealities G1 smartglasses integration, voice commands, and AR notifications.
+          </p>
+        </div>
+        <MentraOSTester />
       </main>
 
       {/* Footer */}
