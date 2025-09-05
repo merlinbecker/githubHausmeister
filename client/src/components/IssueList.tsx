@@ -56,7 +56,7 @@ export default function IssueList({ repository }: IssueListProps) {
       refetch();
       setAssigningIssue(null);
     },
-    onError: (error: any, _issueNumber) => {
+    onError: (error: Error, _issueNumber) => {
       toast({
         title: 'Assignment Failed',
         description: error.message || 'Failed to assign issue to Copilot',

@@ -1,7 +1,7 @@
 import { apiRequest } from './queryClient';
 import type { User } from '@/lib/auth';
 
-import type { UserRepository } from '@shared/schema';
+import type { UserRepository, Task, WebhookDelivery } from '@shared/schema';
 
 // Re-export UserRepository for components
 export type { UserRepository };
@@ -9,10 +9,10 @@ export type { UserRepository };
 export interface AppState {
   user?: User;
   monthlyDone: number;
-  activeTask?: any;
-  queue: any[];
+  activeTask?: Task;
+  queue: Task[];
   systemRunning: boolean;
-  repositories: any[];
+  repositories: UserRepository[];
 }
 
 export interface StatsData {
@@ -100,7 +100,7 @@ export async function deleteTask(taskId: string) {
   return apiRequest('DELETE', `/api/tasks/${taskId}`);
 }
 
-export async function getWebhookDeliveries(limit: number = 50): Promise<any[]> {
+export async function getWebhookDeliveries(limit: number = 50): Promise<WebhookDelivery[]> {
   const response = await fetch(`/api/webhooks/deliveries?limit=${limit}`, {
     credentials: 'include',
   });

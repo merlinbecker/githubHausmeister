@@ -1,10 +1,10 @@
 import { Plus, X } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 import { deleteTask } from '@/lib/api';
-import { useToast } from '@/hooks/use-toast';
+import type { Task } from '@shared/schema';
 
 interface TaskQueueProps {
-  queue: any[];
+  queue: Task[];
   onRefresh: () => void;
 }
 
@@ -20,7 +20,7 @@ export default function TaskQueue({ queue, onRefresh }: TaskQueueProps) {
       });
       onRefresh();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Error',
         description: error.message || 'Failed to remove task',
