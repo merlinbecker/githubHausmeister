@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { urlBase64ToUint8Array } from '../lib/serviceWorker';
 
 export interface PushSubscriptionState {

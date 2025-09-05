@@ -1,3 +1,4 @@
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getStatus } from '@/lib/api';
 import { Link } from 'wouter';

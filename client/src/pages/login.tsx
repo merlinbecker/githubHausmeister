@@ -1,3 +1,4 @@
+import React from 'react';
 import { Github, Shield, Zap, GitBranch } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { loginWithGitHub } from '@/lib/auth';
