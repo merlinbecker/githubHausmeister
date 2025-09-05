@@ -265,7 +265,11 @@ export async function sendPushToMultipleSubscriptions(
       
       try {
         const result = await sendPushNotification(sub, payload);
-        console.log(`✅ ${type} ${index + 1}/${subscriptions.length}: SUCCESS`);
+        if (result) {
+          console.log(`✅ ${type} ${index + 1}/${subscriptions.length}: SUCCESS`);
+        } else {
+          console.log(`❌ ${type} ${index + 1}/${subscriptions.length}: FAILED (returned false)`);
+        }
         return result;
       } catch (error) {
         // Extract error details compactly

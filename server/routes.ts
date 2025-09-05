@@ -887,6 +887,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           tag: 'test',
         };
 
+        // FORCE LOG VISIBILITY
+        console.log('🚀 /api/push/test endpoint called - about to send notifications');
+        console.log('📊 User subscriptions found:', subscriptions.length);
+        
         const { sendPushToMultipleSubscriptions } = await import(
           './lib/webPush'
         );
