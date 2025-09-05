@@ -146,8 +146,8 @@ describe('DatabaseStorage', () => {
       const taskData: InsertTask = {
         userId: 'test-user-id',
         repositoryId: 'repo-id',
-        type: 'tests',
-        status: 'queued',
+        owner: 'test-owner',
+        repo: 'test-repo',
         title: 'New Task',
         body: 'Task description',
       };
@@ -208,11 +208,9 @@ describe('DatabaseStorage', () => {
       const subscription = {
         userId: 'test-user-id',
         endpoint: 'https://fcm.googleapis.com/test',
-        keys: JSON.stringify({
-          p256dh: 'test-p256dh-key',
-          auth: 'test-auth-key',
-        }),
-        isActive: true,
+        p256dhKey: 'test-p256dh-key',
+        authKey: 'test-auth-key',
+        userAgent: 'test-browser',
       };
 
       // Mock finding existing subscription (none found)
