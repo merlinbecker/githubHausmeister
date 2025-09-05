@@ -21,7 +21,10 @@ export interface NotificationPayload {
 /**
  * Validate a push subscription to ensure it meets web-push library requirements
  */
-export function validatePushSubscription(subscription: any): { valid: boolean; error?: string } {
+export function validatePushSubscription(subscription: any): {
+  valid: boolean;
+  error?: string;
+} {
   if (!subscription || typeof subscription !== 'object') {
     return { valid: false, error: 'Subscription must be an object' };
   }
@@ -34,7 +37,10 @@ export function validatePushSubscription(subscription: any): { valid: boolean; e
     return { valid: false, error: 'Missing or invalid keys object' };
   }
 
-  if (!subscription.keys.p256dh || typeof subscription.keys.p256dh !== 'string') {
+  if (
+    !subscription.keys.p256dh ||
+    typeof subscription.keys.p256dh !== 'string'
+  ) {
     return { valid: false, error: 'Missing or invalid p256dh key' };
   }
 
@@ -46,26 +52,32 @@ export function validatePushSubscription(subscription: any): { valid: boolean; e
   try {
     const authKeyBuffer = Buffer.from(subscription.keys.auth, 'base64url');
     if (authKeyBuffer.length < 16) {
-      return { 
-        valid: false, 
-        error: `Auth key too short: ${authKeyBuffer.length} bytes (minimum 16 required)` 
+      return {
+        valid: false,
+        error: `Auth key too short: ${authKeyBuffer.length} bytes (minimum 16 required)`,
       };
     }
   } catch (error) {
-    return { valid: false, error: 'Invalid auth key format (not valid base64url)' };
+    return {
+      valid: false,
+      error: 'Invalid auth key format (not valid base64url)',
+    };
   }
 
   // Validate p256dh key length (should be 65 bytes when base64url decoded)
   try {
     const p256dhBuffer = Buffer.from(subscription.keys.p256dh, 'base64url');
     if (p256dhBuffer.length !== 65) {
-      return { 
-        valid: false, 
-        error: `Invalid p256dh key length: ${p256dhBuffer.length} bytes (expected 65)` 
+      return {
+        valid: false,
+        error: `Invalid p256dh key length: ${p256dhBuffer.length} bytes (expected 65)`,
       };
     }
   } catch (error) {
-    return { valid: false, error: 'Invalid p256dh key format (not valid base64url)' };
+    return {
+      valid: false,
+      error: 'Invalid p256dh key format (not valid base64url)',
+    };
   }
 
   // Validate endpoint URL
@@ -81,9 +93,13 @@ export function validatePushSubscription(subscription: any): { valid: boolean; e
 export function initializeWebPush() {
   const publicKey = process.env.VAPID_PUBLIC_KEY;
   const privateKey = process.env.VAPID_PRIVATE_KEY;
-  // Ensure VAPID_SUBJECT starts with mailto: 
-  let subject = process.env.VAPID_SUBJECT || 'mailto:merlinbecker@users.noreply.github.com';
-  if (subject && !subject.startsWith('mailto:') && !subject.startsWith('http')) {
+  // Ensure VAPID_SUBJECT starts with mailto:
+  let subject = process.env.VAPID_SUBJECT || '';
+  if (
+    subject &&
+    !subject.startsWith('mailto:') &&
+    !subject.startsWith('http')
+  ) {
     subject = `mailto:${subject}`;
   }
 
@@ -117,14 +133,18 @@ export function initializeWebPush() {
     }
 
     console.log('✅ VAPID keys validation successful');
-    
+
     // Additional validation: check if the first byte of public key is 0x04 (uncompressed point indicator)
     if (publicKeyBuffer[0] !== 0x04) {
-      console.error('❌ Invalid VAPID public key format: missing 0x04 prefix for uncompressed point');
-      console.log('Please regenerate VAPID keys using: npm run generate-vapid-keys');
+      console.error(
+        '❌ Invalid VAPID public key format: missing 0x04 prefix for uncompressed point'
+      );
+      console.log(
+        'Please regenerate VAPID keys using: npm run generate-vapid-keys'
+      );
       return false;
     }
-    
+
     console.log('✅ VAPID public key format validation successful');
   } catch (error) {
     console.error('Invalid VAPID key format:', error);
@@ -136,8 +156,12 @@ export function initializeWebPush() {
     webpush.setVapidDetails(subject, publicKey, privateKey);
     console.log('✅ Web-push initialized with VAPID details:');
     console.log(`   Subject: ${subject}`);
-    console.log(`   Public Key Length: ${Buffer.from(publicKey, 'base64url').length} bytes`);
-    console.log(`   Private Key Length: ${Buffer.from(privateKey, 'base64url').length} bytes`);
+    console.log(
+      `   Public Key Length: ${Buffer.from(publicKey, 'base64url').length} bytes`
+    );
+    console.log(
+      `   Private Key Length: ${Buffer.from(privateKey, 'base64url').length} bytes`
+    );
     return true;
   } catch (error) {
     console.error('Failed to set VAPID details:', error);
@@ -154,76 +178,97 @@ export async function sendPushNotification(
     const validation = validatePushSubscription(subscription);
     if (!validation.valid) {
       console.error('❌ Invalid subscription:', validation.error);
-      console.log('   This indicates a problem with the client-side push subscription');
+      console.log(
+        '   This indicates a problem with the client-side push subscription'
+      );
       return false;
     }
 
     // Log details for debugging
     console.log('🔔 Sending push notification to:', subscription.endpoint);
     console.log('✅ Subscription validation passed');
-    
+
     // Parse endpoint URL to get correct aud claim
     const endpointUrl = new URL(subscription.endpoint);
     const audience = `${endpointUrl.protocol}//${endpointUrl.host}`;
-    
+
     console.log('🎯 Expected JWT audience (aud):', audience);
-    
+
     // Check if this is a Windows WNS endpoint
     const isWNS = subscription.endpoint.includes('notify.windows.com');
     const isFCM = subscription.endpoint.includes('fcm.googleapis.com');
-    
+
     if (isWNS) {
-      console.log('🟡 WNS endpoint detected - Windows Push Notification Service');
+      console.log(
+        '🟡 WNS endpoint detected - Windows Push Notification Service'
+      );
     } else if (isFCM) {
       console.log('🟢 FCM endpoint detected - Firebase Cloud Messaging');
     } else {
       console.log('🔵 Other push service detected:', endpointUrl.host);
     }
-    
+
     // Use web-push library's built-in JWT generation (the default and most tested approach)
     const options = {
-      TTL: 86400 // 24 hours
+      TTL: 86400, // 24 hours
       // Let web-push handle VAPID JWT generation automatically
     };
-    
+
     console.log('🔑 Using web-push library default VAPID JWT generation');
-    
+
     // SIMPLIFIED DEBUG: Just log what happens during sendNotification
     console.log('🔍 DEBUG: About to call webpush.sendNotification...');
     console.log('🔍 Subscription endpoint:', subscription.endpoint);
     console.log('🔍 Payload size:', JSON.stringify(payload).length, 'bytes');
     console.log('🔍 Options:', JSON.stringify(options));
-    
-    await webpush.sendNotification(subscription, JSON.stringify(payload), options);
+
+    await webpush.sendNotification(
+      subscription,
+      JSON.stringify(payload),
+      options
+    );
     console.log('✅ Push notification sent successfully');
     return true;
   } catch (error) {
     console.error('❌ Failed to send push notification:', error);
-    
+
     // Enhanced error analysis
     if (error instanceof Error) {
       console.log('🔍 Detailed Error Analysis:');
       console.log('   Error Type:', error.constructor.name);
       console.log('   Error Message:', error.message);
-      
+
       // Check for specific web-push error properties
       const webPushError = error as any;
       if (webPushError.statusCode) {
         console.log('   Status Code:', webPushError.statusCode);
       }
       if (webPushError.headers) {
-        console.log('   Response Headers:', JSON.stringify(webPushError.headers, null, 2));
+        console.log(
+          '   Response Headers:',
+          JSON.stringify(webPushError.headers, null, 2)
+        );
       }
       if (webPushError.body) {
         console.log('   Response Body:', webPushError.body);
       }
-      
-      if (error.message.includes('auth key') || error.message.includes('16 bytes')) {
+
+      if (
+        error.message.includes('auth key') ||
+        error.message.includes('16 bytes')
+      ) {
         console.log('🔍 Subscription Auth Key Issue:');
-        console.log('   - The client push subscription has an invalid auth key');
+        console.log(
+          '   - The client push subscription has an invalid auth key'
+        );
         console.log('   - Client needs to resubscribe to push notifications');
-        console.log('   - This is a client-side issue, not a server configuration issue');
-      } else if (error.message.includes('401') || error.message.includes('JWT')) {
+        console.log(
+          '   - This is a client-side issue, not a server configuration issue'
+        );
+      } else if (
+        error.message.includes('401') ||
+        error.message.includes('JWT')
+      ) {
         console.log('🔍 JWT Authentication failed:');
         console.log('   - This suggests VAPID keys or JWT generation issues');
         console.log('   - Check if keys were generated correctly');
@@ -238,7 +283,7 @@ export async function sendPushNotification(
         console.log('   - Client should resubscribe');
       }
     }
-    
+
     return false;
   }
 }
@@ -247,37 +292,54 @@ export async function sendPushToMultipleSubscriptions(
   subscriptions: PushSubscription[],
   payload: NotificationPayload
 ): Promise<{ successful: number; failed: number }> {
-  console.log(`📤 PUSH START: ${subscriptions.length} subscriptions, payload: ${payload.title}`);
-  
-  // Analyze endpoint types  
+  console.log(
+    `📤 PUSH START: ${subscriptions.length} subscriptions, payload: ${payload.title}`
+  );
+
+  // Analyze endpoint types
   const endpointTypes = subscriptions.reduce((acc: any, sub) => {
-    const type = sub.endpoint.includes('fcm.googleapis.com') ? 'FCM' : 
-                 sub.endpoint.includes('notify.windows.com') ? 'WNS' : 'Other';
+    const type = sub.endpoint.includes('fcm.googleapis.com')
+      ? 'FCM'
+      : sub.endpoint.includes('notify.windows.com')
+        ? 'WNS'
+        : 'Other';
     acc[type] = (acc[type] || 0) + 1;
     return acc;
   }, {});
   console.log('🌐 Endpoint distribution:', endpointTypes);
-  
+
   const results = await Promise.allSettled(
     subscriptions.map(async (sub, index) => {
-      const type = sub.endpoint.includes('fcm.googleapis.com') ? 'FCM' : 
-                   sub.endpoint.includes('notify.windows.com') ? 'WNS' : 'Other';
-      
+      const type = sub.endpoint.includes('fcm.googleapis.com')
+        ? 'FCM'
+        : sub.endpoint.includes('notify.windows.com')
+          ? 'WNS'
+          : 'Other';
+
       try {
         const result = await sendPushNotification(sub, payload);
         if (result) {
-          console.log(`✅ ${type} ${index + 1}/${subscriptions.length}: SUCCESS`);
+          console.log(
+            `✅ ${type} ${index + 1}/${subscriptions.length}: SUCCESS`
+          );
         } else {
-          console.log(`❌ ${type} ${index + 1}/${subscriptions.length}: FAILED (returned false)`);
+          console.log(
+            `❌ ${type} ${index + 1}/${subscriptions.length}: FAILED (returned false)`
+          );
         }
         return result;
       } catch (error) {
         // Extract error details compactly
         const webPushError = error as any;
         const statusCode = webPushError.statusCode || 'unknown';
-        const errorDesc = webPushError.headers?.['x-wns-error-description'] || 
-                         (webPushError.body && webPushError.body.includes('JWT') ? 'JWT error' : 'unknown');
-        console.log(`❌ ${type} ${index + 1}/${subscriptions.length}: ${statusCode} - ${errorDesc}`);
+        const errorDesc =
+          webPushError.headers?.['x-wns-error-description'] ||
+          (webPushError.body && webPushError.body.includes('JWT')
+            ? 'JWT error'
+            : 'unknown');
+        console.log(
+          `❌ ${type} ${index + 1}/${subscriptions.length}: ${statusCode} - ${errorDesc}`
+        );
         throw error;
       }
     })
@@ -287,8 +349,8 @@ export async function sendPushToMultipleSubscriptions(
     (r) => r.status === 'fulfilled' && r.value
   ).length;
   const failed = results.length - successful;
-  
+
   console.log('📊 Final results:', { successful, failed });
-  
+
   return { successful, failed };
 }
