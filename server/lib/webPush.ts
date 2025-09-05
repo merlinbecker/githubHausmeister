@@ -247,14 +247,33 @@ export async function sendPushToMultipleSubscriptions(
   subscriptions: PushSubscription[],
   payload: NotificationPayload
 ): Promise<{ successful: number; failed: number }> {
+  console.log('📤 sendPushToMultipleSubscriptions called with:');
+  console.log('   Subscriptions count:', subscriptions.length);
+  console.log('   Payload:', JSON.stringify(payload, null, 2));
+  
   const results = await Promise.allSettled(
-    subscriptions.map((sub) => sendPushNotification(sub, payload))
+    subscriptions.map(async (sub, index) => {
+      console.log(`🔍 Processing subscription ${index + 1}/${subscriptions.length}:`);
+      console.log('   Endpoint:', sub.endpoint);
+      console.log('   Keys present:', !!sub.keys.p256dh && !!sub.keys.auth);
+      
+      try {
+        const result = await sendPushNotification(sub, payload);
+        console.log(`✅ Subscription ${index + 1} success:`, result);
+        return result;
+      } catch (error) {
+        console.log(`❌ Subscription ${index + 1} failed:`, error);
+        throw error;
+      }
+    })
   );
 
   const successful = results.filter(
     (r) => r.status === 'fulfilled' && r.value
   ).length;
   const failed = results.length - successful;
-
+  
+  console.log('📊 Final results:', { successful, failed });
+  
   return { successful, failed };
 }
