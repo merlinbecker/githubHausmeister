@@ -97,9 +97,9 @@ export default function TaskQueue({ queue, onRefresh }: TaskQueueProps) {
                       {task.owner}/{task.repo}
                     </span>
                     <span
-                      className={`px-2 py-1 text-xs rounded-full ${getTypeColor(task.labels)}`}
+                      className={`px-2 py-1 text-xs rounded-full ${getTypeColor(task.labels || [])}`}
                     >
-                      {getTypeLabel(task.labels)}
+                      {getTypeLabel(task.labels || [])}
                     </span>
                   </div>
                   <h3

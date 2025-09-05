@@ -51,7 +51,7 @@ export default function WebhookMonitor({
     webhookDeliveries || []
   ).map((delivery) => ({
     ...delivery,
-    timeAgo: formatTimeAgo(new Date(delivery.createdAt)),
+    timeAgo: formatTimeAgo(new Date(delivery.createdAt || new Date())),
   }));
 
   const handleTestWebhook = async () => {
