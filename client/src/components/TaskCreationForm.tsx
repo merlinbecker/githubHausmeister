@@ -38,7 +38,7 @@ export default function TaskCreationForm({
       setTaskCount(1);
       onRefresh();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Error',
         description: error.message || 'Failed to create tasks',
