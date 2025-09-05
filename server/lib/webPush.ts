@@ -247,22 +247,33 @@ export async function sendPushToMultipleSubscriptions(
   subscriptions: PushSubscription[],
   payload: NotificationPayload
 ): Promise<{ successful: number; failed: number }> {
-  console.log('📤 sendPushToMultipleSubscriptions called with:');
-  console.log('   Subscriptions count:', subscriptions.length);
-  console.log('   Payload:', JSON.stringify(payload, null, 2));
+  console.log(`📤 PUSH START: ${subscriptions.length} subscriptions, payload: ${payload.title}`);
+  
+  // Analyze endpoint types  
+  const endpointTypes = subscriptions.reduce((acc: any, sub) => {
+    const type = sub.endpoint.includes('fcm.googleapis.com') ? 'FCM' : 
+                 sub.endpoint.includes('notify.windows.com') ? 'WNS' : 'Other';
+    acc[type] = (acc[type] || 0) + 1;
+    return acc;
+  }, {});
+  console.log('🌐 Endpoint distribution:', endpointTypes);
   
   const results = await Promise.allSettled(
     subscriptions.map(async (sub, index) => {
-      console.log(`🔍 Processing subscription ${index + 1}/${subscriptions.length}:`);
-      console.log('   Endpoint:', sub.endpoint);
-      console.log('   Keys present:', !!sub.keys.p256dh && !!sub.keys.auth);
+      const type = sub.endpoint.includes('fcm.googleapis.com') ? 'FCM' : 
+                   sub.endpoint.includes('notify.windows.com') ? 'WNS' : 'Other';
       
       try {
         const result = await sendPushNotification(sub, payload);
-        console.log(`✅ Subscription ${index + 1} success:`, result);
+        console.log(`✅ ${type} ${index + 1}/${subscriptions.length}: SUCCESS`);
         return result;
       } catch (error) {
-        console.log(`❌ Subscription ${index + 1} failed:`, error);
+        // Extract error details compactly
+        const webPushError = error as any;
+        const statusCode = webPushError.statusCode || 'unknown';
+        const errorDesc = webPushError.headers?.['x-wns-error-description'] || 
+                         (webPushError.body && webPushError.body.includes('JWT') ? 'JWT error' : 'unknown');
+        console.log(`❌ ${type} ${index + 1}/${subscriptions.length}: ${statusCode} - ${errorDesc}`);
         throw error;
       }
     })
