@@ -1,0 +1,75 @@
+Warum dein aktuelles Problem (401/JWT Authentication Failed)?
+
+Bei Edge/Windows zeigt der Endpoint auf *.notify.windows.com (WNS). Für PWAs nutzt Edge dabei Web-Push + VAPID. Ein 401 bedeutet fast immer: VAPID-Token/Claims/Keys passen nicht (Signatur ungültig). 
+Microsoft Learn
++1
+
+Konkrete Ursachen & Fixes (check in dieser Reihenfolge)
+
+Key-Match (häufigster Fehler)
+
+Client applicationServerKey = exakt der VAPID Public Key, zu dem der Server mit VAPID Private Key signiert.
+
+Nach jedem Key-Wechsel: alle Clients neu subscriben (alte Subscriptions sind ungültig). 
+MDN Web Docs
+Npm
+
+Claims im JWT korrekt (RFC 8292)
+
+aud: Scheme + Host der Endpoint-Domain (bei dir z. B. https://wns2-am3p.notify.windows.com).
+
+exp: kurzlebig (typisch Minuten bis <24 h).
+
+sub: Kontakt, z. B. mailto:ops@beispiel.de.
+Falsches/fehlendes aud ⇒ 401. 
+datatracker.ietf.org
+blog.mozilla.org
+Stack Overflow
+
+Key-Encoding
+
+VAPID-Public-Key muss base64url (ohne Padding) sein; im Client vor subscribe() korrekt in Uint8Array konvertieren. Ein falsches Format ⇒ ungültige Signatur. 
+web.dev
+
+Server-Lib richtig initialisieren
+
+In Node (nicht Edge-Runtime) z. B. mit web-push:
+
+webpush.setVapidDetails('mailto:…', PUBLIC, PRIVATE);
+
+Keinen alten GCM/FCM-Legacy-Key setzen.
+
+Beim Senden: sendNotification(pushSubscription, JSON.stringify(payload)). 
+Npm
+
+Subscription-Daten prüfen
+
+Enthält p256dh und auth? Ohne diese kann die Payload nicht verschlüsselt werden.
+
+Logge subscription.endpoint und verifiziere Host ⇒ stimmt mit aud überein. 
+MDN Web Docs
+
+Allgemeines
+
+HTTPS überall.
+
+Nach Änderungen am SW/Key: neu registrieren & resubscriben.
+
+Runtime: Node.js für den Sendecode (App-Router: export const runtime = 'nodejs'). 
+Microsoft Learn
+
+Mini-Checkliste zum Debuggen (2 Minuten)
+
+ NEXT_PUBLIC_VAPID_PUBLIC_KEY == Server-Public-Key?
+
+ Nach Key-Änderung resubscribed?
+
+ aud exakt https://wns2-am3p.notify.windows.com (dein Host)?
+
+ sub gesetzt (mailto:), exp nicht abgelaufen?
+
+ p256dh/auth vorhanden?
+
+ Sendecode läuft in Node-Runtime (nicht Edge)?
+
+Wenn du willst, poste (redigiert) deine Client-subscribe()-Stelle, die setVapidDetails-Zeile und eine Subscription (ohne Keys) – ich mappe aud/Key-Pfad und markiere die Stelle, die den 401 auslöst.

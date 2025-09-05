@@ -83,12 +83,9 @@ export async function sendPushNotification(
     }
     
     const options = {
-      TTL: 86400, // 24 hours
-      vapidDetails: {
-        subject: process.env.VAPID_SUBJECT || 'mailto:merlinbecker@users.noreply.github.com',
-        publicKey: process.env.VAPID_PUBLIC_KEY!,
-        privateKey: process.env.VAPID_PRIVATE_KEY!,
-      }
+      TTL: 86400, // 24 hours  
+      // Note: vapidDetails werden global mit setVapidDetails() gesetzt
+      // NICHT hier nochmal setzen - das verursacht JWT-Signatur-Konflikte!
     };
     
     await webpush.sendNotification(subscription, JSON.stringify(payload), options);

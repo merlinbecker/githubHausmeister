@@ -248,6 +248,24 @@ export function PushNotificationTester() {
             Client Test
           </Button>
 
+          {push.isSubscribed && (
+            <Button 
+              onClick={async () => {
+                const success = await push.unsubscribe();
+                if (success) {
+                  addTestResult('✅ Push-Subscription erfolgreich entfernt');
+                  addTestResult('💡 Für frischen Start bitte Browser-Cache leeren (Ctrl+Shift+R)');
+                } else {
+                  addTestResult('❌ Fehler beim Entfernen der Push-Subscription');
+                }
+              }} 
+              variant="destructive" 
+              size="sm"
+            >
+              Subscription entfernen
+            </Button>
+          )}
+
           <Button onClick={clearTestResults} variant="ghost" size="sm">
             Clear Log
           </Button>
