@@ -887,7 +887,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           tag: 'test',
         };
 
-        // FORCE LOG VISIBILITY
+        // EXTREME FORCE LOG VISIBILITY - MUST APPEAR
+        console.error('❌❌❌ PUSH TEST ENDPOINT CALLED - CRITICAL LOG ❌❌❌');
+        console.error('❌❌❌ SUBSCRIPTIONS COUNT:', subscriptions.length, '❌❌❌');
         console.log('🚀 /api/push/test endpoint called - about to send notifications');
         console.log('📊 User subscriptions found:', subscriptions.length);
         
