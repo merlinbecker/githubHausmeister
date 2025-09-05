@@ -21,7 +21,11 @@ export interface NotificationPayload {
 export function initializeWebPush() {
   const publicKey = process.env.VAPID_PUBLIC_KEY;
   const privateKey = process.env.VAPID_PRIVATE_KEY;
-  const subject = process.env.VAPID_SUBJECT || 'mailto:merlinbecker@users.noreply.github.com';
+  // Ensure VAPID_SUBJECT starts with mailto: 
+  let subject = process.env.VAPID_SUBJECT || 'mailto:merlinbecker@users.noreply.github.com';
+  if (subject && !subject.startsWith('mailto:') && !subject.startsWith('http')) {
+    subject = `mailto:${subject}`;
+  }
 
   if (!publicKey || !privateKey) {
     console.warn('VAPID keys not configured. Push notifications disabled.');
