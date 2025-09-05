@@ -188,6 +188,55 @@ export async function sendPushNotification(
     
     console.log('🔑 Using web-push library default VAPID JWT generation');
     
+    // DEBUG: Inspect the generated JWT before sending
+    try {
+      // Use the internal web-push method to generate request details for inspection
+      const WebPushLib = require('web-push/src/web-push-lib');
+      const webPushInstance = new WebPushLib();
+      
+      const requestDetails = webPushInstance.generateRequestDetails(
+        subscription,
+        JSON.stringify(payload),
+        options
+      );
+      
+      const authHeader = requestDetails.headers.Authorization;
+      console.log('🔍 Generated Authorization header:', authHeader);
+      
+      // Parse VAPID authorization: "vapid t=JWT_TOKEN, k=PUBLIC_KEY"
+      const jwtMatch = authHeader.match(/t=([^,\s]+)/);
+      if (jwtMatch) {
+        const jwt = jwtMatch[1];
+        console.log('🔍 JWT token:', jwt);
+        
+        // Analyze JWT structure
+        const segments = jwt.split('.');
+        console.log('🔍 JWT segments:', segments.length, 'expected: 3');
+        
+        if (segments.length === 3) {
+          console.log('✅ JWT structure is correct (3 segments)');
+          
+          // Decode and inspect payload
+          try {
+            const jwtPayload = JSON.parse(Buffer.from(segments[1], 'base64url').toString());
+            console.log('🔍 JWT Claims:');
+            console.log('   aud (audience):', jwtPayload.aud);
+            console.log('   sub (subject):', jwtPayload.sub);
+            console.log('   exp (expires):', jwtPayload.exp, new Date(jwtPayload.exp * 1000).toISOString());
+            console.log('   iat (issued at):', jwtPayload.iat ? new Date(jwtPayload.iat * 1000).toISOString() : 'not set');
+          } catch (payloadError) {
+            console.log('❌ Could not decode JWT payload:', payloadError.message);
+          }
+        } else {
+          console.log('❌ JWT has incorrect structure:', segments.length, 'segments');
+        }
+      } else {
+        console.log('❌ Could not extract JWT from Authorization header');
+      }
+    } catch (debugError) {
+      console.log('⚠️ JWT debug inspection failed:', debugError.message);
+    }
+    
     await webpush.sendNotification(subscription, JSON.stringify(payload), options);
     console.log('✅ Push notification sent successfully');
     return true;
