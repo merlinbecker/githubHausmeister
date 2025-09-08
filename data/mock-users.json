@@ -1,0 +1,22 @@
+{
+  "users": [
+    {
+      "id": "mock-user-1",
+      "username": "testdev",
+      "email": "testdev@example.com",
+      "avatarUrl": "https://api.dicebear.com/7.x/avataaars/svg?seed=testdev"
+    },
+    {
+      "id": "mock-user-2", 
+      "username": "qauser",
+      "email": "qa@example.com",
+      "avatarUrl": "https://api.dicebear.com/7.x/avataaars/svg?seed=qauser"
+    },
+    {
+      "id": "mock-user-3",
+      "username": "devlead",
+      "email": "lead@example.com", 
+      "avatarUrl": "https://api.dicebear.com/7.x/avataaars/svg?seed=devlead"
+    }
+  ]
+}

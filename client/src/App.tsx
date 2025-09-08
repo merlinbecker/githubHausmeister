@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import Dashboard from '@/pages/dashboard';
 import DeveloperTools from '@/pages/developer-tools';
 import Login from '@/pages/login';
+import MockLoginPage from '@/pages/mock-login';
 import NotFound from '@/pages/not-found';
 import { StartupNotificationPrompt } from '@/components/StartupNotificationPrompt';
 
@@ -35,7 +36,10 @@ function Router() {
             <Route component={NotFound} />
           </>
         ) : (
-          <Route path="*" component={Login} />
+          <>
+            <Route path="/mock-login" component={MockLoginPage} />
+            <Route path="*" component={Login} />
+          </>
         )}
       </Switch>
       {/* Show notification prompt only for authenticated users */}

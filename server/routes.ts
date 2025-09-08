@@ -28,6 +28,9 @@ import {
   optionalAuth,
   type AuthenticatedRequest,
 } from './lib/auth-middleware';
+import { ServiceFactory } from './lib/service-factory';
+import { isMockModeEnabled } from './lib/feature-flags';
+import type { MockAuthService } from './lib/mock-auth-service';
 import { initializeWebPush } from './lib/webPush';
 import { MentraService } from './lib/mentraService';
 
@@ -83,7 +86,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })
   );
 
-  // GitHub OAuth setup
+  // GitHub OAuth setup using ServiceFactory
   // Construct the correct redirect URI using Replit's environment variables
   const replitDomain =
     process.env.REPLIT_DEV_DOMAIN ||
@@ -91,20 +94,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
       : 'http://localhost:5000');
 
-  const githubOAuth = new GitHubOAuth({
+  const oauthConfig = {
     clientId: process.env.GITHUB_CLIENT_ID || '',
     clientSecret: process.env.GITHUB_CLIENT_SECRET || '',
     redirectUri:
       process.env.GITHUB_REDIRECT_URI ||
       `${replitDomain}/api/auth/github/callback`,
-  });
+  };
 
+  const authService = ServiceFactory.createAuthService(oauthConfig);
+
+  console.log(
+    `🔧 Using ${ServiceFactory.getServiceType()} authentication service`
+  );
   console.log(
     `GitHub OAuth redirect URI: ${process.env.GITHUB_REDIRECT_URI || `${replitDomain}/api/auth/github/callback`}`
   );
 
+  // Mock Authentication Routes (when MOCK_LOGIN=true)
+  if (isMockModeEnabled()) {
+    const mockAuthService = authService as MockAuthService;
+
+    // Get available mock users for selection
+    app.get('/api/auth/mock/users', (req, res) => {
+      const users = mockAuthService.getAvailableUsers();
+      res.json({ users, mode: 'mock' });
+    });
+
+    // Mock login route - bypasses OAuth flow
+    app.get('/api/auth/mock/login/:userId', async (req, res) => {
+      try {
+        const { userId } = req.params;
+        
+        console.log(`🎭 [MOCK AUTH] Mock login attempt for user: ${userId}`);
+
+        // Get user info to validate
+        const users = mockAuthService.getAvailableUsers();
+        const selectedUser = users.find(u => u.id === userId);
+        
+        if (!selectedUser) {
+          return res.status(400).json({ 
+            error: 'Invalid mock user ID',
+            availableUsers: users.map(u => u.id)
+          });
+        }
+
+        // Exchange for token (in mock mode, userId is the 'code')
+        const { accessToken } = await mockAuthService.exchangeCodeForToken(userId);
+        
+        // Get full user info
+        const githubUser = await mockAuthService.getUserInfo(accessToken);
+
+        // Create or update user in database
+        const user = await databaseStorage.createOrUpdateUser({
+          id: githubUser.id,
+          username: githubUser.login,
+          email: githubUser.email,
+          avatarUrl: githubUser.avatar_url,
+          accessToken,
+          refreshToken: `refresh-${accessToken}`,
+          tokenExpiresAt: undefined,
+        });
+
+        // Set session
+        if (!req.session) {
+          return res.status(500).json({ error: 'Session not initialized' });
+        }
+
+        req.session.userId = user.id;
+        
+        console.log(`✅ [MOCK AUTH] Successfully logged in mock user: ${githubUser.login}`);
+        
+        res.json({ 
+          success: true, 
+          user: { 
+            id: user.id, 
+            username: user.username,
+            email: user.email,
+            avatarUrl: user.avatarUrl
+          },
+          mode: 'mock'
+        });
+      } catch (error) {
+        console.error('❌ [MOCK AUTH] Mock login error:', error);
+        res.status(500).json({ error: 'Mock authentication failed' });
+      }
+    });
+
+    // Quick login route for default user (testing convenience)
+    app.get('/api/auth/mock/quick-login', async (req, res) => {
+      const defaultUser = mockAuthService.getDefaultUser();
+      if (!defaultUser) {
+        return res.status(500).json({ error: 'No default mock user configured' });
+      }
+      
+      // Redirect to regular mock login
+      res.redirect(`/api/auth/mock/login/${defaultUser.id}`);
+    });
+  }
+
+  // Check if mock mode is enabled (for frontend)
+  app.get('/api/auth/mode', (req, res) => {
+    res.json({ 
+      mockMode: isMockModeEnabled(),
+      serviceType: ServiceFactory.getServiceType()
+    });
+  });
+
   // GitHub OAuth routes
   app.get('/api/auth/github', (req, res) => {
+    // In mock mode, redirect to mock user selection
+    if (isMockModeEnabled()) {
+      return res.redirect('/mock-login');
+    }
+
     // Ensure session exists
     if (!req.session) {
       console.error('❌ No session available');
@@ -138,7 +241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timestamp: req.session?.oauthTimestamp,
       });
 
-      const authUrl = githubOAuth.getAuthorizationUrl(state);
+      const authUrl = (authService as GitHubOAuth).getAuthorizationUrl(state);
       console.log('🔀 Redirecting to GitHub:', authUrl);
       res.redirect(authUrl);
     });
@@ -227,10 +330,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Exchange code for token
       const { accessToken, refreshToken } =
-        await githubOAuth.exchangeCodeForToken(code as string, state as string);
+        await (authService as GitHubOAuth).exchangeCodeForToken(code as string, state as string);
 
       // Get user info
-      const githubUser = await githubOAuth.getUserInfo(accessToken);
+      const githubUser = await (authService as GitHubOAuth).getUserInfo(accessToken);
 
       // Create or update user
       const user = await databaseStorage.createOrUpdateUser({
@@ -294,7 +397,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     requireAuth,
     async (req: AuthenticatedRequest, res) => {
       try {
-        const repositories = await githubOAuth.getUserRepositories(
+        const repositories = await authService.getUserRepositories(
           req.user!.accessToken
         );
         res.json(repositories);
@@ -322,7 +425,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const webhookSecret =
           process.env.GITHUB_WEBHOOK_SECRET || 'default-secret';
 
-        const webhook = await githubOAuth.registerWebhook(
+        const webhook = await authService.registerWebhook(
           req.user!.accessToken,
           owner,
           repo,
@@ -368,7 +471,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Delete webhook if exists
         if (repository.webhookId) {
           try {
-            await githubOAuth.deleteWebhook(
+            await (authService as GitHubOAuth).deleteWebhook(
               req.user!.accessToken,
               repository.owner,
               repository.repo,
