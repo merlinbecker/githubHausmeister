@@ -10,9 +10,10 @@ import { formatDistanceToNow } from 'date-fns';
 import { useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import type { Task } from '@shared/schema';
 
 interface ActiveTaskCardProps {
-  activeTask: any; // TODO: Create proper Task type
+  activeTask: Task;
   onRefresh: () => void;
 }
 

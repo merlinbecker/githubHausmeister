@@ -52,7 +52,7 @@ interface VoiceCommand {
   originalText: string;
   commandType: string;
   executionStatus: 'pending' | 'executed' | 'failed';
-  result?: any;
+  result?: unknown;
   errorMessage?: string;
   createdAt: string;
   processedAt?: string;
@@ -608,10 +608,26 @@ function GlassCard({ glass, onDeactivate, isDeactivating }: GlassCardProps) {
   );
 }
 
+interface NotificationData {
+  glassId: string;
+  notification: {
+    type: 'text';
+    title: string;
+    message: string;
+  };
+}
+
+interface ImageData {
+  glassId: string;
+  title: string;
+  message: string;
+  imageUrl: string;
+}
+
 interface NotificationTesterProps {
   glasses: MentraGlass[];
-  onSendNotification: (data: any) => void;
-  onSendImage: (data: any) => void;
+  onSendNotification: (data: NotificationData) => void;
+  onSendImage: (data: ImageData) => void;
   isLoading: boolean;
 }
 
