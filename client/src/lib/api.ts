@@ -255,3 +255,20 @@ export async function getIssuePRs(
   }
   return response.json();
 }
+
+export async function getWebhookForwardUrl(): Promise<{ forwardUrl: string | null }> {
+  const response = await fetch('/api/user/webhook-forward-url', {
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to get webhook forward URL: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function setWebhookForwardUrl(forwardUrl: string | null): Promise<{ success: boolean; forwardUrl: string | null }> {
+  const response = await apiRequest('POST', '/api/user/webhook-forward-url', {
+    forwardUrl,
+  });
+  return response.json();
+}

@@ -14,6 +14,7 @@ import WebhookStatus from '@/components/WebhookStatus';
 import WebhookMonitor from '@/components/WebhookMonitor';
 import SystemControls from '@/components/SystemControls';
 import { NotificationSettings } from '@/components/NotificationSettings';
+import { WebhookSettings } from '@/components/WebhookSettings';
 import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
 
 import { Github, LogOut, User, Wrench } from 'lucide-react';
@@ -167,7 +168,7 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <NotificationSettings />
-          <PWAInstallPrompt />
+          <WebhookSettings />
         </div>
       </main>
 
