@@ -18,6 +18,11 @@ An automated GitHub maintenance Progressive Web App (PWA) that creates chore iss
   - Cross-platform notifications (desktop, mobile, even when app is closed)
   - Configurable notification settings per event type
   - Test notification functionality for debugging
+- **Webhook Forwarding**: Forward webhook events to external services
+  - User-configurable forwarding URL in settings
+  - Transformed payload with simplified format (`repository`, `title`, `text`)
+  - Support for all GitHub webhook events (issues, PRs, CI, etc.)
+  - HTTPS-only with localhost exception for development
 - **Mobile-First UI**: Dark GitHub-themed responsive dashboard for monitoring and control
 
 ## Automated CI/CD Workflow
@@ -271,6 +276,85 @@ GitHub Hausmeister is a fully-featured Progressive Web App that can be installed
 | PR Merged         | 🎉 Pull Request gemergt  | ✅              |
 | CI Status Changed | 🔄 CI-Status geändert    | ✅              |
 | Copilot Assigned  | 🤖 Copilot zugewiesen    | ✅              |
+
+## Webhook Forwarding
+
+GitHub Hausmeister can forward webhook events from your monitored repositories to external services. This feature allows integration with third-party applications, analytics services, or custom automation systems.
+
+### Configuration
+
+1. **Navigate to Dashboard**: Open the GitHub Hausmeister dashboard
+2. **Access Settings**: Find the "Webhook Forwarding" card in the settings section
+3. **Set Forward URL**: Enter the URL where webhooks should be forwarded
+4. **Save Settings**: Click "Save Settings" to activate forwarding
+
+### URL Requirements
+
+- **HTTPS Only**: Only HTTPS URLs are accepted for security
+- **Localhost Exception**: HTTP localhost URLs are allowed for development
+- **Valid URL Format**: Must be a properly formatted URL
+
+### Forwarded Payload
+
+All webhook events are transformed into a simplified format:
+
+```json
+{
+  "repository": "owner/repo-name",
+  "title": "Event-specific title",
+  "text": "Event-specific description"
+}
+```
+
+### Payload Examples
+
+**Pull Request Event:**
+```json
+{
+  "repository": "myorg/myrepo",
+  "title": "Pull Request opened: #123 Fix critical bug", 
+  "text": "opened by developer in myorg/myrepo"
+}
+```
+
+**Issue Event:**
+```json
+{
+  "repository": "myorg/myrepo",
+  "title": "Issue closed: #456 Bug report",
+  "text": "closed by maintainer in myorg/myrepo"
+}
+```
+
+**CI Event:**
+```json
+{
+  "repository": "myorg/myrepo", 
+  "title": "CI success: Build Pipeline",
+  "text": "success in myorg/myrepo by github-actions[bot]"
+}
+```
+
+### Supported Events
+
+- **Pull Requests**: opened, closed, merged, synchronize, etc.
+- **Issues**: opened, closed, assigned, labeled, etc.
+- **CI/CD**: workflow_run, check_suite, check_run completion
+- **Generic Events**: All other GitHub webhook events
+
+### Error Handling
+
+- **Timeout**: Forwarding requests timeout after 10 seconds
+- **Non-blocking**: Forwarding failures don't affect webhook processing
+- **Logging**: Errors are logged for debugging but don't interrupt service
+- **Retry**: Currently no automatic retry (may be added in future versions)
+
+### Security Considerations
+
+- **HTTPS Only**: Ensures encrypted transmission to external services
+- **No Authentication**: Forwarded requests don't include authentication headers
+- **Rate Limiting**: No built-in rate limiting (configure on receiving end)
+- **Content-Type**: Always sent as `application/json`
 
 ## Deployment
 
