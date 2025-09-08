@@ -1,0 +1,74 @@
+{
+  "repositories": {
+    "mock-user-1": [
+      {
+        "id": 1001,
+        "name": "frontend-app",
+        "full_name": "testdev/frontend-app",
+        "owner": { "login": "testdev" },
+        "permissions": { "admin": true, "push": true },
+        "description": "React frontend application for testing automated maintenance"
+      },
+      {
+        "id": 1002,
+        "name": "api-service",
+        "full_name": "testdev/api-service", 
+        "owner": { "login": "testdev" },
+        "permissions": { "admin": false, "push": true },
+        "description": "Node.js API service with automated dependency updates"
+      },
+      {
+        "id": 1003,
+        "name": "mobile-app",
+        "full_name": "testdev/mobile-app",
+        "owner": { "login": "testdev" },
+        "permissions": { "admin": true, "push": true },
+        "description": "React Native mobile application"
+      }
+    ],
+    "mock-user-2": [
+      {
+        "id": 2001,
+        "name": "test-automation",
+        "full_name": "qauser/test-automation",
+        "owner": { "login": "qauser" },
+        "permissions": { "admin": true, "push": true },
+        "description": "Automated testing framework and CI/CD pipelines"
+      },
+      {
+        "id": 2002,
+        "name": "qa-dashboard",
+        "full_name": "qauser/qa-dashboard",
+        "owner": { "login": "qauser" },
+        "permissions": { "admin": true, "push": true },
+        "description": "Quality assurance metrics and reporting dashboard"
+      }
+    ],
+    "mock-user-3": [
+      {
+        "id": 3001,
+        "name": "infrastructure",
+        "full_name": "devlead/infrastructure",
+        "owner": { "login": "devlead" },
+        "permissions": { "admin": true, "push": true },
+        "description": "Infrastructure as Code using Terraform and Kubernetes"
+      },
+      {
+        "id": 3002,
+        "name": "docs-site",
+        "full_name": "devlead/docs-site",
+        "owner": { "login": "devlead" },
+        "permissions": { "admin": true, "push": true },
+        "description": "Team documentation and knowledge base"
+      },
+      {
+        "id": 3003,
+        "name": "monitoring-stack",
+        "full_name": "devlead/monitoring-stack",
+        "owner": { "login": "devlead" },
+        "permissions": { "admin": false, "push": true },
+        "description": "Prometheus, Grafana, and logging infrastructure"
+      }
+    ]
+  }
+}

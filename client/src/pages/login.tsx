@@ -1,9 +1,65 @@
-import React from 'react';
-import { Github, Shield, Zap, GitBranch } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Github, Shield, Zap, GitBranch, TestTube } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { loginWithGitHub } from '@/lib/auth';
 
+interface AuthMode {
+  mockMode: boolean;
+  serviceType: 'mock' | 'production';
+}
+
 export default function Login() {
+  const [authMode, setAuthMode] = useState<AuthMode | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Check authentication mode
+    fetch('/api/auth/mode')
+      .then(res => res.json())
+      .then((data: AuthMode) => {
+        setAuthMode(data);
+        setLoading(false);
+        
+        // Auto-redirect to mock login if in mock mode
+        if (data.mockMode) {
+          window.location.href = '/mock-login';
+        }
+      })
+      .catch(err => {
+        console.error('Failed to check auth mode:', err);
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-github-bg text-github-text flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-github-blue mx-auto mb-4"></div>
+          <p className="text-github-muted">Checking authentication mode...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If mock mode detected, show redirection message (should auto-redirect above)
+  if (authMode?.mockMode) {
+    return (
+      <div className="min-h-screen bg-github-bg text-github-text flex items-center justify-center">
+        <div className="text-center">
+          <TestTube className="text-github-blue mx-auto mb-4" size={48} />
+          <p className="text-github-muted">Redirecting to mock login...</p>
+          <Button 
+            onClick={() => window.location.href = '/mock-login'}
+            className="mt-4"
+            variant="outline"
+          >
+            Go to Mock Login
+          </Button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen bg-github-bg text-github-text flex items-center justify-center p-4">
       <div className="max-w-md w-full">
