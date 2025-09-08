@@ -24,7 +24,7 @@ describe('ServiceFactory', () => {
 
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
-      const service = ServiceFactory.createAuthService();
+      const _service = ServiceFactory.createAuthService();
 
       expect(MockAuthService).toHaveBeenCalled();
       expect(consoleSpy).toHaveBeenCalledWith(
@@ -45,7 +45,7 @@ describe('ServiceFactory', () => {
         redirectUri: 'http://localhost:3000/callback'
       };
 
-      const service = ServiceFactory.createAuthService(oauthConfig);
+      const _service = ServiceFactory.createAuthService(oauthConfig);
 
       expect(GitHubOAuth).toHaveBeenCalledWith(oauthConfig);
       expect(consoleSpy).toHaveBeenCalledWith(

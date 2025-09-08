@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { MockAuthService, type MockUser } from '../../../server/lib/mock-auth-service';
 
 describe('MockAuthService', () => {

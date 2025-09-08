@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Github, Shield, Zap, GitBranch, TestTube } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { loginWithGitHub } from '@/lib/auth';
 
 interface AuthMode {
