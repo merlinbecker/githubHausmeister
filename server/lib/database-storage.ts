@@ -546,7 +546,7 @@ export class DatabaseStorage {
     commandId: string,
     updates: {
       executionStatus?: string;
-      result?: Record<string, any>;
+      result?: Record<string, unknown>;
       errorMessage?: string;
       processedAt?: Date;
     }

@@ -23,8 +23,9 @@ export default function ActiveTaskCard({
 }: ActiveTaskCardProps) {
   const { toast } = useToast();
 
-  const formatTimeAgo = (date: string | Date) => {
+  const formatTimeAgo = (date: string | Date | null) => {
     try {
+      if (!date) return 'unknown';
       return formatDistanceToNow(new Date(date), { addSuffix: true });
     } catch {
       return 'unknown';

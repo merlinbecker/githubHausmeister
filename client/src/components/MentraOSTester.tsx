@@ -52,7 +52,7 @@ interface VoiceCommand {
   originalText: string;
   commandType: string;
   executionStatus: 'pending' | 'executed' | 'failed';
-  result?: unknown;
+  result?: { message?: string } | string;
   errorMessage?: string;
   createdAt: string;
   processedAt?: string;
@@ -838,7 +838,10 @@ function VoiceCommandCard({ command }: { command: VoiceCommand }) {
       <p className="text-sm font-medium">"{command.originalText}"</p>
       {command.result && (
         <p className="text-xs text-muted-foreground">
-          Result: {command.result.message}
+          Result:{' '}
+          {typeof command.result === 'string'
+            ? command.result
+            : command.result.message || 'Unknown result'}
         </p>
       )}
       {command.errorMessage && (

@@ -17,7 +17,7 @@ vi.mock('../../../server/lib/database-storage', () => ({
 const createMockSession = (data: Partial<{ userId: string }> = {}): Session =>
   ({
     id: 'mock-session-id',
-    cookie: {} as any,
+    cookie: {} as Session['cookie'],
     regenerate: vi.fn(),
     destroy: vi.fn(),
     reload: vi.fn(),
