@@ -399,6 +399,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Get user webhook forward URL
+  app.get(
+    '/api/user/webhook-forward-url',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const user = await databaseStorage.getUserById(req.user!.id);
+        res.json({ forwardUrl: user?.webhookForwardUrl || null });
+      } catch (error) {
+        console.error('Error getting webhook forward URL:', error);
+        res.status(500).json({ error: 'Failed to get webhook forward URL' });
+      }
+    }
+  );
+
+  // Set user webhook forward URL
+  app.post(
+    '/api/user/webhook-forward-url',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { forwardUrl } = req.body;
+
+        // Validate URL format if provided
+        if (forwardUrl) {
+          try {
+            new URL(forwardUrl);
+            // Only allow HTTPS URLs (except localhost for development)
+            if (!forwardUrl.startsWith('https://') && !forwardUrl.startsWith('http://localhost')) {
+              return res.status(400).json({ 
+                error: 'Only HTTPS URLs are allowed (except localhost for development)' 
+              });
+            }
+          } catch {
+            return res.status(400).json({ error: 'Invalid URL format' });
+          }
+        }
+
+        await databaseStorage.updateUser(req.user!.id, {
+          webhookForwardUrl: forwardUrl || null,
+        });
+
+        res.json({ success: true, forwardUrl: forwardUrl || null });
+      } catch (error) {
+        console.error('Error setting webhook forward URL:', error);
+        res.status(500).json({ error: 'Failed to set webhook forward URL' });
+      }
+    }
+  );
+
   // Get user repositories from GitHub
   app.get(
     '/api/repositories',
@@ -1812,6 +1862,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await handleGenericWebhookEvent(event, payload);
       }
 
+      // Forward webhook to user's configured URL if applicable
+      await forwardWebhookToUsers(event, payload, repositoryOwner, repositoryName);
+
       res.json({ ok: true, delivery, event });
     } catch (error) {
       console.error('Webhook error:', error);
@@ -2318,6 +2371,149 @@ export async function registerRoutes(app: Express): Promise<Server> {
           error
         );
       }
+    }
+  }
+
+  async function forwardWebhookToUsers(
+    event: string,
+    payload: any,
+    repositoryOwner?: string,
+    repositoryName?: string
+  ) {
+    if (!repositoryOwner || !repositoryName) return;
+
+    try {
+      // Get all users monitoring this repository
+      const userRepos = await databaseStorage.getUserRepositoriesByName(
+        repositoryOwner,
+        repositoryName
+      );
+
+      if (userRepos.length === 0) return;
+
+      // Get users with configured webhook forward URLs
+      const usersWithForwardUrls = await Promise.all(
+        userRepos.map(async (userRepo) => {
+          const user = await databaseStorage.getUserById(userRepo.userId);
+          return {
+            userRepo,
+            user,
+            forwardUrl: user?.webhookForwardUrl,
+          };
+        })
+      );
+
+      const usersToForward = usersWithForwardUrls.filter(
+        (item) => item.forwardUrl && item.user
+      );
+
+      if (usersToForward.length === 0) return;
+
+      console.log(
+        `🔀 Forwarding webhook ${event} for ${repositoryOwner}/${repositoryName} to ${usersToForward.length} users`
+      );
+
+      // Transform payload and forward to each user
+      await Promise.all(
+        usersToForward.map(async ({ forwardUrl }) => {
+          try {
+            const transformedPayload = transformWebhookPayload(
+              event,
+              payload,
+              repositoryOwner,
+              repositoryName
+            );
+
+            await forwardWebhook(forwardUrl!, transformedPayload);
+          } catch (error) {
+            console.warn(`Failed to forward webhook to ${forwardUrl}:`, error);
+          }
+        })
+      );
+    } catch (error) {
+      console.error('Error in webhook forwarding:', error);
+    }
+  }
+
+  function transformWebhookPayload(
+    event: string,
+    payload: any,
+    repositoryOwner: string,
+    repositoryName: string
+  ) {
+    const repository = `${repositoryOwner}/${repositoryName}`;
+    const actor = payload?.sender?.login || 'unknown';
+
+    let title = '';
+    let text = '';
+
+    switch (event) {
+      case 'pull_request':
+        const prAction = payload.action;
+        const prNumber = payload.pull_request?.number;
+        const prTitle = payload.pull_request?.title;
+        title = `Pull Request ${prAction}: #${prNumber} ${prTitle}`;
+        text = `${prAction} by ${actor} in ${repository}`;
+        break;
+
+      case 'issues':
+        const issueAction = payload.action;
+        const issueNumber = payload.issue?.number;
+        const issueTitle = payload.issue?.title;
+        title = `Issue ${issueAction}: #${issueNumber} ${issueTitle}`;
+        text = `${issueAction} by ${actor} in ${repository}`;
+        break;
+
+      case 'workflow_run':
+      case 'check_suite':
+      case 'check_run':
+        const conclusion = 
+          payload?.check_run?.conclusion ||
+          payload?.check_suite?.conclusion ||
+          payload?.workflow_run?.conclusion ||
+          'unknown';
+        const workflowName = 
+          payload?.workflow?.name ||
+          payload?.check_suite?.app?.name ||
+          payload?.check_run?.name ||
+          'CI';
+        title = `CI ${conclusion}: ${workflowName}`;
+        text = `${conclusion} in ${repository} by ${actor}`;
+        break;
+
+      default:
+        title = `${event} Event`;
+        text = `${event} triggered in ${repository} by ${actor}`;
+        break;
+    }
+
+    return {
+      repository,
+      title,
+      text,
+    };
+  }
+
+  async function forwardWebhook(url: string, payload: any) {
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'GitHub-Hausmeister-Forwarder/1.0',
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000), // 10s timeout
+      });
+
+      if (!response.ok) {
+        console.warn(`Webhook forward failed: ${response.status} ${response.statusText}`);
+      } else {
+        console.log(`✅ Webhook forwarded successfully to ${url}`);
+      }
+    } catch (error) {
+      console.error(`❌ Webhook forward error to ${url}:`, error);
+      // Do not fail original webhook processing
     }
   }
 

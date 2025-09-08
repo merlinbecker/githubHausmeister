@@ -89,6 +89,7 @@ describe('Auth Middleware', () => {
         accessToken: 'token-123',
         refreshToken: null,
         tokenExpiresAt: null,
+        webhookForwardUrl: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -126,6 +127,7 @@ describe('Auth Middleware', () => {
         accessToken: 'token-123',
         refreshToken: null,
         tokenExpiresAt: null,
+        webhookForwardUrl: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
