@@ -249,26 +249,32 @@ export function PushNotificationTester() {
             Client Test
           </Button>
 
-          <Button 
+          <Button
             onClick={async () => {
-              addTestResult('🔄 Starte kompletten Service Worker + Push Reset...');
-              
+              addTestResult(
+                '🔄 Starte kompletten Service Worker + Push Reset...'
+              );
+
               const success = await resetServiceWorkerAndSubscriptions();
-              
+
               if (success) {
-                addTestResult('✅ Service Worker + Push komplett zurückgesetzt');
+                addTestResult(
+                  '✅ Service Worker + Push komplett zurückgesetzt'
+                );
                 addTestResult('🔄 Lade Seite neu für frischen Start...');
-                
+
                 // Seite neu laden für frischen Start
                 setTimeout(() => {
                   window.location.reload();
                 }, 2000);
               } else {
                 addTestResult('❌ Fehler beim Service Worker Reset');
-                addTestResult('💡 Versuche Browser-Cache manuell zu leeren (Ctrl+Shift+R)');
+                addTestResult(
+                  '💡 Versuche Browser-Cache manuell zu leeren (Ctrl+Shift+R)'
+                );
               }
-            }} 
-            variant="destructive" 
+            }}
+            variant="destructive"
             size="sm"
           >
             🔧 Complete Reset

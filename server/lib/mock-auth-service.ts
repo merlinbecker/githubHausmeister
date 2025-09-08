@@ -26,22 +26,22 @@ const DEFAULT_MOCK_USERS: MockUser[] = [
     username: 'testdev',
     email: 'testdev@example.com',
     avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=testdev',
-    accessToken: 'mock-token-testdev-12345'
+    accessToken: 'mock-token-testdev-12345',
   },
   {
-    id: 'mock-user-2', 
+    id: 'mock-user-2',
     username: 'qauser',
     email: 'qa@example.com',
     avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=qauser',
-    accessToken: 'mock-token-qauser-67890'
+    accessToken: 'mock-token-qauser-67890',
   },
   {
     id: 'mock-user-3',
     username: 'devlead',
-    email: 'lead@example.com', 
+    email: 'lead@example.com',
     avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=devlead',
-    accessToken: 'mock-token-devlead-abcde'
-  }
+    accessToken: 'mock-token-devlead-abcde',
+  },
 ];
 
 // Mock repositories for each user
@@ -52,15 +52,15 @@ const MOCK_REPOSITORIES: Record<string, GitHubRepository[]> = {
       name: 'frontend-app',
       full_name: 'testdev/frontend-app',
       owner: { login: 'testdev' },
-      permissions: { admin: true, push: true }
+      permissions: { admin: true, push: true },
     },
     {
       id: 1002,
       name: 'api-service',
-      full_name: 'testdev/api-service', 
+      full_name: 'testdev/api-service',
       owner: { login: 'testdev' },
-      permissions: { admin: false, push: true }
-    }
+      permissions: { admin: false, push: true },
+    },
   ],
   'mock-user-2': [
     {
@@ -68,8 +68,8 @@ const MOCK_REPOSITORIES: Record<string, GitHubRepository[]> = {
       name: 'test-automation',
       full_name: 'qauser/test-automation',
       owner: { login: 'qauser' },
-      permissions: { admin: true, push: true }
-    }
+      permissions: { admin: true, push: true },
+    },
   ],
   'mock-user-3': [
     {
@@ -77,16 +77,16 @@ const MOCK_REPOSITORIES: Record<string, GitHubRepository[]> = {
       name: 'infrastructure',
       full_name: 'devlead/infrastructure',
       owner: { login: 'devlead' },
-      permissions: { admin: true, push: true }
+      permissions: { admin: true, push: true },
     },
     {
       id: 3002,
       name: 'docs-site',
       full_name: 'devlead/docs-site',
       owner: { login: 'devlead' },
-      permissions: { admin: true, push: true }
-    }
-  ]
+      permissions: { admin: true, push: true },
+    },
+  ],
 };
 
 export class MockAuthService {
@@ -96,7 +96,7 @@ export class MockAuthService {
     this.config = {
       users: DEFAULT_MOCK_USERS,
       defaultUserId: 'mock-user-1',
-      ...config
+      ...config,
     };
   }
 
@@ -107,9 +107,9 @@ export class MockAuthService {
     const params = new URLSearchParams({
       mock: 'true',
       state: state || '',
-      available_users: this.config.users.map(u => u.username).join(',')
+      available_users: this.config.users.map((u) => u.username).join(','),
     });
-    
+
     return `/api/auth/mock/callback?${params.toString()}`;
   }
 
@@ -121,15 +121,15 @@ export class MockAuthService {
     _state?: string
   ): Promise<{ accessToken: string; refreshToken?: string }> {
     // In mock mode, 'code' represents the selected user ID
-    const user = this.config.users.find(u => u.id === code);
-    
+    const user = this.config.users.find((u) => u.id === code);
+
     if (!user) {
       throw new Error('Invalid mock user code');
     }
 
     return {
       accessToken: user.accessToken,
-      refreshToken: `refresh-${user.accessToken}`
+      refreshToken: `refresh-${user.accessToken}`,
     };
   }
 
@@ -137,8 +137,8 @@ export class MockAuthService {
    * Get mock user info from access token
    */
   async getUserInfo(accessToken: string): Promise<GitHubUser> {
-    const user = this.config.users.find(u => u.accessToken === accessToken);
-    
+    const user = this.config.users.find((u) => u.accessToken === accessToken);
+
     if (!user) {
       throw new Error('Invalid mock access token');
     }
@@ -147,7 +147,7 @@ export class MockAuthService {
       id: user.id,
       login: user.username,
       email: user.email,
-      avatar_url: user.avatarUrl
+      avatar_url: user.avatarUrl,
     };
   }
 
@@ -155,8 +155,8 @@ export class MockAuthService {
    * Get mock repositories for user
    */
   async getUserRepositories(accessToken: string): Promise<GitHubRepository[]> {
-    const user = this.config.users.find(u => u.accessToken === accessToken);
-    
+    const user = this.config.users.find((u) => u.accessToken === accessToken);
+
     if (!user) {
       throw new Error('Invalid mock access token');
     }
@@ -173,12 +173,14 @@ export class MockAuthService {
     repo: string,
     webhookUrl: string
   ): Promise<{ id: number; url: string }> {
-    console.log(`[MOCK] Webhook registered for ${owner}/${repo} -> ${webhookUrl}`);
-    
+    console.log(
+      `[MOCK] Webhook registered for ${owner}/${repo} -> ${webhookUrl}`
+    );
+
     // Return mock webhook data
     return {
       id: Math.floor(Math.random() * 10000),
-      url: webhookUrl
+      url: webhookUrl,
     };
   }
 
@@ -210,9 +212,9 @@ export class MockAuthService {
    * Get list of available mock users (for UI)
    */
   getAvailableUsers(): MockUser[] {
-    return this.config.users.map(user => ({
+    return this.config.users.map((user) => ({
       ...user,
-      accessToken: '[HIDDEN]' // Don't expose tokens in UI
+      accessToken: '[HIDDEN]', // Don't expose tokens in UI
     }));
   }
 
@@ -221,7 +223,9 @@ export class MockAuthService {
    */
   getDefaultUser(): MockUser | undefined {
     const defaultId = this.config.defaultUserId;
-    return defaultId ? this.config.users.find(u => u.id === defaultId) : this.config.users[0];
+    return defaultId
+      ? this.config.users.find((u) => u.id === defaultId)
+      : this.config.users[0];
   }
 
   /**

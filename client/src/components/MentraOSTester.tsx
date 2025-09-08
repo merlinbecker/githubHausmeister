@@ -52,7 +52,7 @@ interface VoiceCommand {
   originalText: string;
   commandType: string;
   executionStatus: 'pending' | 'executed' | 'failed';
-  result?: any;
+  result?: { message?: string } | string;
   errorMessage?: string;
   createdAt: string;
   processedAt?: string;
@@ -160,14 +160,23 @@ export function MentraOSTester() {
   const [testResults, setTestResults] = useState<string[]>([]);
 
   // Queries - No automatic polling, only manual refresh
-  const { data: glassStatus, isLoading: statusLoading, error: _statusError, refetch: _refetchStatus } = useQuery({
+  const {
+    data: glassStatus,
+    isLoading: statusLoading,
+    error: _statusError,
+    refetch: _refetchStatus,
+  } = useQuery({
     queryKey: ['mentra-status'],
     queryFn: api.getGlassStatus,
     retry: 1, // Only retry once on failure
     refetchOnWindowFocus: false, // Don't refetch when window gains focus
   });
 
-  const { data: voiceCommands, error: _voiceError, refetch: _refetchVoiceCommands } = useQuery({
+  const {
+    data: voiceCommands,
+    error: _voiceError,
+    refetch: _refetchVoiceCommands,
+  } = useQuery({
     queryKey: ['mentra-voice-commands'],
     queryFn: api.getVoiceCommands,
     retry: 1,
@@ -175,7 +184,11 @@ export function MentraOSTester() {
     enabled: false, // Don't auto-fetch on mount
   });
 
-  const { data: notifications, error: _notificationsError, refetch: _refetchNotifications } = useQuery({
+  const {
+    data: notifications,
+    error: _notificationsError,
+    refetch: _refetchNotifications,
+  } = useQuery({
     queryKey: ['mentra-notifications'],
     queryFn: api.getNotifications,
     retry: 1,
@@ -595,10 +608,26 @@ function GlassCard({ glass, onDeactivate, isDeactivating }: GlassCardProps) {
   );
 }
 
+interface NotificationData {
+  glassId: string;
+  notification: {
+    type: 'text';
+    title: string;
+    message: string;
+  };
+}
+
+interface ImageData {
+  glassId: string;
+  title: string;
+  message: string;
+  imageUrl: string;
+}
+
 interface NotificationTesterProps {
   glasses: MentraGlass[];
-  onSendNotification: (data: any) => void;
-  onSendImage: (data: any) => void;
+  onSendNotification: (data: NotificationData) => void;
+  onSendImage: (data: ImageData) => void;
   isLoading: boolean;
 }
 
@@ -809,7 +838,10 @@ function VoiceCommandCard({ command }: { command: VoiceCommand }) {
       <p className="text-sm font-medium">"{command.originalText}"</p>
       {command.result && (
         <p className="text-xs text-muted-foreground">
-          Result: {command.result.message}
+          Result:{' '}
+          {typeof command.result === 'string'
+            ? command.result
+            : command.result.message || 'Unknown result'}
         </p>
       )}
       {command.errorMessage && (

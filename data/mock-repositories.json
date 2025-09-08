@@ -12,7 +12,7 @@
       {
         "id": 1002,
         "name": "api-service",
-        "full_name": "testdev/api-service", 
+        "full_name": "testdev/api-service",
         "owner": { "login": "testdev" },
         "permissions": { "admin": false, "push": true },
         "description": "Node.js API service with automated dependency updates"

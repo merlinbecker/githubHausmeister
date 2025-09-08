@@ -63,7 +63,8 @@ export default function DeveloperTools() {
             MentraOS Integration Testing
           </h2>
           <p className="text-github-muted text-sm mb-4">
-            Test and manage evenrealities G1 smartglasses integration, voice commands, and AR notifications.
+            Test and manage evenrealities G1 smartglasses integration, voice
+            commands, and AR notifications.
           </p>
         </div>
         <MentraOSTester />

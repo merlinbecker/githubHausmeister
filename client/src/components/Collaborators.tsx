@@ -10,13 +10,14 @@ interface CollaboratorsProps {
 }
 
 export default function Collaborators({ repository }: CollaboratorsProps) {
-  const { 
-    data: collaborators, 
-    isLoading, 
-    error 
+  const {
+    data: collaborators,
+    isLoading,
+    error,
   } = useQuery({
     queryKey: ['repository-collaborators', repository.owner, repository.repo],
-    queryFn: () => getRepositoryCollaborators(repository.owner, repository.repo),
+    queryFn: () =>
+      getRepositoryCollaborators(repository.owner, repository.repo),
     staleTime: 5 * 60 * 1000, // 5 minutes - collaborators don't change often
   });
 
@@ -79,7 +80,9 @@ export default function Collaborators({ repository }: CollaboratorsProps) {
           <div className="text-center py-8 text-github-text-secondary">
             <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
             <p>Failed to load collaborators</p>
-            <p className="text-sm">You may not have permission to view collaborators</p>
+            <p className="text-sm">
+              You may not have permission to view collaborators
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -107,10 +110,19 @@ export default function Collaborators({ repository }: CollaboratorsProps) {
 
   // Sort collaborators by role (admin first, then by login)
   const sortedCollaborators = [...collaborators].sort((a, b) => {
-    const roleOrder = { admin: 0, maintain: 1, write: 2, push: 2, read: 3, pull: 3 };
-    const aOrder = roleOrder[a.role_name.toLowerCase() as keyof typeof roleOrder] ?? 999;
-    const bOrder = roleOrder[b.role_name.toLowerCase() as keyof typeof roleOrder] ?? 999;
-    
+    const roleOrder = {
+      admin: 0,
+      maintain: 1,
+      write: 2,
+      push: 2,
+      read: 3,
+      pull: 3,
+    };
+    const aOrder =
+      roleOrder[a.role_name.toLowerCase() as keyof typeof roleOrder] ?? 999;
+    const bOrder =
+      roleOrder[b.role_name.toLowerCase() as keyof typeof roleOrder] ?? 999;
+
     if (aOrder !== bOrder) {
       return aOrder - bOrder;
     }
@@ -128,14 +140,14 @@ export default function Collaborators({ repository }: CollaboratorsProps) {
       <CardContent>
         <div className="space-y-3">
           {sortedCollaborators.map((collaborator) => (
-            <div 
-              key={collaborator.id} 
+            <div
+              key={collaborator.id}
               className="flex items-center justify-between p-3 rounded-lg bg-github-canvas-subtle border border-github-border-default hover:bg-github-canvas-default transition-colors"
             >
               <div className="flex items-center gap-3">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage 
-                    src={collaborator.avatar_url} 
+                  <AvatarImage
+                    src={collaborator.avatar_url}
                     alt={collaborator.login}
                   />
                   <AvatarFallback>
@@ -160,30 +172,35 @@ export default function Collaborators({ repository }: CollaboratorsProps) {
                   </div>
                   <div className="flex items-center gap-2 text-sm text-github-text-secondary mt-1">
                     {getRoleIcon(collaborator.role_name)}
-                    <Badge variant={getRoleBadgeVariant(collaborator.role_name)}>
+                    <Badge
+                      variant={getRoleBadgeVariant(collaborator.role_name)}
+                    >
                       {collaborator.role_name}
                     </Badge>
                     {collaborator.permissions.admin && (
                       <span className="text-xs">Admin</span>
                     )}
-                    {collaborator.permissions.push && !collaborator.permissions.admin && (
-                      <span className="text-xs">Write</span>
-                    )}
-                    {collaborator.permissions.pull && !collaborator.permissions.push && (
-                      <span className="text-xs">Read</span>
-                    )}
+                    {collaborator.permissions.push &&
+                      !collaborator.permissions.admin && (
+                        <span className="text-xs">Write</span>
+                      )}
+                    {collaborator.permissions.pull &&
+                      !collaborator.permissions.push && (
+                        <span className="text-xs">Read</span>
+                      )}
                   </div>
                 </div>
               </div>
-              
+
               <div className="text-right text-xs text-github-text-secondary">
                 <div className="flex flex-col gap-1">
                   {collaborator.permissions.admin && (
                     <span className="text-red-600">Full access</span>
                   )}
-                  {collaborator.permissions.push && !collaborator.permissions.admin && (
-                    <span className="text-blue-600">Can push</span>
-                  )}
+                  {collaborator.permissions.push &&
+                    !collaborator.permissions.admin && (
+                      <span className="text-blue-600">Can push</span>
+                    )}
                   {!collaborator.permissions.push && (
                     <span className="text-gray-600">Read only</span>
                   )}
@@ -192,11 +209,12 @@ export default function Collaborators({ repository }: CollaboratorsProps) {
             </div>
           ))}
         </div>
-        
+
         <div className="mt-4 p-3 bg-github-canvas-subtle border border-github-border-default rounded-lg">
           <p className="text-sm text-github-text-secondary">
-            <strong>Note:</strong> Only users with write access or higher can be assigned to issues.
-            Copilot agents may appear in this list when they are actively working on repository issues.
+            <strong>Note:</strong> Only users with write access or higher can be
+            assigned to issues. Copilot agents may appear in this list when they
+            are actively working on repository issues.
           </p>
         </div>
       </CardContent>

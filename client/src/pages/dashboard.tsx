@@ -144,9 +144,7 @@ export default function Dashboard() {
           onRefresh={refetch}
         />
 
-        <RepositoryIssueManager 
-          repositories={appState?.repositories || []}
-        />
+        <RepositoryIssueManager repositories={appState?.repositories || []} />
 
         <TaskQueue queue={appState?.queue || []} onRefresh={refetch} />
 
@@ -171,8 +169,6 @@ export default function Dashboard() {
           <NotificationSettings />
           <PWAInstallPrompt />
         </div>
-
-
       </main>
 
       {/* Footer */}

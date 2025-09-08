@@ -16,14 +16,18 @@ export class ServiceFactory {
     mockConfig?: Partial<MockAuthConfig>
   ): GitHubOAuth | MockAuthService {
     if (isMockModeEnabled()) {
-      console.log('🎭 [SERVICE FACTORY] Creating MockAuthService (MOCK_LOGIN=true)');
+      console.log(
+        '🎭 [SERVICE FACTORY] Creating MockAuthService (MOCK_LOGIN=true)'
+      );
       return new MockAuthService(mockConfig);
     }
-    
+
     if (!oauthConfig) {
-      throw new Error('GitHubOAuth configuration required when MOCK_LOGIN is not enabled');
+      throw new Error(
+        'GitHubOAuth configuration required when MOCK_LOGIN is not enabled'
+      );
     }
-    
+
     console.log('🔐 [SERVICE FACTORY] Creating GitHubOAuth (production mode)');
     return new GitHubOAuth(oauthConfig);
   }

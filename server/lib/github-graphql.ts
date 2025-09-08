@@ -1,7 +1,7 @@
 const GQL = 'https://api.github.com/graphql';
 export async function gql<T>(
   query: string,
-  variables: Record<string, any> = {},
+  variables: Record<string, unknown> = {},
   token: string
 ): Promise<T> {
   const res = await fetch(GQL, {
@@ -41,7 +41,11 @@ export async function getIssueNodeId(
       }
     }`;
 
-  const data: any = await gql(query, { owner, repo, issueNumber }, token);
+  const data: { repository: { issue: { id: string } } } = await gql(
+    query,
+    { owner, repo, issueNumber },
+    token
+  );
   return data.repository.issue.id;
 }
 
@@ -70,20 +74,26 @@ export async function getCopilotNodeId(
         }
       }`;
 
-    const actorsData: any = await gql(
-      suggestedActorsQuery,
-      { owner, repo },
-      token
-    );
+    const actorsData: {
+      repository?: {
+        suggestedActors?: {
+          nodes: Array<{
+            __typename: string;
+            login: string;
+            id: string;
+          }>;
+        };
+      };
+    } = await gql(suggestedActorsQuery, { owner, repo }, token);
     const suggestedActors = actorsData.repository?.suggestedActors?.nodes || [];
 
     // Look for Copilot Bot agent specifically
     for (const actor of suggestedActors) {
-      if (
-        actor.__typename === 'Bot' &&
-        actor.login === 'copilot-swe-agent'
-      ) {
-        console.log('Found Copilot Bot agent via suggestedActors:', actor.login);
+      if (actor.__typename === 'Bot' && actor.login === 'copilot-swe-agent') {
+        console.log(
+          'Found Copilot Bot agent via suggestedActors:',
+          actor.login
+        );
         return actor.id;
       }
     }

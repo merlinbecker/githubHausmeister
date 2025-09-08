@@ -63,19 +63,17 @@ describe('CopilotAssignmentService', () => {
       // Mock getting login from node ID
       mockGql
         .mockResolvedValueOnce({ node: { login: 'copilot-agent' } }) // getLoginFromNodeId
-        .mockResolvedValueOnce({ 
+        .mockResolvedValueOnce({
           replaceActorsForAssignable: {
             assignable: {
               id: 'issue-id',
               number: 123,
               title: 'Test Issue',
               assignees: {
-                nodes: [
-                  { id: 'test-node-id', login: 'copilot-agent' }
-                ]
-              }
-            }
-          }
+                nodes: [{ id: 'test-node-id', login: 'copilot-agent' }],
+              },
+            },
+          },
         }); // assignViaGraphQL
 
       mockGetIssueNodeId.mockResolvedValue('issue-node-id');
@@ -125,19 +123,17 @@ describe('CopilotAssignmentService', () => {
             },
           },
         })
-        .mockResolvedValueOnce({ 
+        .mockResolvedValueOnce({
           replaceActorsForAssignable: {
             assignable: {
               id: 'issue-id',
               number: 123,
               title: 'Test Issue',
               assignees: {
-                nodes: [
-                  { id: 'copilot-id', login: 'github-copilot[bot]' }
-                ]
-              }
-            }
-          }
+                nodes: [{ id: 'copilot-id', login: 'github-copilot[bot]' }],
+              },
+            },
+          },
         }); // assignViaGraphQL
 
       mockGetIssueNodeId.mockResolvedValue('issue-node-id');
@@ -179,7 +175,7 @@ describe('CopilotAssignmentService', () => {
           // findAgentByGlobalSearch
           user: { id: 'copilot-global-id', login: 'copilot-swe-agent' },
         })
-        .mockResolvedValueOnce({ 
+        .mockResolvedValueOnce({
           replaceActorsForAssignable: {
             assignable: {
               id: 'issue-id',
@@ -187,11 +183,11 @@ describe('CopilotAssignmentService', () => {
               title: 'Test Issue',
               assignees: {
                 nodes: [
-                  { id: 'copilot-global-id', login: 'copilot-swe-agent' }
-                ]
-              }
-            }
-          }
+                  { id: 'copilot-global-id', login: 'copilot-swe-agent' },
+                ],
+              },
+            },
+          },
         }); // assignViaGraphQL
 
       mockGetIssueNodeId.mockResolvedValue('issue-node-id');
@@ -241,19 +237,17 @@ describe('CopilotAssignmentService', () => {
           // getCurrentUser
           viewer: { id: 'current-user-id', login: 'current-user' },
         })
-        .mockResolvedValueOnce({ 
+        .mockResolvedValueOnce({
           replaceActorsForAssignable: {
             assignable: {
               id: 'issue-id',
               number: 123,
               title: 'Test Issue',
               assignees: {
-                nodes: [
-                  { id: 'current-user-id', login: 'current-user' }
-                ]
-              }
-            }
-          }
+                nodes: [{ id: 'current-user-id', login: 'current-user' }],
+              },
+            },
+          },
         }); // assignViaGraphQL
 
       mockGetIssueNodeId.mockResolvedValue('issue-node-id');
@@ -409,19 +403,17 @@ describe('CopilotAssignmentService', () => {
 
       mockGql
         .mockResolvedValueOnce({ node: { login: 'copilot-agent' } }) // First call
-        .mockResolvedValue({ 
+        .mockResolvedValue({
           replaceActorsForAssignable: {
             assignable: {
               id: 'issue-id',
               number: 123,
               title: 'Test Issue',
               assignees: {
-                nodes: [
-                  { id: 'test-node-id', login: 'copilot-agent' }
-                ]
-              }
-            }
-          }
+                nodes: [{ id: 'test-node-id', login: 'copilot-agent' }],
+              },
+            },
+          },
         }); // Assignment calls
 
       mockGetIssueNodeId.mockResolvedValue('issue-node-id');
@@ -458,19 +450,17 @@ describe('CopilotAssignmentService', () => {
 
       mockGql
         .mockResolvedValueOnce({ node: { login: 'copilot-agent' } })
-        .mockResolvedValueOnce({ 
+        .mockResolvedValueOnce({
           replaceActorsForAssignable: {
             assignable: {
               id: 'issue-id',
               number: 123,
               title: 'Test Issue',
               assignees: {
-                nodes: [
-                  { id: 'test-node-id', login: 'copilot-agent' }
-                ]
-              }
-            }
-          }
+                nodes: [{ id: 'test-node-id', login: 'copilot-agent' }],
+              },
+            },
+          },
         });
 
       mockGetIssueNodeId.mockResolvedValue('issue-node-id');

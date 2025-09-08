@@ -19,7 +19,9 @@ describe('ServiceFactory', () => {
 
   describe('createAuthService', () => {
     it('should create MockAuthService when mock mode is enabled', async () => {
-      const { isMockModeEnabled } = await import('../../../server/lib/feature-flags');
+      const { isMockModeEnabled } = await import(
+        '../../../server/lib/feature-flags'
+      );
       vi.mocked(isMockModeEnabled).mockReturnValue(true);
 
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -35,14 +37,16 @@ describe('ServiceFactory', () => {
     });
 
     it('should create GitHubOAuth when mock mode is disabled', async () => {
-      const { isMockModeEnabled } = await import('../../../server/lib/feature-flags');
+      const { isMockModeEnabled } = await import(
+        '../../../server/lib/feature-flags'
+      );
       vi.mocked(isMockModeEnabled).mockReturnValue(false);
 
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const oauthConfig = {
         clientId: 'test-client-id',
         clientSecret: 'test-client-secret',
-        redirectUri: 'http://localhost:3000/callback'
+        redirectUri: 'http://localhost:3000/callback',
       };
 
       const _service = ServiceFactory.createAuthService(oauthConfig);
@@ -56,7 +60,9 @@ describe('ServiceFactory', () => {
     });
 
     it('should throw error when no oauth config provided in production mode', async () => {
-      const { isMockModeEnabled } = await import('../../../server/lib/feature-flags');
+      const { isMockModeEnabled } = await import(
+        '../../../server/lib/feature-flags'
+      );
       vi.mocked(isMockModeEnabled).mockReturnValue(false);
 
       expect(() => ServiceFactory.createAuthService()).toThrow(
@@ -65,7 +71,9 @@ describe('ServiceFactory', () => {
     });
 
     it('should pass mock config to MockAuthService', async () => {
-      const { isMockModeEnabled } = await import('../../../server/lib/feature-flags');
+      const { isMockModeEnabled } = await import(
+        '../../../server/lib/feature-flags'
+      );
       vi.mocked(isMockModeEnabled).mockReturnValue(true);
 
       const mockConfig = {
@@ -75,9 +83,9 @@ describe('ServiceFactory', () => {
             username: 'testuser',
             email: 'test@example.com',
             avatarUrl: 'https://avatar.com/test',
-            accessToken: 'test-token'
-          }
-        ]
+            accessToken: 'test-token',
+          },
+        ],
       };
 
       ServiceFactory.createAuthService(undefined, mockConfig);
@@ -88,7 +96,9 @@ describe('ServiceFactory', () => {
 
   describe('isMockMode', () => {
     it('should return mock mode status', async () => {
-      const { isMockModeEnabled } = await import('../../../server/lib/feature-flags');
+      const { isMockModeEnabled } = await import(
+        '../../../server/lib/feature-flags'
+      );
       vi.mocked(isMockModeEnabled).mockReturnValue(true);
 
       expect(ServiceFactory.isMockMode()).toBe(true);
@@ -100,14 +110,18 @@ describe('ServiceFactory', () => {
 
   describe('getServiceType', () => {
     it('should return "mock" when in mock mode', async () => {
-      const { isMockModeEnabled } = await import('../../../server/lib/feature-flags');
+      const { isMockModeEnabled } = await import(
+        '../../../server/lib/feature-flags'
+      );
       vi.mocked(isMockModeEnabled).mockReturnValue(true);
 
       expect(ServiceFactory.getServiceType()).toBe('mock');
     });
 
     it('should return "production" when not in mock mode', async () => {
-      const { isMockModeEnabled } = await import('../../../server/lib/feature-flags');
+      const { isMockModeEnabled } = await import(
+        '../../../server/lib/feature-flags'
+      );
       vi.mocked(isMockModeEnabled).mockReturnValue(false);
 
       expect(ServiceFactory.getServiceType()).toBe('production');

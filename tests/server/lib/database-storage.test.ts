@@ -251,7 +251,8 @@ describe('DatabaseStorage', () => {
         })),
       } as any);
 
-      const subscriptions = await storage.getUserPushSubscriptions('test-user-id');
+      const subscriptions =
+        await storage.getUserPushSubscriptions('test-user-id');
       expect(subscriptions).toEqual(mockSubscriptions);
     });
   });
@@ -265,7 +266,9 @@ describe('DatabaseStorage', () => {
         })),
       } as any);
 
-      await expect(storage.getUserById('test-user-id')).rejects.toThrow('Database error');
+      await expect(storage.getUserById('test-user-id')).rejects.toThrow(
+        'Database error'
+      );
     });
   });
 });

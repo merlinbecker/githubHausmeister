@@ -10,31 +10,33 @@ const changes = {
   'GraphQL Header': {
     before: 'No X-Github-Next-Global-ID header',
     after: 'X-Github-Next-Global-ID: 1 header added',
-    status: '✅ IMPLEMENTED'
+    status: '✅ IMPLEMENTED',
   },
   'Agent Discovery': {
     before: 'repository.assignableUsers only',
-    after: 'repository.suggestedActors(capabilities: [CAN_BE_ASSIGNED]) first, then assignableUsers as fallback',
-    status: '✅ IMPLEMENTED'
+    after:
+      'repository.suggestedActors(capabilities: [CAN_BE_ASSIGNED]) first, then assignableUsers as fallback',
+    status: '✅ IMPLEMENTED',
   },
   'Agent Filtering': {
     before: 'Generic copilot agent search',
-    after: 'Prioritized search for __typename: "Bot" with login: "copilot-swe-agent"',
-    status: '✅ IMPLEMENTED'
+    after:
+      'Prioritized search for __typename: "Bot" with login: "copilot-swe-agent"',
+    status: '✅ IMPLEMENTED',
   },
   'Assignment Mutation': {
     before: 'addAssigneesToAssignable with assigneeIds',
     after: 'replaceActorsForAssignable with actorIds',
-    status: '✅ IMPLEMENTED'
+    status: '✅ IMPLEMENTED',
   },
   'Agent Priority': {
     before: '["copilot", "github-copilot[bot]", "copilot-swe-agent"]',
     after: '["copilot-swe-agent", "github-copilot[bot]", "copilot"]',
-    status: '✅ IMPLEMENTED'
-  }
+    status: '✅ IMPLEMENTED',
+  },
 };
 
-console.log('📋 Changes implemented according to GitHub\'s recommendations:\n');
+console.log("📋 Changes implemented according to GitHub's recommendations:\n");
 
 Object.entries(changes).forEach(([key, change]) => {
   console.log(`${change.status} ${key}:`);

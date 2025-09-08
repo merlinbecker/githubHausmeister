@@ -193,7 +193,11 @@ describe('GitHub GraphQL Functions', () => {
               assignableUsers: {
                 nodes: [
                   { id: 'user-1', login: 'regular-user', __typename: 'User' },
-                  { id: 'copilot-fallback-id', login: 'github-copilot[bot]', __typename: 'Bot' },
+                  {
+                    id: 'copilot-fallback-id',
+                    login: 'github-copilot[bot]',
+                    __typename: 'Bot',
+                  },
                 ],
               },
             },
@@ -236,7 +240,11 @@ describe('GitHub GraphQL Functions', () => {
             repository: {
               assignableUsers: {
                 nodes: [
-                  { id: 'copilot-fallback-id', login: 'github-copilot[bot]', __typename: 'Bot' },
+                  {
+                    id: 'copilot-fallback-id',
+                    login: 'github-copilot[bot]',
+                    __typename: 'Bot',
+                  },
                 ],
               },
             },
@@ -266,9 +274,9 @@ describe('GitHub GraphQL Functions', () => {
                 id: 'issue-id',
                 assignees: {
                   nodes: [
-                    { login: 'copilot-swe-agent', id: 'copilot-node-id' }
-                  ]
-                }
+                    { login: 'copilot-swe-agent', id: 'copilot-node-id' },
+                  ],
+                },
               },
             },
           },

@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { MockAuthService, type MockUser } from '../../../server/lib/mock-auth-service';
+import {
+  MockAuthService,
+  type MockUser,
+} from '../../../server/lib/mock-auth-service';
 
 describe('MockAuthService', () => {
   let mockAuthService: MockAuthService;
@@ -11,7 +14,7 @@ describe('MockAuthService', () => {
   describe('getAuthorizationUrl', () => {
     it('should generate mock authorization URL', () => {
       const url = mockAuthService.getAuthorizationUrl('test-state');
-      
+
       expect(url).toContain('/api/auth/mock/callback');
       expect(url).toContain('mock=true');
       expect(url).toContain('state=test-state');
@@ -22,7 +25,7 @@ describe('MockAuthService', () => {
   describe('exchangeCodeForToken', () => {
     it('should exchange user ID for mock token', async () => {
       const result = await mockAuthService.exchangeCodeForToken('mock-user-1');
-      
+
       expect(result.accessToken).toBe('mock-token-testdev-12345');
       expect(result.refreshToken).toBe('refresh-mock-token-testdev-12345');
     });
@@ -36,13 +39,15 @@ describe('MockAuthService', () => {
 
   describe('getUserInfo', () => {
     it('should return user info for valid token', async () => {
-      const userInfo = await mockAuthService.getUserInfo('mock-token-testdev-12345');
-      
+      const userInfo = await mockAuthService.getUserInfo(
+        'mock-token-testdev-12345'
+      );
+
       expect(userInfo).toEqual({
         id: 'mock-user-1',
         login: 'testdev',
         email: 'testdev@example.com',
-        avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=testdev'
+        avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=testdev',
       });
     });
 
@@ -55,28 +60,32 @@ describe('MockAuthService', () => {
 
   describe('getUserRepositories', () => {
     it('should return repositories for valid user', async () => {
-      const repos = await mockAuthService.getUserRepositories('mock-token-testdev-12345');
-      
+      const repos = await mockAuthService.getUserRepositories(
+        'mock-token-testdev-12345'
+      );
+
       expect(repos).toHaveLength(2);
       expect(repos[0]).toEqual({
         id: 1001,
         name: 'frontend-app',
         full_name: 'testdev/frontend-app',
         owner: { login: 'testdev' },
-        permissions: { admin: true, push: true }
+        permissions: { admin: true, push: true },
       });
     });
 
     it('should return empty array for user with no repos', async () => {
       // Create service with custom config
       const customService = new MockAuthService({
-        users: [{
-          id: 'empty-user',
-          username: 'emptyuser',
-          email: 'empty@example.com',
-          avatarUrl: 'https://avatar.com/empty',
-          accessToken: 'empty-token'
-        }]
+        users: [
+          {
+            id: 'empty-user',
+            username: 'emptyuser',
+            email: 'empty@example.com',
+            avatarUrl: 'https://avatar.com/empty',
+            accessToken: 'empty-token',
+          },
+        ],
       });
 
       const repos = await customService.getUserRepositories('empty-token');
@@ -92,7 +101,7 @@ describe('MockAuthService', () => {
         'frontend-app',
         'https://example.com/webhook'
       );
-      
+
       expect(webhook.id).toBeGreaterThan(0);
       expect(webhook.url).toBe('https://example.com/webhook');
     });
@@ -114,7 +123,7 @@ describe('MockAuthService', () => {
       await expect(
         mockAuthService.deleteWebhook(
           'mock-token-testdev-12345',
-          'testdev', 
+          'testdev',
           'frontend-app',
           12345
         )
@@ -125,7 +134,7 @@ describe('MockAuthService', () => {
   describe('utility methods', () => {
     it('should get available users (hiding tokens)', () => {
       const users = mockAuthService.getAvailableUsers();
-      
+
       expect(users).toHaveLength(3);
       expect(users[0].accessToken).toBe('[HIDDEN]');
       expect(users[0].username).toBe('testdev');
@@ -133,14 +142,14 @@ describe('MockAuthService', () => {
 
     it('should get default user', () => {
       const defaultUser = mockAuthService.getDefaultUser();
-      
+
       expect(defaultUser).toBeDefined();
       expect(defaultUser?.id).toBe('mock-user-1');
     });
 
     it('should create mock session token', () => {
       const token = mockAuthService.createMockSessionToken('test-user');
-      
+
       expect(token).toContain('mock-session-test-user-');
       expect(token.length).toBeGreaterThan(20);
     });
@@ -154,19 +163,19 @@ describe('MockAuthService', () => {
           username: 'customuser',
           email: 'custom@example.com',
           avatarUrl: 'https://avatar.com/custom',
-          accessToken: 'custom-token'
-        }
+          accessToken: 'custom-token',
+        },
       ];
 
       const customService = new MockAuthService({
         users: customUsers,
-        defaultUserId: 'custom-1'
+        defaultUserId: 'custom-1',
       });
 
       const users = customService.getAvailableUsers();
       expect(users).toHaveLength(1);
       expect(users[0].username).toBe('customuser');
-      
+
       const defaultUser = customService.getDefaultUser();
       expect(defaultUser?.id).toBe('custom-1');
     });
