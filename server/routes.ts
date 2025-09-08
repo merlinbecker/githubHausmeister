@@ -125,23 +125,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     app.get('/api/auth/mock/login/:userId', async (req, res) => {
       try {
         const { userId } = req.params;
-        
+
         console.log(`🎭 [MOCK AUTH] Mock login attempt for user: ${userId}`);
 
         // Get user info to validate
         const users = mockAuthService.getAvailableUsers();
-        const selectedUser = users.find(u => u.id === userId);
-        
+        const selectedUser = users.find((u) => u.id === userId);
+
         if (!selectedUser) {
-          return res.status(400).json({ 
+          return res.status(400).json({
             error: 'Invalid mock user ID',
-            availableUsers: users.map(u => u.id)
+            availableUsers: users.map((u) => u.id),
           });
         }
 
         // Exchange for token (in mock mode, userId is the 'code')
-        const { accessToken } = await mockAuthService.exchangeCodeForToken(userId);
-        
+        const { accessToken } =
+          await mockAuthService.exchangeCodeForToken(userId);
+
         // Get full user info
         const githubUser = await mockAuthService.getUserInfo(accessToken);
 
@@ -162,18 +163,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         req.session.userId = user.id;
-        
-        console.log(`✅ [MOCK AUTH] Successfully logged in mock user: ${githubUser.login}`);
-        
-        res.json({ 
-          success: true, 
-          user: { 
-            id: user.id, 
+
+        console.log(
+          `✅ [MOCK AUTH] Successfully logged in mock user: ${githubUser.login}`
+        );
+
+        res.json({
+          success: true,
+          user: {
+            id: user.id,
             username: user.username,
             email: user.email,
-            avatarUrl: user.avatarUrl
+            avatarUrl: user.avatarUrl,
           },
-          mode: 'mock'
+          mode: 'mock',
         });
       } catch (error) {
         console.error('❌ [MOCK AUTH] Mock login error:', error);
@@ -185,9 +188,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     app.get('/api/auth/mock/quick-login', async (req, res) => {
       const defaultUser = mockAuthService.getDefaultUser();
       if (!defaultUser) {
-        return res.status(500).json({ error: 'No default mock user configured' });
+        return res
+          .status(500)
+          .json({ error: 'No default mock user configured' });
       }
-      
+
       // Redirect to regular mock login
       res.redirect(`/api/auth/mock/login/${defaultUser.id}`);
     });
@@ -195,9 +200,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Check if mock mode is enabled (for frontend)
   app.get('/api/auth/mode', (req, res) => {
-    res.json({ 
+    res.json({
       mockMode: isMockModeEnabled(),
-      serviceType: ServiceFactory.getServiceType()
+      serviceType: ServiceFactory.getServiceType(),
     });
   });
 
@@ -329,11 +334,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Exchange code for token
-      const { accessToken, refreshToken } =
-        await (authService as GitHubOAuth).exchangeCodeForToken(code as string, state as string);
+      const { accessToken, refreshToken } = await (
+        authService as GitHubOAuth
+      ).exchangeCodeForToken(code as string, state as string);
 
       // Get user info
-      const githubUser = await (authService as GitHubOAuth).getUserInfo(accessToken);
+      const githubUser = await (authService as GitHubOAuth).getUserInfo(
+        accessToken
+      );
 
       // Create or update user
       const user = await databaseStorage.createOrUpdateUser({
@@ -848,19 +856,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: AuthenticatedRequest, res) => {
       try {
         const { endpoint, keys } = req.body;
-        
+
         // Import validation function
         const { validatePushSubscription } = await import('./lib/webPush');
 
         // Validate the subscription data
         const subscriptionData = { endpoint, keys };
         const validation = validatePushSubscription(subscriptionData);
-        
+
         if (!validation.valid) {
-          console.error('❌ Invalid push subscription received:', validation.error);
+          console.error(
+            '❌ Invalid push subscription received:',
+            validation.error
+          );
           return res.status(400).json({
             error: 'Invalid subscription data',
-            details: validation.error
+            details: validation.error,
           });
         }
 
@@ -995,10 +1006,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // EXTREME FORCE LOG VISIBILITY - MUST APPEAR
         console.error('❌❌❌ PUSH TEST ENDPOINT CALLED - CRITICAL LOG ❌❌❌');
-        console.error('❌❌❌ SUBSCRIPTIONS COUNT:', subscriptions.length, '❌❌❌');
-        console.log('🚀 /api/push/test endpoint called - about to send notifications');
+        console.error(
+          '❌❌❌ SUBSCRIPTIONS COUNT:',
+          subscriptions.length,
+          '❌❌❌'
+        );
+        console.log(
+          '🚀 /api/push/test endpoint called - about to send notifications'
+        );
         console.log('📊 User subscriptions found:', subscriptions.length);
-        
+
         const { sendPushToMultipleSubscriptions } = await import(
           './lib/webPush'
         );
@@ -1536,29 +1553,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Check if user has access to this repository
         const userRepos = await databaseStorage.getUserRepositories(user.id);
-        const userRepo = userRepos.find(r => r.owner === owner && r.repo === repo);
+        const userRepo = userRepos.find(
+          (r) => r.owner === owner && r.repo === repo
+        );
         if (!userRepo) {
-          return res.status(404).json({ error: 'Repository not found or no access' });
+          return res
+            .status(404)
+            .json({ error: 'Repository not found or no access' });
         }
 
-        const issues = await listRepositoryIssues(user.accessToken, owner, repo);
-        
+        const issues = await listRepositoryIssues(
+          user.accessToken,
+          owner,
+          repo
+        );
+
         // For each open issue, check if it has associated PRs
         const openIssuesWithPRs = await Promise.all(
           issues.open.map(async (issue) => {
             try {
-              const prs = await listPRsForIssue(user.accessToken, owner, repo, issue.number);
+              const prs = await listPRsForIssue(
+                user.accessToken,
+                owner,
+                repo,
+                issue.number
+              );
               return {
                 ...issue,
                 hasOpenPR: prs.length > 0,
-                openPRs: prs
+                openPRs: prs,
               };
             } catch (error) {
-              console.warn(`Error checking PRs for issue #${issue.number}:`, error);
+              console.warn(
+                `Error checking PRs for issue #${issue.number}:`,
+                error
+              );
               return {
                 ...issue,
                 hasOpenPR: false,
-                openPRs: []
+                openPRs: [],
               };
             }
           })
@@ -1566,7 +1599,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.json({
           open: openIssuesWithPRs,
-          closed: issues.closed
+          closed: issues.closed,
         });
       } catch (error) {
         console.error('Error fetching repository issues:', error);
@@ -1586,16 +1619,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Check if user has access to this repository
         const userRepos = await databaseStorage.getUserRepositories(user.id);
-        const userRepo = userRepos.find(r => r.owner === owner && r.repo === repo);
+        const userRepo = userRepos.find(
+          (r) => r.owner === owner && r.repo === repo
+        );
         if (!userRepo) {
-          return res.status(404).json({ error: 'Repository not found or no access' });
+          return res
+            .status(404)
+            .json({ error: 'Repository not found or no access' });
         }
 
-        const collaborators = await listRepositoryCollaborators(user.accessToken, owner, repo);
+        const collaborators = await listRepositoryCollaborators(
+          user.accessToken,
+          owner,
+          repo
+        );
         res.json(collaborators);
       } catch (error) {
         console.error('Error fetching repository collaborators:', error);
-        res.status(500).json({ error: 'Failed to fetch repository collaborators' });
+        res
+          .status(500)
+          .json({ error: 'Failed to fetch repository collaborators' });
       }
     }
   );
@@ -1611,28 +1654,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Check if user has access to this repository
         const userRepos = await databaseStorage.getUserRepositories(user.id);
-        const userRepo = userRepos.find(r => r.owner === owner && r.repo === repo);
+        const userRepo = userRepos.find(
+          (r) => r.owner === owner && r.repo === repo
+        );
         if (!userRepo) {
-          return res.status(404).json({ error: 'Repository not found or no access' });
+          return res
+            .status(404)
+            .json({ error: 'Repository not found or no access' });
         }
 
         // Use the existing Copilot assignment service
-        const { CopilotAssignmentService } = await import('./lib/copilot-assignment');
+        const { CopilotAssignmentService } = await import(
+          './lib/copilot-assignment'
+        );
         const copilotService = new CopilotAssignmentService(user.accessToken);
-        
-        const result = await copilotService.assignToIssue(owner, repo, parseInt(issueNumber));
-        
+
+        const result = await copilotService.assignToIssue(
+          owner,
+          repo,
+          parseInt(issueNumber)
+        );
+
         if (result.success) {
           res.json({
             success: true,
             assignedAgent: result.assignedAgent,
-            message: `Issue #${issueNumber} assigned to ${result.assignedAgent}`
+            message: `Issue #${issueNumber} assigned to ${result.assignedAgent}`,
           });
         } else {
           res.status(400).json({
             success: false,
             error: result.error,
-            message: `Failed to assign issue #${issueNumber}: ${result.error}`
+            message: `Failed to assign issue #${issueNumber}: ${result.error}`,
           });
         }
       } catch (error) {
@@ -1653,12 +1706,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Check if user has access to this repository
         const userRepos = await databaseStorage.getUserRepositories(user.id);
-        const userRepo = userRepos.find(r => r.owner === owner && r.repo === repo);
+        const userRepo = userRepos.find(
+          (r) => r.owner === owner && r.repo === repo
+        );
         if (!userRepo) {
-          return res.status(404).json({ error: 'Repository not found or no access' });
+          return res
+            .status(404)
+            .json({ error: 'Repository not found or no access' });
         }
 
-        const prs = await listPRsForIssue(user.accessToken, owner, repo, parseInt(issueNumber));
+        const prs = await listPRsForIssue(
+          user.accessToken,
+          owner,
+          repo,
+          parseInt(issueNumber)
+        );
         res.json(prs);
       } catch (error) {
         console.error('Error fetching PRs for issue:', error);
@@ -2081,12 +2143,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // Auto-assignment logic: When an issue is closed, try to assign next open issue to Copilot
     if (action === 'closed') {
-      console.log(`Issue #${issue.number} closed, checking for next issue to assign...`);
+      console.log(
+        `Issue #${issue.number} closed, checking for next issue to assign...`
+      );
       await tryAssignNextIssue(owner, repo, userRepos);
     }
   }
 
-  async function tryAssignNextIssue(owner: string, repo: string, userRepos: any[]) {
+  async function tryAssignNextIssue(
+    owner: string,
+    repo: string,
+    userRepos: any[]
+  ) {
     try {
       // Get the first user with access to this repository (we need their token)
       const userRepo = userRepos[0];
@@ -2101,7 +2169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Fetching open issues for ${owner}/${repo}...`);
       const { listRepositoryIssues } = await import('./lib/github-rest');
       const issues = await listRepositoryIssues(user.accessToken, owner, repo);
-      
+
       if (!issues.open || issues.open.length === 0) {
         console.log(`No open issues found in ${owner}/${repo}`);
         return;
@@ -2118,8 +2186,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Check if this issue has open PRs
         const { listPRsForIssue } = await import('./lib/github-rest');
-        const prs = await listPRsForIssue(user.accessToken, owner, repo, issue.number);
-        
+        const prs = await listPRsForIssue(
+          user.accessToken,
+          owner,
+          repo,
+          issue.number
+        );
+
         if (prs.length > 0) {
           console.log(`Issue #${issue.number} has open PRs, skipping`);
           continue;
@@ -2130,44 +2203,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!nextIssue) {
-        console.log(`No unassigned issues without PRs found in ${owner}/${repo}`);
+        console.log(
+          `No unassigned issues without PRs found in ${owner}/${repo}`
+        );
         return;
       }
 
-      console.log(`Attempting to assign issue #${nextIssue.number} to Copilot...`);
-      
+      console.log(
+        `Attempting to assign issue #${nextIssue.number} to Copilot...`
+      );
+
       // Use the existing Copilot assignment service
-      const { CopilotAssignmentService } = await import('./lib/copilot-assignment');
+      const { CopilotAssignmentService } = await import(
+        './lib/copilot-assignment'
+      );
       const copilotService = new CopilotAssignmentService(user.accessToken);
-      
-      const result = await copilotService.assignToIssue(owner, repo, nextIssue.number);
-      
+
+      const result = await copilotService.assignToIssue(
+        owner,
+        repo,
+        nextIssue.number
+      );
+
       if (result.success) {
-        console.log(`✅ Successfully assigned issue #${nextIssue.number} to ${result.assignedAgent}`);
-        
+        console.log(
+          `✅ Successfully assigned issue #${nextIssue.number} to ${result.assignedAgent}`
+        );
+
         // Send notification to all users monitoring this repository
         for (const userRepo of userRepos) {
           try {
-            const { NotificationService, NotificationType } = await import('./lib/notificationService');
-            await NotificationService.sendNotification(NotificationType.COPILOT_ASSIGNED, {
-              userId: userRepo.userId,
-              repositoryName: `${owner}/${repo}`,
-              issueNumber: nextIssue.number,
-              url: nextIssue.html_url,
-              copilotAgent: result.assignedAgent || 'GitHub Copilot',
-              taskTitle: nextIssue.title,
-              data: {
-                action: 'auto-assigned',
-                issueState: 'open',
-                issueTitle: nextIssue.title,
-              },
-            });
+            const { NotificationService, NotificationType } = await import(
+              './lib/notificationService'
+            );
+            await NotificationService.sendNotification(
+              NotificationType.COPILOT_ASSIGNED,
+              {
+                userId: userRepo.userId,
+                repositoryName: `${owner}/${repo}`,
+                issueNumber: nextIssue.number,
+                url: nextIssue.html_url,
+                copilotAgent: result.assignedAgent || 'GitHub Copilot',
+                taskTitle: nextIssue.title,
+                data: {
+                  action: 'auto-assigned',
+                  issueState: 'open',
+                  issueTitle: nextIssue.title,
+                },
+              }
+            );
           } catch (notificationError) {
-            console.warn(`Failed to send auto-assignment notification:`, notificationError);
+            console.warn(
+              `Failed to send auto-assignment notification:`,
+              notificationError
+            );
           }
         }
       } else {
-        console.log(`❌ Failed to assign issue #${nextIssue.number}: ${result.error}`);
+        console.log(
+          `❌ Failed to assign issue #${nextIssue.number}: ${result.error}`
+        );
       }
     } catch (error) {
       console.error(`Error in tryAssignNextIssue:`, error);

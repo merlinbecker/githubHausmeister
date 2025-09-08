@@ -96,7 +96,10 @@ export class CopilotAssignmentService {
 
       // Step 3: Assign via GraphQL
       console.log(`🎯 [COPILOT ASSIGNMENT] Step 3: Assigning via GraphQL...`);
-      const assignmentResult = await this.assignViaGraphQL(issueNodeId, agentInfo.nodeId);
+      const assignmentResult = await this.assignViaGraphQL(
+        issueNodeId,
+        agentInfo.nodeId
+      );
 
       if (assignmentResult.success) {
         console.log(
@@ -110,12 +113,18 @@ export class CopilotAssignmentService {
         };
       } else {
         // If GraphQL assignment verification failed, try additional verification
-        console.log(`🔍 [COPILOT ASSIGNMENT] GraphQL verification failed, trying REST API verification...`);
-        
+        console.log(
+          `🔍 [COPILOT ASSIGNMENT] GraphQL verification failed, trying REST API verification...`
+        );
+
         // Add a small delay to allow for eventual consistency
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        const verification = await this.verifyAssignment(owner, repo, issueNumber);
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        const verification = await this.verifyAssignment(
+          owner,
+          repo,
+          issueNumber
+        );
         if (verification.isAssigned) {
           console.log(
             `✅ [COPILOT ASSIGNMENT] Step 3 SUCCESS (via REST verification): Agent ${verification.assignedCopilot} assigned to issue #${issueNumber}`
@@ -126,7 +135,9 @@ export class CopilotAssignmentService {
             agentInfo,
           };
         } else {
-          throw new Error(`Assignment verification failed - agent not found in assignees list. Current assignees: ${verification.allAssignees.join(', ')}`);
+          throw new Error(
+            `Assignment verification failed - agent not found in assignees list. Current assignees: ${verification.allAssignees.join(', ')}`
+          );
         }
       }
     } catch (error: any) {
@@ -264,20 +275,35 @@ export class CopilotAssignmentService {
     );
 
     // Try to verify the assignment worked by checking if the agent is in the assignees list
-    const assignees = result?.replaceActorsForAssignable?.assignable?.assignees?.nodes || [];
-    const assignedAgent = assignees.find((assignee: any) => assignee.id === agentNodeId);
-    
+    const assignees =
+      result?.replaceActorsForAssignable?.assignable?.assignees?.nodes || [];
+    const assignedAgent = assignees.find(
+      (assignee: any) => assignee.id === agentNodeId
+    );
+
     if (assignedAgent) {
-      console.log(`✅ [COPILOT ASSIGNMENT] GraphQL assignment verified: ${assignedAgent.login} is now assigned`);
+      console.log(
+        `✅ [COPILOT ASSIGNMENT] GraphQL assignment verified: ${assignedAgent.login} is now assigned`
+      );
       return { success: true, assignedLogin: assignedAgent.login };
-    } else if (assignees.length === 0 && result?.replaceActorsForAssignable?.assignable) {
+    } else if (
+      assignees.length === 0 &&
+      result?.replaceActorsForAssignable?.assignable
+    ) {
       // If no assignees are returned but the mutation succeeded, assume it worked
       // This handles cases where the GraphQL response doesn't include assignees (like in tests)
-      console.log(`✅ [COPILOT ASSIGNMENT] GraphQL assignment completed (no assignees in response)`);
+      console.log(
+        `✅ [COPILOT ASSIGNMENT] GraphQL assignment completed (no assignees in response)`
+      );
       return { success: true };
     } else {
-      console.warn(`⚠️ [COPILOT ASSIGNMENT] GraphQL assignment may have failed - agent not found in assignees list`);
-      console.warn(`⚠️ [COPILOT ASSIGNMENT] Current assignees:`, assignees.map((a: any) => a.login));
+      console.warn(
+        `⚠️ [COPILOT ASSIGNMENT] GraphQL assignment may have failed - agent not found in assignees list`
+      );
+      console.warn(
+        `⚠️ [COPILOT ASSIGNMENT] Current assignees:`,
+        assignees.map((a: any) => a.login)
+      );
       return { success: false };
     }
   }
@@ -382,15 +408,16 @@ export class CopilotAssignmentService {
         }
       `;
 
-      const data: any = await gql(suggestedActorsQuery, { owner, repo }, this.token);
+      const data: any = await gql(
+        suggestedActorsQuery,
+        { owner, repo },
+        this.token
+      );
       const suggestedActors = data.repository?.suggestedActors?.nodes || [];
 
       // Look for Copilot Bot agent specifically (recommended approach)
       for (const actor of suggestedActors) {
-        if (
-          actor.__typename === 'Bot' &&
-          actor.login === 'copilot-swe-agent'
-        ) {
+        if (actor.__typename === 'Bot' && actor.login === 'copilot-swe-agent') {
           console.log(
             `🎯 [COPILOT AGENT] Found Copilot Bot agent in suggestedActors: ${actor.login}`
           );
@@ -435,7 +462,11 @@ export class CopilotAssignmentService {
         }
       `;
 
-      const data: any = await gql(assignableUsersQuery, { owner, repo }, this.token);
+      const data: any = await gql(
+        assignableUsersQuery,
+        { owner, repo },
+        this.token
+      );
       const assignableUsers = data.repository?.assignableUsers?.nodes || [];
 
       // Look for Copilot agents in assignable users

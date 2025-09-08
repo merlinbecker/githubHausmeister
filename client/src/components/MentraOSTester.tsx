@@ -160,14 +160,23 @@ export function MentraOSTester() {
   const [testResults, setTestResults] = useState<string[]>([]);
 
   // Queries - No automatic polling, only manual refresh
-  const { data: glassStatus, isLoading: statusLoading, error: _statusError, refetch: _refetchStatus } = useQuery({
+  const {
+    data: glassStatus,
+    isLoading: statusLoading,
+    error: _statusError,
+    refetch: _refetchStatus,
+  } = useQuery({
     queryKey: ['mentra-status'],
     queryFn: api.getGlassStatus,
     retry: 1, // Only retry once on failure
     refetchOnWindowFocus: false, // Don't refetch when window gains focus
   });
 
-  const { data: voiceCommands, error: _voiceError, refetch: _refetchVoiceCommands } = useQuery({
+  const {
+    data: voiceCommands,
+    error: _voiceError,
+    refetch: _refetchVoiceCommands,
+  } = useQuery({
     queryKey: ['mentra-voice-commands'],
     queryFn: api.getVoiceCommands,
     retry: 1,
@@ -175,7 +184,11 @@ export function MentraOSTester() {
     enabled: false, // Don't auto-fetch on mount
   });
 
-  const { data: notifications, error: _notificationsError, refetch: _refetchNotifications } = useQuery({
+  const {
+    data: notifications,
+    error: _notificationsError,
+    refetch: _refetchNotifications,
+  } = useQuery({
     queryKey: ['mentra-notifications'],
     queryFn: api.getNotifications,
     retry: 1,

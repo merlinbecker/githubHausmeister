@@ -14,10 +14,11 @@ Dieses Dokument beschreibt die Implementierung einer vollständigen GitHub Repos
 ## Architektur-Übersicht
 
 ### Feature Flag System
+
 ```
 Environment Variable: MOCK_LOGIN=true
 ├── Bypasses GitHub OAuth Flow
-├── Activates Mock Repository System  
+├── Activates Mock Repository System
 ├── Simulates Webhook Events
 └── Mocks Copilot Interactions
 ```
@@ -50,6 +51,7 @@ class MockAuthService {
 ```
 
 **Features**:
+
 - Vordefinierte Test-Benutzer
 - Konsistente Mock-Token-Generierung
 - Session-Management kompatibel mit bestehender Auth-Middleware
@@ -89,24 +91,43 @@ interface MockIssue {
 
 class MockGitHubService {
   // Repository Management
-  listUserRepositories(token: string): MockRepository[]
-  getRepository(owner: string, repo: string): MockRepository
-  
-  // Issue Management  
-  createIssue(owner: string, repo: string, issue: CreateIssueRequest): MockIssue
-  assignIssue(owner: string, repo: string, issueNumber: number, assignee: string): void
-  
+  listUserRepositories(token: string): MockRepository[];
+  getRepository(owner: string, repo: string): MockRepository;
+
+  // Issue Management
+  createIssue(
+    owner: string,
+    repo: string,
+    issue: CreateIssueRequest
+  ): MockIssue;
+  assignIssue(
+    owner: string,
+    repo: string,
+    issueNumber: number,
+    assignee: string
+  ): void;
+
   // Pull Request Lifecycle
-  createPullRequest(owner: string, repo: string, pr: CreatePRRequest): MockPullRequest
-  updatePRStatus(owner: string, repo: string, prNumber: number, status: string): void
-  mergePullRequest(owner: string, repo: string, prNumber: number): void
-  
+  createPullRequest(
+    owner: string,
+    repo: string,
+    pr: CreatePRRequest
+  ): MockPullRequest;
+  updatePRStatus(
+    owner: string,
+    repo: string,
+    prNumber: number,
+    status: string
+  ): void;
+  mergePullRequest(owner: string, repo: string, prNumber: number): void;
+
   // Webhook Simulation
-  simulateWebhookEvent(event: MockWebhookEvent): void
+  simulateWebhookEvent(event: MockWebhookEvent): void;
 }
 ```
 
 **Features**:
+
 - In-Memory Repository State Management
 - Konsistente Mock-Daten für verschiedene Szenarien
 - Simulation von GitHub API Responses
@@ -129,11 +150,14 @@ class MockWebhookService {
   // Generiert realistische Webhook Events
   // Simuliert GitHub Event Timing
   // Triggert bestehende Webhook Handler
-  
-  generateIssueAssignedEvent(issue: MockIssue): MockWebhookEvent
-  generatePRCreatedEvent(pr: MockPullRequest): MockWebhookEvent  
-  generatePRReadyEvent(pr: MockPullRequest): MockWebhookEvent
-  generateCIStatusEvent(pr: MockPullRequest, status: 'success' | 'failure'): MockWebhookEvent
+
+  generateIssueAssignedEvent(issue: MockIssue): MockWebhookEvent;
+  generatePRCreatedEvent(pr: MockPullRequest): MockWebhookEvent;
+  generatePRReadyEvent(pr: MockPullRequest): MockWebhookEvent;
+  generateCIStatusEvent(
+    pr: MockPullRequest,
+    status: 'success' | 'failure'
+  ): MockWebhookEvent;
 }
 ```
 
@@ -144,19 +168,21 @@ class MockWebhookService {
 ```typescript
 interface MockCopilotBehavior {
   assignmentDelay: number; // ms
-  prCreationDelay: number; // ms  
+  prCreationDelay: number; // ms
   ciSuccessRate: number; // 0-1
   autoRetryOnFailure: boolean;
 }
 
 class MockCopilotService {
   // Simuliert Copilot Workflow
-  async simulateIssueAssignment(issue: MockIssue): Promise<void>
-  async simulatePRCreation(issue: MockIssue): Promise<MockPullRequest>
-  async simulateCIExecution(pr: MockPullRequest): Promise<'success' | 'failure'>
-  
+  async simulateIssueAssignment(issue: MockIssue): Promise<void>;
+  async simulatePRCreation(issue: MockIssue): Promise<MockPullRequest>;
+  async simulateCIExecution(
+    pr: MockPullRequest
+  ): Promise<'success' | 'failure'>;
+
   // Konfigurierbare Timing und Erfolgsraten
-  configureBehavior(behavior: Partial<MockCopilotBehavior>): void
+  configureBehavior(behavior: Partial<MockCopilotBehavior>): void;
 }
 ```
 
@@ -214,20 +240,20 @@ class MockDataStorage {
   // In-Memory Storage mit optionaler Persistierung
   // Kompatibilität mit bestehender DatabaseStorage API
   // State Reset für deterministische Tests
-  
+
   // Repository State
   private repositories: Map<string, MockRepository> = new Map();
   private issues: Map<string, MockIssue[]> = new Map();
   private pullRequests: Map<string, MockPullRequest[]> = new Map();
-  
-  // User State  
+
+  // User State
   private users: Map<string, MockUser> = new Map();
   private sessions: Map<string, MockSession> = new Map();
-  
+
   // State Management
-  reset(): void // Zurück zu Initial State
-  export(): MockDataExport // Für Test-Snapshots
-  import(data: MockDataExport): void // State Restoration
+  reset(): void; // Zurück zu Initial State
+  export(): MockDataExport; // Für Test-Snapshots
+  import(data: MockDataExport): void; // State Restoration
 }
 ```
 
@@ -254,11 +280,11 @@ export const isMockModeEnabled = (): boolean => {
 ```typescript
 export class ServiceFactory {
   static createAuthService(): GitHubOAuth | MockAuthService {
-    return isMockModeEnabled() 
+    return isMockModeEnabled()
       ? new MockAuthService(mockConfig)
       : new GitHubOAuth(oauthConfig);
   }
-  
+
   static createGitHubService(): GitHubRestService | MockGitHubService {
     return isMockModeEnabled()
       ? new MockGitHubService()
@@ -270,6 +296,7 @@ export class ServiceFactory {
 ### 3. Route Handler Updates
 
 **Bestehende Dateien erweitern**:
+
 - `server/routes.ts`: Feature Flag Detection
 - `client/src/pages/login.tsx`: Mock Login Integration
 - `client/src/pages/dashboard.tsx`: Mock Repository Dashboard
@@ -286,24 +313,24 @@ const successScenario = {
   behavior: {
     assignmentDelay: 100,
     prCreationDelay: 500,
-    ciSuccessRate: 1.0
-  }
+    ciSuccessRate: 1.0,
+  },
 };
 
 // CI Failure Scenario
 const ciFailureScenario = {
   behavior: {
     ciSuccessRate: 0.0,
-    autoRetryOnFailure: true
-  }
+    autoRetryOnFailure: true,
+  },
 };
 
-// Rate Limiting Scenario  
+// Rate Limiting Scenario
 const rateLimitScenario = {
   behavior: {
     apiDelay: 2000,
-    rateLimitHit: true
-  }
+    rateLimitHit: true,
+  },
 };
 ```
 
@@ -317,24 +344,28 @@ const rateLimitScenario = {
 ## Implementierung-Roadmap
 
 ### Phase 1: Grundlagen (Tag 1)
+
 - [x] Feature Flag System
 - [x] Mock Authentication Service
 - [x] Basic Mock Repository Structure
 - [x] Integration in bestehende Auth Routes
 
 ### Phase 2: Core Simulation (Tag 2-3)
+
 - [ ] Mock GitHub API Service
 - [ ] Webhook Event Simulation
 - [ ] Basic UI Components für Mock Mode
 - [ ] Integration mit bestehender Task Queue
 
 ### Phase 3: Advanced Features (Tag 4-5)
+
 - [ ] Copilot Workflow Simulation
 - [ ] CI/CD Pipeline Simulation
 - [ ] Advanced UI Controls
 - [ ] Repository State Management
 
 ### Phase 4: Testing & Polish (Tag 6)
+
 - [ ] Comprehensive Test Scenarios
 - [ ] Performance Optimization
 - [ ] Documentation
@@ -348,7 +379,7 @@ const rateLimitScenario = {
 # Mock Mode Activation
 MOCK_LOGIN=true
 
-# Mock Configuration  
+# Mock Configuration
 MOCK_USERS_FILE=./data/mock-users.json
 MOCK_REPOSITORIES_FILE=./data/mock-repositories.json
 MOCK_SCENARIOS_FILE=./data/mock-scenarios.json
@@ -362,6 +393,7 @@ MOCK_WEBHOOK_DELAY=500
 ### Mock Data Files
 
 **`data/mock-users.json`**:
+
 ```json
 {
   "users": [
@@ -376,6 +408,7 @@ MOCK_WEBHOOK_DELAY=500
 ```
 
 **`data/mock-repositories.json`**:
+
 ```json
 {
   "repositories": [

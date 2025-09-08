@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { isFeatureFlagEnabled, isMockModeEnabled, getMockConfig, FeatureFlags } from '../../../server/lib/feature-flags';
+import {
+  isFeatureFlagEnabled,
+  isMockModeEnabled,
+  getMockConfig,
+  FeatureFlags,
+} from '../../../server/lib/feature-flags';
 
 describe('Feature Flags', () => {
   beforeEach(() => {
@@ -24,10 +29,10 @@ describe('Feature Flags', () => {
     it('should return false when flag is set to other values', () => {
       process.env.TEST_FLAG = 'false';
       expect(isFeatureFlagEnabled('TEST_FLAG')).toBe(false);
-      
+
       process.env.TEST_FLAG = '1';
       expect(isFeatureFlagEnabled('TEST_FLAG')).toBe(false);
-      
+
       process.env.TEST_FLAG = 'yes';
       expect(isFeatureFlagEnabled('TEST_FLAG')).toBe(false);
     });
@@ -52,11 +57,11 @@ describe('Feature Flags', () => {
   describe('getMockConfig', () => {
     it('should return default configuration when no env vars set', () => {
       const config = getMockConfig();
-      
+
       expect(config).toEqual({
         copilotDelay: 1000,
         ciSuccessRate: 0.8,
-        webhookDelay: 500
+        webhookDelay: 500,
       });
     });
 
@@ -64,13 +69,13 @@ describe('Feature Flags', () => {
       process.env.MOCK_COPILOT_DELAY = '2000';
       process.env.MOCK_CI_SUCCESS_RATE = '0.9';
       process.env.MOCK_WEBHOOK_DELAY = '1000';
-      
+
       const config = getMockConfig();
-      
+
       expect(config).toEqual({
         copilotDelay: 2000,
         ciSuccessRate: 0.9,
-        webhookDelay: 1000
+        webhookDelay: 1000,
       });
     });
 
@@ -78,9 +83,9 @@ describe('Feature Flags', () => {
       process.env.MOCK_COPILOT_DELAY = 'invalid';
       process.env.MOCK_CI_SUCCESS_RATE = 'not-a-number';
       process.env.MOCK_WEBHOOK_DELAY = 'also-invalid';
-      
+
       const config = getMockConfig();
-      
+
       // parseInt/parseFloat should handle invalid values
       expect(config.copilotDelay).toBeNaN();
       expect(config.ciSuccessRate).toBeNaN();
@@ -91,9 +96,9 @@ describe('Feature Flags', () => {
       process.env.MOCK_COPILOT_DELAY = '';
       process.env.MOCK_CI_SUCCESS_RATE = '';
       process.env.MOCK_WEBHOOK_DELAY = '';
-      
+
       const config = getMockConfig();
-      
+
       // Empty strings should use defaults
       expect(config.copilotDelay).toBe(1000);
       expect(config.ciSuccessRate).toBe(0.8);

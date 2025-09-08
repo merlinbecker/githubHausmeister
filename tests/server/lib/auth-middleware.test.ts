@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { requireAuth, AuthenticatedRequest } from '../../../server/lib/auth-middleware';
+import {
+  requireAuth,
+  AuthenticatedRequest,
+} from '../../../server/lib/auth-middleware';
 import { Response, NextFunction } from 'express';
 import { Session } from 'express-session';
 
@@ -11,17 +14,18 @@ vi.mock('../../../server/lib/database-storage', () => ({
 }));
 
 // Create a mock session object that satisfies the Session interface
-const createMockSession = (data: Partial<{ userId: string }> = {}): Session => ({
-  id: 'mock-session-id',
-  cookie: {} as any,
-  regenerate: vi.fn(),
-  destroy: vi.fn(),
-  reload: vi.fn(),
-  resetMaxAge: vi.fn(),
-  save: vi.fn(),
-  touch: vi.fn(),
-  ...data,
-} as Session);
+const createMockSession = (data: Partial<{ userId: string }> = {}): Session =>
+  ({
+    id: 'mock-session-id',
+    cookie: {} as any,
+    regenerate: vi.fn(),
+    destroy: vi.fn(),
+    reload: vi.fn(),
+    resetMaxAge: vi.fn(),
+    save: vi.fn(),
+    touch: vi.fn(),
+    ...data,
+  }) as Session;
 
 describe('Auth Middleware', () => {
   let mockReq: Partial<AuthenticatedRequest>;
@@ -44,20 +48,32 @@ describe('Auth Middleware', () => {
     it('should return 401 when no userId in session', async () => {
       mockReq.session = createMockSession();
 
-      await requireAuth(mockReq as AuthenticatedRequest, mockRes as Response, mockNext);
+      await requireAuth(
+        mockReq as AuthenticatedRequest,
+        mockRes as Response,
+        mockNext
+      );
 
       expect(mockRes.status).toHaveBeenCalledWith(401);
-      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Authentication required' });
+      expect(mockRes.json).toHaveBeenCalledWith({
+        error: 'Authentication required',
+      });
       expect(mockNext).not.toHaveBeenCalled();
     });
 
     it('should return 401 when user not found in database', async () => {
       mockReq.session = createMockSession({ userId: 'user-123' });
 
-      const { databaseStorage } = await import('../../../server/lib/database-storage');
+      const { databaseStorage } = await import(
+        '../../../server/lib/database-storage'
+      );
       vi.mocked(databaseStorage.getUserById).mockResolvedValue(undefined);
 
-      await requireAuth(mockReq as AuthenticatedRequest, mockRes as Response, mockNext);
+      await requireAuth(
+        mockReq as AuthenticatedRequest,
+        mockRes as Response,
+        mockNext
+      );
 
       expect(mockRes.status).toHaveBeenCalledWith(401);
       expect(mockRes.json).toHaveBeenCalledWith({ error: 'User not found' });
@@ -79,10 +95,16 @@ describe('Auth Middleware', () => {
 
       mockReq.session = createMockSession({ userId: 'user-123' });
 
-      const { databaseStorage } = await import('../../../server/lib/database-storage');
+      const { databaseStorage } = await import(
+        '../../../server/lib/database-storage'
+      );
       vi.mocked(databaseStorage.getUserById).mockResolvedValue(mockUser);
 
-      await requireAuth(mockReq as AuthenticatedRequest, mockRes as Response, mockNext);
+      await requireAuth(
+        mockReq as AuthenticatedRequest,
+        mockRes as Response,
+        mockNext
+      );
 
       expect(mockReq.user).toEqual({
         id: 'user-123',
@@ -110,10 +132,16 @@ describe('Auth Middleware', () => {
 
       mockReq.session = createMockSession({ userId: 'user-123' });
 
-      const { databaseStorage } = await import('../../../server/lib/database-storage');
+      const { databaseStorage } = await import(
+        '../../../server/lib/database-storage'
+      );
       vi.mocked(databaseStorage.getUserById).mockResolvedValue(mockUser);
 
-      await requireAuth(mockReq as AuthenticatedRequest, mockRes as Response, mockNext);
+      await requireAuth(
+        mockReq as AuthenticatedRequest,
+        mockRes as Response,
+        mockNext
+      );
 
       expect(mockReq.user).toEqual({
         id: 'user-123',
@@ -128,13 +156,23 @@ describe('Auth Middleware', () => {
     it('should handle database errors', async () => {
       mockReq.session = createMockSession({ userId: 'user-123' });
 
-      const { databaseStorage } = await import('../../../server/lib/database-storage');
-      vi.mocked(databaseStorage.getUserById).mockRejectedValue(new Error('Database error'));
+      const { databaseStorage } = await import(
+        '../../../server/lib/database-storage'
+      );
+      vi.mocked(databaseStorage.getUserById).mockRejectedValue(
+        new Error('Database error')
+      );
 
-      await requireAuth(mockReq as AuthenticatedRequest, mockRes as Response, mockNext);
+      await requireAuth(
+        mockReq as AuthenticatedRequest,
+        mockRes as Response,
+        mockNext
+      );
 
       expect(mockRes.status).toHaveBeenCalledWith(500);
-      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Authentication error' });
+      expect(mockRes.json).toHaveBeenCalledWith({
+        error: 'Authentication error',
+      });
       expect(mockNext).not.toHaveBeenCalled();
     });
   });

@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Github, User, Clock, TestTube } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { loginWithGitHub } from '@/lib/auth';
@@ -27,12 +33,12 @@ export default function MockLogin() {
   useEffect(() => {
     // Fetch available mock users
     fetch('/api/auth/mock/users')
-      .then(res => res.json())
+      .then((res) => res.json())
       .then((data: MockLoginResponse) => {
         setMockUsers(data.users);
         setLoading(false);
       })
-      .catch(err => {
+      .catch((err) => {
         console.error('Failed to fetch mock users:', err);
         setError('Failed to load mock users');
         setLoading(false);
@@ -81,7 +87,7 @@ export default function MockLogin() {
           credentials: 'include',
         });
         const data = await result.json();
-        
+
         if (data.success) {
           window.location.href = '/';
         } else {
@@ -100,7 +106,10 @@ export default function MockLogin() {
     return (
       <div className="min-h-screen bg-github-bg text-github-text flex items-center justify-center">
         <div className="text-center">
-          <TestTube className="animate-spin mx-auto text-github-blue mb-4" size={48} />
+          <TestTube
+            className="animate-spin mx-auto text-github-blue mb-4"
+            size={48}
+          />
           <p className="text-github-muted">Loading mock environment...</p>
         </div>
       </div>
@@ -118,11 +127,15 @@ export default function MockLogin() {
               Mock Testing Environment
             </h1>
           </div>
-          <Badge variant="outline" className="mb-4 bg-github-amber/20 text-github-amber border-github-amber">
+          <Badge
+            variant="outline"
+            className="mb-4 bg-github-amber/20 text-github-amber border-github-amber"
+          >
             MOCK_LOGIN Enabled
           </Badge>
           <p className="text-github-muted text-lg">
-            Choose a test user to simulate GitHub authentication and repository access
+            Choose a test user to simulate GitHub authentication and repository
+            access
           </p>
         </div>
 
@@ -152,7 +165,9 @@ export default function MockLogin() {
               disabled={loggingIn !== null}
               className="w-full bg-github-green hover:bg-github-green/80 text-white"
             >
-              {loggingIn === 'quick' ? 'Logging in...' : 'Quick Login (Default User)'}
+              {loggingIn === 'quick'
+                ? 'Logging in...'
+                : 'Quick Login (Default User)'}
             </Button>
           </CardContent>
         </Card>
@@ -179,7 +194,9 @@ export default function MockLogin() {
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h3 className="font-semibold text-github-text">{user.username}</h3>
+                    <h3 className="font-semibold text-github-text">
+                      {user.username}
+                    </h3>
                     <p className="text-sm text-github-muted">{user.email}</p>
                   </div>
                 </div>
@@ -218,7 +235,8 @@ export default function MockLogin() {
               Continue with GitHub (Disabled in Mock Mode)
             </Button>
             <p className="text-xs text-github-muted mt-3 text-center">
-              To use real GitHub authentication, set MOCK_LOGIN=false in environment variables
+              To use real GitHub authentication, set MOCK_LOGIN=false in
+              environment variables
             </p>
           </CardContent>
         </Card>
@@ -226,7 +244,8 @@ export default function MockLogin() {
         {/* Footer */}
         <div className="mt-6 text-center">
           <p className="text-sm text-github-muted">
-            Mock mode provides simulated repositories and GitHub interactions for testing
+            Mock mode provides simulated repositories and GitHub interactions
+            for testing
           </p>
         </div>
       </div>

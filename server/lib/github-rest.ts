@@ -110,26 +110,30 @@ export async function listPRsForIssue(
   issue_number: number
 ) {
   const octokit = new Octokit({ auth: token });
-  
+
   // Use the updated search approach - query for pull requests that reference the issue
   const searchQuery = `repo:${owner}/${repo} type:pr is:open "${`#${issue_number}`}"`;
-  
+
   try {
     const { data } = await octokit.rest.search.issuesAndPullRequests({
       q: searchQuery,
       per_page: 100, // Increase limit for better results
     });
-    
+
     // Additional filtering to ensure the PRs actually reference the issue
-    const filteredItems = data.items.filter(item => 
-      item.body?.includes(`#${issue_number}`) || 
-      item.title?.includes(`#${issue_number}`)
+    const filteredItems = data.items.filter(
+      (item) =>
+        item.body?.includes(`#${issue_number}`) ||
+        item.title?.includes(`#${issue_number}`)
     );
-    
+
     return filteredItems;
   } catch (error: any) {
-    console.warn(`Warning: Search API call failed for issue #${issue_number}:`, error.message);
-    
+    console.warn(
+      `Warning: Search API call failed for issue #${issue_number}:`,
+      error.message
+    );
+
     // Fallback: Try to get PRs via the pulls endpoint and filter manually
     try {
       const { data: pulls } = await octokit.rest.pulls.list({
@@ -138,15 +142,19 @@ export async function listPRsForIssue(
         state: 'open',
         per_page: 100,
       });
-      
-      const referencingPRs = pulls.filter(pr => 
-        pr.body?.includes(`#${issue_number}`) || 
-        pr.title?.includes(`#${issue_number}`)
+
+      const referencingPRs = pulls.filter(
+        (pr) =>
+          pr.body?.includes(`#${issue_number}`) ||
+          pr.title?.includes(`#${issue_number}`)
       );
-      
+
       return referencingPRs;
     } catch (fallbackError: any) {
-      console.error(`Error fetching PRs for issue #${issue_number}:`, fallbackError.message);
+      console.error(
+        `Error fetching PRs for issue #${issue_number}:`,
+        fallbackError.message
+      );
       return [];
     }
   }
@@ -530,8 +538,11 @@ export async function findSimilarOpenIssues(
       });
       allResults.push(...data.items);
     } catch (error: any) {
-      console.warn('Warning: Search API call failed for similar issues:', error.message);
-      
+      console.warn(
+        'Warning: Search API call failed for similar issues:',
+        error.message
+      );
+
       // Fallback: Get issues directly and filter manually
       try {
         const { data: issues } = await octokit.rest.issues.listForRepo({
@@ -541,12 +552,13 @@ export async function findSimilarOpenIssues(
           per_page: 100,
           labels: labels.length > 0 ? labels.join(',') : undefined,
         });
-        
+
         // Simple text matching for keywords
         if (keywords.length > 0) {
-          const matchingIssues = issues.filter(issue => {
-            const issueText = `${issue.title} ${issue.body || ''}`.toLowerCase();
-            return keywords.some(keyword => issueText.includes(keyword));
+          const matchingIssues = issues.filter((issue) => {
+            const issueText =
+              `${issue.title} ${issue.body || ''}`.toLowerCase();
+            return keywords.some((keyword) => issueText.includes(keyword));
           });
           allResults.push(...matchingIssues);
         } else {
@@ -633,7 +645,7 @@ export async function listRepositoryIssues(
   repo: string
 ) {
   const octokit = new Octokit({ auth: token });
-  
+
   try {
     // Get open issues
     const openIssuesResponse = await octokit.rest.issues.listForRepo({
@@ -642,7 +654,7 @@ export async function listRepositoryIssues(
       state: 'open',
       sort: 'created',
       direction: 'desc',
-      per_page: 100
+      per_page: 100,
     });
 
     // Get latest 10 closed issues
@@ -652,16 +664,20 @@ export async function listRepositoryIssues(
       state: 'closed',
       sort: 'updated',
       direction: 'desc',
-      per_page: 10
+      per_page: 10,
     });
 
     // Filter out pull requests (issues API returns both issues and PRs)
-    const openIssues = openIssuesResponse.data.filter(issue => !issue.pull_request);
-    const closedIssues = closedIssuesResponse.data.filter(issue => !issue.pull_request);
+    const openIssues = openIssuesResponse.data.filter(
+      (issue) => !issue.pull_request
+    );
+    const closedIssues = closedIssuesResponse.data.filter(
+      (issue) => !issue.pull_request
+    );
 
     return {
       open: openIssues,
-      closed: closedIssues
+      closed: closedIssues,
     };
   } catch (error) {
     console.error('Error fetching repository issues:', error);
@@ -678,14 +694,14 @@ export async function listRepositoryCollaborators(
   repo: string
 ) {
   const octokit = new Octokit({ auth: token });
-  
+
   try {
     const { data } = await octokit.rest.repos.listCollaborators({
       owner,
       repo,
-      per_page: 100
+      per_page: 100,
     });
-    
+
     return data;
   } catch (error) {
     console.error('Error fetching repository collaborators:', error);

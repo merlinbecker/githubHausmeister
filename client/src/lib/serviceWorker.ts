@@ -24,45 +24,48 @@ export async function resetServiceWorkerAndSubscriptions(): Promise<boolean> {
   }
 
   try {
-    console.log('🔄 Starting complete Service Worker + Push Subscription reset...');
-    
+    console.log(
+      '🔄 Starting complete Service Worker + Push Subscription reset...'
+    );
+
     // 1. Get current registration
     const registration = await navigator.serviceWorker.ready;
-    
+
     // 2. Remove existing push subscription
-    const existingSubscription = await registration.pushManager.getSubscription();
+    const existingSubscription =
+      await registration.pushManager.getSubscription();
     if (existingSubscription) {
       console.log('🗑️ Removing existing push subscription...');
       await existingSubscription.unsubscribe();
       console.log('✅ Existing push subscription removed');
     }
-    
+
     // 3. Unregister all service workers
     const registrations = await navigator.serviceWorker.getRegistrations();
     for (const reg of registrations) {
       console.log('🗑️ Unregistering Service Worker:', reg.scope);
       await reg.unregister();
     }
-    
+
     // 4. Clear all caches
     const cacheNames = await caches.keys();
     for (const cacheName of cacheNames) {
       console.log('🗑️ Deleting cache:', cacheName);
       await caches.delete(cacheName);
     }
-    
+
     // 5. Wait a bit for cleanup
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
     // 6. Re-register service worker
     console.log('🔄 Re-registering Service Worker...');
     const _newRegistration = await navigator.serviceWorker.register('/sw.js', {
       scope: '/',
     });
-    
+
     // 7. Wait for new service worker to be ready
     await navigator.serviceWorker.ready;
-    
+
     console.log('✅ Service Worker reset complete!');
     return true;
   } catch (error) {

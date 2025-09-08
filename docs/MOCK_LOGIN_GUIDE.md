@@ -21,6 +21,7 @@ npm run dev
 ```
 
 When `MOCK_LOGIN=true` is set, the application will automatically:
+
 - Bypass real GitHub OAuth flow
 - Provide a mock login interface with predefined test users
 - Simulate GitHub repositories and API responses
@@ -31,14 +32,16 @@ When `MOCK_LOGIN=true` is set, the application will automatically:
 The mock system includes three predefined test users:
 
 ### 1. testdev (Default User)
+
 - **Username**: `testdev`
 - **Email**: `testdev@example.com`
-- **Repositories**: 
+- **Repositories**:
   - `frontend-app` (admin access)
   - `api-service` (push access)
   - `mobile-app` (admin access)
 
 ### 2. qauser (QA Specialist)
+
 - **Username**: `qauser`
 - **Email**: `qa@example.com`
 - **Repositories**:
@@ -46,6 +49,7 @@ The mock system includes three predefined test users:
   - `qa-dashboard` (admin access)
 
 ### 3. devlead (Team Lead)
+
 - **Username**: `devlead`
 - **Email**: `lead@example.com`
 - **Repositories**:
@@ -93,6 +97,7 @@ console.log(usersData.users); // Array of mock users
 Each test user has access to different repositories to simulate various scenarios:
 
 ### Repository Structure
+
 ```json
 {
   "id": 1001,
@@ -125,6 +130,7 @@ You can customize mock users and repositories by modifying:
 ### Testing Scenarios
 
 1. **Basic Authentication Test**:
+
    ```bash
    export MOCK_LOGIN=true
    npm run dev
@@ -156,6 +162,7 @@ npm run test:run tests/server/lib/mock-auth-service.test.ts
 ## Switching Between Mock and Production
 
 ### Enable Production Mode
+
 ```bash
 unset MOCK_LOGIN
 # or
@@ -163,11 +170,13 @@ export MOCK_LOGIN=false
 ```
 
 ### Enable Mock Mode
+
 ```bash
 export MOCK_LOGIN=true
 ```
 
 The application automatically detects the mode and:
+
 - Shows appropriate login interface
 - Uses correct authentication service
 - Provides mode indicator in the UI
@@ -200,6 +209,7 @@ npm run dev
 ```
 
 Look for log messages prefixed with:
+
 - `🎭 [MOCK AUTH]`
 - `🔧 [SERVICE FACTORY]`
 - `[MOCK]`
@@ -216,6 +226,7 @@ Look for log messages prefixed with:
 ## Architecture Integration
 
 The mock system is designed to be:
+
 - **Non-intrusive**: Minimal changes to existing codebase
 - **Backwards compatible**: All existing functionality works in production mode
 - **Testable**: Comprehensive test coverage for mock components
@@ -224,6 +235,7 @@ The mock system is designed to be:
 ## Next Steps
 
 This implementation provides the foundation for:
+
 - Complete GitHub repository simulation
 - Mock webhook event generation
 - Simulated Copilot interactions

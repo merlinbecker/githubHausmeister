@@ -66,7 +66,7 @@ describe('GitHubOAuth', () => {
       mockFetch.mockResolvedValue(mockResponse);
 
       const result = await oauth.exchangeCodeForToken('test-code');
-      
+
       expect(result).toEqual({
         accessToken: 'test-access-token',
         refreshToken: 'test-refresh-token',
@@ -150,7 +150,7 @@ describe('GitHubOAuth', () => {
       });
 
       const result = await oauth.getUserInfo('test-token');
-      
+
       expect(result).toEqual({
         id: '12345',
         login: 'testuser',
@@ -174,7 +174,7 @@ describe('GitHubOAuth', () => {
       });
 
       const result = await oauth.getUserInfo('test-token');
-      
+
       expect(result).toEqual({
         id: '12345',
         login: 'testuser',
@@ -188,7 +188,9 @@ describe('GitHubOAuth', () => {
         new Error('API Error')
       );
 
-      await expect(oauth.getUserInfo('test-token')).rejects.toThrow('API Error');
+      await expect(oauth.getUserInfo('test-token')).rejects.toThrow(
+        'API Error'
+      );
     });
   });
 
@@ -223,7 +225,7 @@ describe('GitHubOAuth', () => {
       });
 
       const result = await oauth.getUserRepositories('test-token');
-      
+
       // Should only return repos with admin or push permissions
       expect(result).toHaveLength(2);
       expect(result).toEqual([
@@ -243,7 +245,9 @@ describe('GitHubOAuth', () => {
         },
       ]);
 
-      expect(mockOctokitRest.repos.listForAuthenticatedUser).toHaveBeenCalledWith({
+      expect(
+        mockOctokitRest.repos.listForAuthenticatedUser
+      ).toHaveBeenCalledWith({
         per_page: 100,
         sort: 'updated',
         type: 'all',
@@ -255,7 +259,9 @@ describe('GitHubOAuth', () => {
         new Error('API Error')
       );
 
-      await expect(oauth.getUserRepositories('test-token')).rejects.toThrow('API Error');
+      await expect(oauth.getUserRepositories('test-token')).rejects.toThrow(
+        'API Error'
+      );
     });
   });
 
@@ -277,7 +283,7 @@ describe('GitHubOAuth', () => {
         'https://example.com/webhook',
         'webhook-secret'
       );
-      
+
       expect(result).toEqual({
         id: 12345,
         url: 'https://example.com/webhook',

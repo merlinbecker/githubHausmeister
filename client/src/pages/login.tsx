@@ -15,17 +15,17 @@ export default function Login() {
   useEffect(() => {
     // Check authentication mode
     fetch('/api/auth/mode')
-      .then(res => res.json())
+      .then((res) => res.json())
       .then((data: AuthMode) => {
         setAuthMode(data);
         setLoading(false);
-        
+
         // Auto-redirect to mock login if in mock mode
         if (data.mockMode) {
           window.location.href = '/mock-login';
         }
       })
-      .catch(err => {
+      .catch((err) => {
         console.error('Failed to check auth mode:', err);
         setLoading(false);
       });
@@ -49,8 +49,8 @@ export default function Login() {
         <div className="text-center">
           <TestTube className="text-github-blue mx-auto mb-4" size={48} />
           <p className="text-github-muted">Redirecting to mock login...</p>
-          <Button 
-            onClick={() => window.location.href = '/mock-login'}
+          <Button
+            onClick={() => (window.location.href = '/mock-login')}
             className="mt-4"
             variant="outline"
           >

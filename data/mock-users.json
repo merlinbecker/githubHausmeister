@@ -7,7 +7,7 @@
       "avatarUrl": "https://api.dicebear.com/7.x/avataaars/svg?seed=testdev"
     },
     {
-      "id": "mock-user-2", 
+      "id": "mock-user-2",
       "username": "qauser",
       "email": "qa@example.com",
       "avatarUrl": "https://api.dicebear.com/7.x/avataaars/svg?seed=qauser"
@@ -15,7 +15,7 @@
     {
       "id": "mock-user-3",
       "username": "devlead",
-      "email": "lead@example.com", 
+      "email": "lead@example.com",
       "avatarUrl": "https://api.dicebear.com/7.x/avataaars/svg?seed=devlead"
     }
   ]

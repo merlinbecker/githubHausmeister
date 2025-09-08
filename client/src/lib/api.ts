@@ -100,7 +100,9 @@ export async function deleteTask(taskId: string) {
   return apiRequest('DELETE', `/api/tasks/${taskId}`);
 }
 
-export async function getWebhookDeliveries(limit: number = 50): Promise<WebhookDelivery[]> {
+export async function getWebhookDeliveries(
+  limit: number = 50
+): Promise<WebhookDelivery[]> {
   const response = await fetch(`/api/webhooks/deliveries?limit=${limit}`, {
     credentials: 'include',
   });
@@ -177,7 +179,10 @@ export interface IssuesResponse {
   closed: Issue[];
 }
 
-export async function getRepositoryIssues(owner: string, repo: string): Promise<IssuesResponse> {
+export async function getRepositoryIssues(
+  owner: string,
+  repo: string
+): Promise<IssuesResponse> {
   const response = await fetch(`/api/repositories/${owner}/${repo}/issues`, {
     credentials: 'include',
   });
@@ -187,37 +192,64 @@ export async function getRepositoryIssues(owner: string, repo: string): Promise<
   return response.json();
 }
 
-export async function getRepositoryCollaborators(owner: string, repo: string): Promise<Collaborator[]> {
-  const response = await fetch(`/api/repositories/${owner}/${repo}/collaborators`, {
-    credentials: 'include',
-  });
+export async function getRepositoryCollaborators(
+  owner: string,
+  repo: string
+): Promise<Collaborator[]> {
+  const response = await fetch(
+    `/api/repositories/${owner}/${repo}/collaborators`,
+    {
+      credentials: 'include',
+    }
+  );
   if (!response.ok) {
-    throw new Error(`Failed to get repository collaborators: ${response.statusText}`);
+    throw new Error(
+      `Failed to get repository collaborators: ${response.statusText}`
+    );
   }
   return response.json();
 }
 
 export async function assignIssueToCopilot(
-  owner: string, 
-  repo: string, 
+  owner: string,
+  repo: string,
   issueNumber: number
-): Promise<{ success: boolean; assignedAgent?: string; error?: string; message?: string }> {
-  const response = await fetch(`/api/repositories/${owner}/${repo}/issues/${issueNumber}/assign`, {
-    method: 'POST',
-    credentials: 'include',
-  });
-  
+): Promise<{
+  success: boolean;
+  assignedAgent?: string;
+  error?: string;
+  message?: string;
+}> {
+  const response = await fetch(
+    `/api/repositories/${owner}/${repo}/issues/${issueNumber}/assign`,
+    {
+      method: 'POST',
+      credentials: 'include',
+    }
+  );
+
   const result = await response.json();
   if (!response.ok) {
-    throw new Error(result.message || result.error || `Failed to assign issue: ${response.statusText}`);
+    throw new Error(
+      result.message ||
+        result.error ||
+        `Failed to assign issue: ${response.statusText}`
+    );
   }
   return result;
 }
 
-export async function getIssuePRs(owner: string, repo: string, issueNumber: number): Promise<PullRequest[]> {
-  const response = await fetch(`/api/repositories/${owner}/${repo}/issues/${issueNumber}/prs`, {
-    credentials: 'include',
-  });
+export async function getIssuePRs(
+  owner: string,
+  repo: string,
+  issueNumber: number
+): Promise<PullRequest[]> {
+  const response = await fetch(
+    `/api/repositories/${owner}/${repo}/issues/${issueNumber}/prs`,
+    {
+      credentials: 'include',
+    }
+  );
   if (!response.ok) {
     throw new Error(`Failed to get issue PRs: ${response.statusText}`);
   }

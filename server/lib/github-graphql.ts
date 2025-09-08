@@ -79,11 +79,11 @@ export async function getCopilotNodeId(
 
     // Look for Copilot Bot agent specifically
     for (const actor of suggestedActors) {
-      if (
-        actor.__typename === 'Bot' &&
-        actor.login === 'copilot-swe-agent'
-      ) {
-        console.log('Found Copilot Bot agent via suggestedActors:', actor.login);
+      if (actor.__typename === 'Bot' && actor.login === 'copilot-swe-agent') {
+        console.log(
+          'Found Copilot Bot agent via suggestedActors:',
+          actor.login
+        );
         return actor.id;
       }
     }
