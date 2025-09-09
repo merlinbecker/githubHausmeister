@@ -139,6 +139,13 @@ export interface Issue {
     name: string;
     color: string;
   }>;
+  milestone?: {
+    id: number;
+    title: string;
+    description?: string;
+    state: 'open' | 'closed';
+    due_on?: string;
+  };
   created_at: string;
   updated_at: string;
   html_url: string;
@@ -174,6 +181,18 @@ export interface Collaborator {
   role_name: string;
 }
 
+export interface Milestone {
+  id: number;
+  title: string;
+  description?: string;
+  state: 'open' | 'closed';
+  due_on?: string;
+  created_at: string;
+  updated_at: string;
+  open_issues: number;
+  closed_issues: number;
+}
+
 export interface IssuesResponse {
   open: Issue[];
   closed: Issue[];
@@ -188,6 +207,19 @@ export async function getRepositoryIssues(
   });
   if (!response.ok) {
     throw new Error(`Failed to get repository issues: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function getRepositoryMilestones(
+  owner: string,
+  repo: string
+): Promise<Milestone[]> {
+  const response = await fetch(`/api/repositories/${owner}/${repo}/milestones`, {
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to get repository milestones: ${response.statusText}`);
   }
   return response.json();
 }

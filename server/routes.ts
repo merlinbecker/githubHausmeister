@@ -18,6 +18,7 @@ import {
   commentOnPR,
   getPullRequest,
   listRepositoryIssues,
+  listRepositoryMilestones,
   listRepositoryCollaborators,
   listPRsForIssue,
 } from './lib/github-rest';
@@ -1788,7 +1789,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Repository Issues Management Routes
 
-  // Get repository issues (open + latest 10 closed)
+  // Get repository issues (open + latest 5 closed)
   app.get(
     '/api/repositories/:owner/:repo/issues',
     requireAuth,
@@ -1850,6 +1851,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         console.error('Error fetching repository issues:', error);
         res.status(500).json({ error: 'Failed to fetch repository issues' });
+      }
+    }
+  );
+
+  // Get repository milestones for filtering
+  app.get(
+    '/api/repositories/:owner/:repo/milestones',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { owner, repo } = req.params;
+        const user = req.user!;
+
+        // Check if user has access to this repository
+        const userRepos = await databaseStorage.getUserRepositories(user.id);
+        const userRepo = userRepos.find(
+          (r) => r.owner === owner && r.repo === repo
+        );
+        if (!userRepo) {
+          return res
+            .status(404)
+            .json({ error: 'Repository not found or no access' });
+        }
+
+        const milestones = await listRepositoryMilestones(
+          user.accessToken,
+          owner,
+          repo
+        );
+        res.json(milestones);
+      } catch (error) {
+        console.error('Error fetching repository milestones:', error);
+        res.status(500).json({ error: 'Failed to fetch repository milestones' });
       }
     }
   );
