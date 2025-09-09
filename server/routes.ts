@@ -2571,8 +2571,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      // Find the first unassigned issue that doesn't have an open PR
-      let nextIssue = null;
+      // Find the highest priority unassigned issue that doesn't have an open PR
+      // Step 1: Get issue priorities for this repository 
+      const priorities = await databaseStorage.getIssuePriorities(
+        user.id,
+        userRepo.id
+      );
+
+      // Create priority map for quick lookup
+      const priorityMap = new Map<number, number>();
+      priorities.forEach((p) => {
+        priorityMap.set(p.issueNumber, p.priority);
+      });
+
+      // Step 2: Find eligible issues (unassigned, no PRs)
+      const eligibleIssues = [];
       for (const issue of issues.open) {
         // Skip if already assigned
         if (issue.assignees && issue.assignees.length > 0) {
@@ -2594,19 +2607,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
           continue;
         }
 
-        nextIssue = issue;
-        break;
+        eligibleIssues.push(issue);
       }
 
-      if (!nextIssue) {
+      if (eligibleIssues.length === 0) {
         console.log(
           `No unassigned issues without PRs found in ${owner}/${repo}`
         );
         return;
       }
 
+      // Step 3: Sort eligible issues by priority (prioritized issues first, then by issue number)
+      eligibleIssues.sort((a, b) => {
+        const aPriority = priorityMap.get(a.number);
+        const bPriority = priorityMap.get(b.number);
+
+        // If both have priorities, sort by priority (lower number = higher priority)
+        if (aPriority !== undefined && bPriority !== undefined) {
+          return aPriority - bPriority;
+        }
+
+        // If only A has priority, A comes first
+        if (aPriority !== undefined && bPriority === undefined) {
+          return -1;
+        }
+
+        // If only B has priority, B comes first
+        if (aPriority === undefined && bPriority !== undefined) {
+          return 1;
+        }
+
+        // Neither has priority, sort by issue number (newer issues first for activity)
+        return b.number - a.number;
+      });
+
+      const nextIssue = eligibleIssues[0];
+      const priority = priorityMap.get(nextIssue.number);
+      
       console.log(
-        `Attempting to assign issue #${nextIssue.number} to Copilot...`
+        `Attempting to assign highest priority issue #${nextIssue.number}${
+          priority !== undefined ? ` (priority: ${priority})` : ' (no specific priority)'
+        } to Copilot...`
       );
 
       // Use the existing Copilot assignment service
@@ -2622,8 +2663,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       if (result.success) {
+        const priorityInfo = priority !== undefined ? ` (priority: ${priority})` : ' (no specific priority)';
         console.log(
-          `✅ Successfully assigned issue #${nextIssue.number} to ${result.assignedAgent}`
+          `✅ Successfully assigned highest priority issue #${nextIssue.number}${priorityInfo} to ${result.assignedAgent}`
         );
 
         // Send notification to all users monitoring this repository
