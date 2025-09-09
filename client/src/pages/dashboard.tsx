@@ -8,6 +8,7 @@ import StatusOverview from '@/components/StatusOverview';
 import ActiveTaskCard from '@/components/ActiveTaskCard';
 import TaskQueue from '@/components/TaskQueue';
 import TaskCreationForm from '@/components/TaskCreationForm';
+import TemplateEditor from '@/components/TemplateEditor';
 import RepositoryManager from '@/components/RepositoryManager';
 import RepositoryIssueManager from '@/components/RepositoryIssueManager';
 import WebhookStatus from '@/components/WebhookStatus';
@@ -152,6 +153,10 @@ export default function Dashboard() {
         <TaskCreationForm
           repositories={appState?.repositories || []}
           onRefresh={refetch}
+        />
+
+        <TemplateEditor
+          repositories={appState?.repositories || []}
         />
 
         <WebhookStatus />

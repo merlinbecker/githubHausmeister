@@ -4,6 +4,7 @@ import {
   users,
   userRepositories,
   tasks,
+  taskTemplates,
   webhookDeliveries,
   userSystemState,
   pushSubscriptions,
@@ -18,6 +19,8 @@ import {
   type InsertUserRepository,
   type Task,
   type InsertTask,
+  type TaskTemplate,
+  type InsertTaskTemplate,
   type WebhookDelivery,
   type InsertWebhookDelivery,
   type UserSystemState,
@@ -97,6 +100,22 @@ export class DatabaseStorage {
       .from(userRepositories)
       .where(eq(userRepositories.userId, userId))
       .orderBy(desc(userRepositories.createdAt));
+  }
+
+  async getUserRepository(
+    userId: string,
+    repositoryId: string
+  ): Promise<UserRepository | undefined> {
+    const [repository] = await db
+      .select()
+      .from(userRepositories)
+      .where(
+        and(
+          eq(userRepositories.userId, userId),
+          eq(userRepositories.id, repositoryId)
+        )
+      );
+    return repository;
   }
 
   async addUserRepository(
@@ -620,6 +639,81 @@ export class DatabaseStorage {
       .from(glassNotifications)
       .where(eq(glassNotifications.id, notificationId));
     return notification;
+  }
+
+  // Task Template operations
+  async createTaskTemplate(
+    templateData: InsertTaskTemplate
+  ): Promise<TaskTemplate> {
+    const [template] = await db
+      .insert(taskTemplates)
+      .values(templateData)
+      .returning();
+    return template;
+  }
+
+  async getTaskTemplates(
+    userId: string,
+    repositoryId: string
+  ): Promise<TaskTemplate[]> {
+    return await db
+      .select()
+      .from(taskTemplates)
+      .where(
+        and(
+          eq(taskTemplates.userId, userId),
+          eq(taskTemplates.repositoryId, repositoryId),
+          eq(taskTemplates.isActive, true)
+        )
+      )
+      .orderBy(taskTemplates.type, taskTemplates.createdAt);
+  }
+
+  async getTaskTemplateById(templateId: string): Promise<TaskTemplate | undefined> {
+    const [template] = await db
+      .select()
+      .from(taskTemplates)
+      .where(eq(taskTemplates.id, templateId));
+    return template;
+  }
+
+  async updateTaskTemplate(
+    templateId: string,
+    updates: Partial<TaskTemplate>
+  ): Promise<TaskTemplate | undefined> {
+    const [updated] = await db
+      .update(taskTemplates)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(taskTemplates.id, templateId))
+      .returning();
+    return updated;
+  }
+
+  async deleteTaskTemplate(templateId: string): Promise<boolean> {
+    const result = await db
+      .update(taskTemplates)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(taskTemplates.id, templateId));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getTaskTemplateByType(
+    userId: string,
+    repositoryId: string,
+    type: string
+  ): Promise<TaskTemplate | undefined> {
+    const [template] = await db
+      .select()
+      .from(taskTemplates)
+      .where(
+        and(
+          eq(taskTemplates.userId, userId),
+          eq(taskTemplates.repositoryId, repositoryId),
+          eq(taskTemplates.type, type),
+          eq(taskTemplates.isActive, true)
+        )
+      );
+    return template;
   }
 }
 

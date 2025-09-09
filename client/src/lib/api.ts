@@ -1,10 +1,10 @@
 import { apiRequest } from './queryClient';
 import type { User } from '@/lib/auth';
 
-import type { UserRepository, Task, WebhookDelivery } from '@shared/schema';
+import type { UserRepository, Task, WebhookDelivery, TaskTemplate } from '@shared/schema';
 
-// Re-export UserRepository for components
-export type { UserRepository };
+// Re-export UserRepository and TaskTemplate for components
+export type { UserRepository, TaskTemplate };
 
 export interface AppState {
   user?: User;
@@ -270,5 +270,56 @@ export async function setWebhookForwardUrl(forwardUrl: string | null): Promise<{
   const response = await apiRequest('POST', '/api/user/webhook-forward-url', {
     forwardUrl,
   });
+  return response.json();
+}
+
+// Template Management API
+export interface CreateTemplateRequest {
+  type: string;
+  title: string;
+  body: string;
+  labels?: string[];
+  milestone?: string;
+}
+
+export interface UpdateTemplateRequest {
+  title?: string;
+  body?: string;
+  labels?: string[];
+  milestone?: string;
+}
+
+export async function getRepositoryTemplates(repositoryId: string): Promise<{ templates: TaskTemplate[] }> {
+  const response = await fetch(`/api/repositories/${repositoryId}/templates`, {
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to get templates: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function createOrUpdateTemplate(
+  repositoryId: string,
+  templateData: CreateTemplateRequest
+): Promise<{ template: TaskTemplate }> {
+  const response = await apiRequest('POST', `/api/repositories/${repositoryId}/templates`, templateData);
+  return response.json();
+}
+
+export async function updateTemplate(
+  repositoryId: string,
+  templateId: string,
+  updates: UpdateTemplateRequest
+): Promise<{ template: TaskTemplate }> {
+  const response = await apiRequest('PUT', `/api/repositories/${repositoryId}/templates/${templateId}`, updates);
+  return response.json();
+}
+
+export async function deleteTemplate(
+  repositoryId: string,
+  templateId: string
+): Promise<{ success: boolean }> {
+  const response = await apiRequest('DELETE', `/api/repositories/${repositoryId}/templates/${templateId}`);
   return response.json();
 }
