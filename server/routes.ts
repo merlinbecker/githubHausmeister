@@ -2009,6 +2009,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Issue Priority Management (Phase 3 of Issue Workflow Plan)
+  
+  // Get issue priorities for repository
+  app.get(
+    '/api/repositories/:owner/:repo/priorities',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { owner, repo } = req.params;
+        const user = req.user!;
+
+        // Check if user has access to this repository
+        const userRepos = await databaseStorage.getUserRepositories(user.id);
+        const userRepo = userRepos.find(
+          (r) => r.owner === owner && r.repo === repo
+        );
+        if (!userRepo) {
+          return res
+            .status(404)
+            .json({ error: 'Repository not found or no access' });
+        }
+
+        const priorities = await databaseStorage.getIssuePriorities(
+          user.id,
+          userRepo.id
+        );
+        res.json(priorities);
+      } catch (error) {
+        console.error('Error fetching issue priorities:', error);
+        res.status(500).json({ error: 'Failed to fetch issue priorities' });
+      }
+    }
+  );
+
+  // Update issue priorities (for drag-and-drop reordering)
+  app.put(
+    '/api/repositories/:owner/:repo/priorities',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { owner, repo } = req.params;
+        const { priorities } = req.body;
+        const user = req.user!;
+
+        if (!Array.isArray(priorities)) {
+          return res.status(400).json({ error: 'Priorities must be an array' });
+        }
+
+        // Check if user has access to this repository
+        const userRepos = await databaseStorage.getUserRepositories(user.id);
+        const userRepo = userRepos.find(
+          (r) => r.owner === owner && r.repo === repo
+        );
+        if (!userRepo) {
+          return res
+            .status(404)
+            .json({ error: 'Repository not found or no access' });
+        }
+
+        await databaseStorage.updateIssuePriorities(
+          user.id,
+          userRepo.id,
+          priorities
+        );
+
+        res.json({ success: true });
+      } catch (error) {
+        console.error('Error updating issue priorities:', error);
+        res.status(500).json({ error: 'Failed to update issue priorities' });
+      }
+    }
+  );
+
+  // Set priority for specific issue
+  app.put(
+    '/api/repositories/:owner/:repo/issues/:issueNumber/priority',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { owner, repo, issueNumber } = req.params;
+        const { priority } = req.body;
+        const user = req.user!;
+
+        if (typeof priority !== 'number') {
+          return res.status(400).json({ error: 'Priority must be a number' });
+        }
+
+        // Check if user has access to this repository
+        const userRepos = await databaseStorage.getUserRepositories(user.id);
+        const userRepo = userRepos.find(
+          (r) => r.owner === owner && r.repo === repo
+        );
+        if (!userRepo) {
+          return res
+            .status(404)
+            .json({ error: 'Repository not found or no access' });
+        }
+
+        const issuePriority = await databaseStorage.setIssuePriority({
+          userId: user.id,
+          repositoryId: userRepo.id,
+          issueNumber: parseInt(issueNumber),
+          priority,
+        });
+
+        res.json(issuePriority);
+      } catch (error) {
+        console.error('Error setting issue priority:', error);
+        res.status(500).json({ error: 'Failed to set issue priority' });
+      }
+    }
+  );
+
   // GitHub webhook endpoint
   app.post('/api/webhook', async (req, res) => {
     try {

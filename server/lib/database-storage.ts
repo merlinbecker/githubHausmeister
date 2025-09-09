@@ -13,6 +13,7 @@ import {
   mentraSessions,
   voiceCommands,
   glassNotifications,
+  issuePriorities,
   type User,
   type InsertUser,
   type UserRepository,
@@ -27,6 +28,8 @@ import {
   type PushSubscription,
   type InsertPushSubscription,
   type NotificationSettings,
+  type IssuePriority,
+  type InsertIssuePriority,
   type MentraGlass,
   type InsertMentraGlass,
   type MentraSession,
@@ -714,6 +717,120 @@ export class DatabaseStorage {
         )
       );
     return template;
+  }
+
+  // Issue Priority Management (Phase 3 of Issue Workflow Plan)
+  async getIssuePriorities(
+    userId: string,
+    repositoryId: string
+  ): Promise<IssuePriority[]> {
+    return await db
+      .select()
+      .from(issuePriorities)
+      .where(
+        and(
+          eq(issuePriorities.userId, userId),
+          eq(issuePriorities.repositoryId, repositoryId)
+        )
+      )
+      .orderBy(issuePriorities.priority);
+  }
+
+  async setIssuePriority(
+    data: InsertIssuePriority
+  ): Promise<IssuePriority> {
+    // First check if priority already exists for this issue
+    const existing = await db
+      .select()
+      .from(issuePriorities)
+      .where(
+        and(
+          eq(issuePriorities.userId, data.userId),
+          eq(issuePriorities.repositoryId, data.repositoryId),
+          eq(issuePriorities.issueNumber, data.issueNumber)
+        )
+      );
+
+    if (existing.length > 0) {
+      // Update existing priority
+      const [updated] = await db
+        .update(issuePriorities)
+        .set({ 
+          priority: data.priority,
+          updatedAt: new Date()
+        })
+        .where(eq(issuePriorities.id, existing[0].id))
+        .returning();
+      return updated;
+    } else {
+      // Create new priority
+      const [created] = await db
+        .insert(issuePriorities)
+        .values(data)
+        .returning();
+      return created;
+    }
+  }
+
+  async updateIssuePriorities(
+    userId: string,
+    repositoryId: string,
+    priorities: Array<{ issueNumber: number; priority: number }>
+  ): Promise<void> {
+    // Update priorities in a transaction
+    await db.transaction(async (tx) => {
+      for (const item of priorities) {
+        // Check if priority exists for this issue
+        const existing = await tx
+          .select()
+          .from(issuePriorities)
+          .where(
+            and(
+              eq(issuePriorities.userId, userId),
+              eq(issuePriorities.repositoryId, repositoryId),
+              eq(issuePriorities.issueNumber, item.issueNumber)
+            )
+          );
+
+        if (existing.length > 0) {
+          // Update existing
+          await tx
+            .update(issuePriorities)
+            .set({
+              priority: item.priority,
+              updatedAt: new Date(),
+            })
+            .where(eq(issuePriorities.id, existing[0].id));
+        } else {
+          // Insert new
+          await tx
+            .insert(issuePriorities)
+            .values({
+              userId,
+              repositoryId,
+              issueNumber: item.issueNumber,
+              priority: item.priority,
+            });
+        }
+      }
+    });
+  }
+
+  async deleteIssuePriority(
+    userId: string,
+    repositoryId: string,
+    issueNumber: number
+  ): Promise<boolean> {
+    const result = await db
+      .delete(issuePriorities)
+      .where(
+        and(
+          eq(issuePriorities.userId, userId),
+          eq(issuePriorities.repositoryId, repositoryId),
+          eq(issuePriorities.issueNumber, issueNumber)
+        )
+      );
+    return result.rowCount > 0;
   }
 }
 

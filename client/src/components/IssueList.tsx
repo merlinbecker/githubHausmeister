@@ -9,6 +9,8 @@ import {
   AlertCircle,
   Bot,
   Target,
+  ArrowUpDown,
+  List,
 } from 'lucide-react';
 import {
   getRepositoryIssues,
@@ -23,6 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import MilestoneFilter from '@/components/MilestoneFilter';
+import DraggableIssueList from '@/components/DraggableIssueList';
 
 interface IssueListProps {
   repository: UserRepository;
@@ -33,6 +36,7 @@ export default function IssueList({ repository }: IssueListProps) {
   const _queryClient = useQueryClient();
   const [assigningIssue, setAssigningIssue] = useState<number | null>(null);
   const [selectedMilestone, setSelectedMilestone] = useState<string | null>(null);
+  const [showPriorityView, setShowPriorityView] = useState(false);
 
   const {
     data: issues,
@@ -362,53 +366,80 @@ export default function IssueList({ repository }: IssueListProps) {
             <GitBranch className="h-5 w-5" />
             Issues for {repository.owner}/{repository.repo}
           </CardTitle>
-          <MilestoneFilter 
-            repository={repository}
-            selectedMilestone={selectedMilestone}
-            onMilestoneChange={setSelectedMilestone}
-          />
+          <div className="flex items-center gap-2">
+            <Button
+              variant={showPriorityView ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowPriorityView(!showPriorityView)}
+              className="text-sm"
+            >
+              {showPriorityView ? (
+                <>
+                  <List className="h-4 w-4 mr-2" />
+                  Normal View
+                </>
+              ) : (
+                <>
+                  <ArrowUpDown className="h-4 w-4 mr-2" />
+                  Priority View
+                </>
+              )}
+            </Button>
+            <MilestoneFilter 
+              repository={repository}
+              selectedMilestone={selectedMilestone}
+              onMilestoneChange={setSelectedMilestone}
+            />
+          </div>
         </div>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="open" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="open" className="flex items-center gap-2">
-              <AlertCircle className="h-4 w-4" />
-              Open ({filteredIssues.open.length})
-            </TabsTrigger>
-            <TabsTrigger value="closed" className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4" />
-              Recent Closed ({filteredIssues.closed.length})
-            </TabsTrigger>
-          </TabsList>
+        {showPriorityView ? (
+          <DraggableIssueList
+            repository={repository}
+            issues={filteredIssues.open}
+          />
+        ) : (
+          <Tabs defaultValue="open" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="open" className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4" />
+                Open ({filteredIssues.open.length})
+              </TabsTrigger>
+              <TabsTrigger value="closed" className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4" />
+                Recent Closed ({filteredIssues.closed.length})
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="open" className="mt-4">
-            {filteredIssues.open.length === 0 ? (
-              <div className="text-center py-8 text-github-text-secondary">
-                <CheckCircle className="h-8 w-8 mx-auto mb-2" />
-                <p>{selectedMilestone ? `No open issues in "${selectedMilestone}"` : 'No open issues'}</p>
-                <p className="text-sm">{selectedMilestone ? 'Try selecting a different milestone' : 'All caught up! 🎉'}</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {filteredIssues.open.map(renderIssueCard)}
-              </div>
-            )}
-          </TabsContent>
+            <TabsContent value="open" className="mt-4">
+              {filteredIssues.open.length === 0 ? (
+                <div className="text-center py-8 text-github-text-secondary">
+                  <CheckCircle className="h-8 w-8 mx-auto mb-2" />
+                  <p>{selectedMilestone ? `No open issues in "${selectedMilestone}"` : 'No open issues'}</p>
+                  <p className="text-sm">{selectedMilestone ? 'Try selecting a different milestone' : 'All caught up! 🎉'}</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredIssues.open.map(renderIssueCard)}
+                </div>
+              )}
+            </TabsContent>
 
-          <TabsContent value="closed" className="mt-4">
-            {filteredIssues.closed.length === 0 ? (
-              <div className="text-center py-8 text-github-text-secondary">
-                <AlertCircle className="h-8 w-8 mx-auto mb-2" />
-                <p>{selectedMilestone ? `No recent closed issues in "${selectedMilestone}"` : 'No recent closed issues'}</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {filteredIssues.closed.map(renderIssueCard)}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="closed" className="mt-4">
+              {filteredIssues.closed.length === 0 ? (
+                <div className="text-center py-8 text-github-text-secondary">
+                  <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+                  <p>{selectedMilestone ? `No recent closed issues in "${selectedMilestone}"` : 'No recent closed issues'}</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredIssues.closed.map(renderIssueCard)}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        )}
       </CardContent>
     </Card>
   );

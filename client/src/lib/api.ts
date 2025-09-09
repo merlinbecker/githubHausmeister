@@ -288,6 +288,71 @@ export async function getIssuePRs(
   return response.json();
 }
 
+// Issue Priority Management API (Phase 3 of Issue Workflow Plan)
+export interface IssuePriority {
+  id: string;
+  userId: string;
+  repositoryId: string;
+  issueNumber: number;
+  priority: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getIssuePriorities(
+  owner: string,
+  repo: string
+): Promise<IssuePriority[]> {
+  const response = await fetch(`/api/repositories/${owner}/${repo}/priorities`, {
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to get issue priorities: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function updateIssuePriorities(
+  owner: string,
+  repo: string,
+  priorities: Array<{ issueNumber: number; priority: number }>
+): Promise<void> {
+  const response = await fetch(`/api/repositories/${owner}/${repo}/priorities`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify({ priorities }),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to update issue priorities: ${response.statusText}`);
+  }
+}
+
+export async function setIssuePriority(
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  priority: number
+): Promise<IssuePriority> {
+  const response = await fetch(
+    `/api/repositories/${owner}/${repo}/issues/${issueNumber}/priority`,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({ priority }),
+    }
+  );
+  if (!response.ok) {
+    throw new Error(`Failed to set issue priority: ${response.statusText}`);
+  }
+  return response.json();
+}
+
 export async function getWebhookForwardUrl(): Promise<{ forwardUrl: string | null }> {
   const response = await fetch('/api/user/webhook-forward-url', {
     credentials: 'include',
