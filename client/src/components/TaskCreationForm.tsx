@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   createTasks,
+  getRepositoryTemplates,
   type CreateTasksRequest,
   type UserRepository,
+  type TaskTemplate,
 } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Info } from 'lucide-react';
@@ -11,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 
 interface TaskCreationFormProps {
   repositories: UserRepository[];
@@ -50,7 +53,17 @@ export default function TaskCreationForm({
   // Use only active repositories
   const activeRepositories = repositories.filter((repo) => repo.isActive);
 
-  const templates = [
+  // Load custom templates for selected repository
+  const { data: templatesData } = useQuery({
+    queryKey: ['templates', selectedRepositoryId],
+    queryFn: () => getRepositoryTemplates(selectedRepositoryId),
+    enabled: !!selectedRepositoryId,
+  });
+
+  const customTemplates = templatesData?.templates || [];
+
+  // Default template types with labels
+  const defaultTemplateTypes = [
     {
       id: 'tests',
       label: 'Tests nachziehen (kritische Pfade)',
@@ -77,6 +90,18 @@ export default function TaskCreationForm({
       type: 'docs',
     },
   ];
+
+  // Create template display list combining custom and default templates
+  const templates = defaultTemplateTypes.map(defaultTemplate => {
+    const customTemplate = customTemplates.find(ct => ct.type === defaultTemplate.type);
+    return {
+      id: defaultTemplate.id,
+      label: customTemplate ? customTemplate.title : defaultTemplate.label,
+      type: defaultTemplate.type,
+      isCustom: !!customTemplate,
+      customTemplate,
+    };
+  });
 
   const handleTemplateChange = (templateId: string, checked: boolean) => {
     if (checked) {
@@ -140,7 +165,10 @@ export default function TaskCreationForm({
               <select
                 id="repository"
                 value={selectedRepositoryId}
-                onChange={(e) => setSelectedRepositoryId(e.target.value)}
+                onChange={(e) => {
+                  setSelectedRepositoryId(e.target.value);
+                  setSelectedTemplates([]); // Reset template selection when repository changes
+                }}
                 className="w-full bg-github-bg border border-github-border rounded-lg px-3 py-2 text-github-text focus:outline-none focus:ring-2 focus:ring-github-blue focus:border-transparent"
                 data-testid="select-repository"
               >
@@ -178,24 +206,48 @@ export default function TaskCreationForm({
           <Label className="block text-sm font-medium text-github-text mb-2">
             Task Templates
           </Label>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {templates.map((template) => (
-              <label key={template.id} className="flex items-center space-x-3">
-                <Checkbox
-                  checked={selectedTemplates.includes(template.id)}
-                  onCheckedChange={(checked) =>
-                    handleTemplateChange(template.id, checked as boolean)
-                  }
-                  className="w-4 h-4 text-github-blue bg-github-bg border-github-border rounded focus:ring-github-blue focus:ring-2"
-                  data-testid={`checkbox-${template.id}`}
-                />
-                <span className="text-sm text-github-text">
-                  {template.label}
-                </span>
-                <span className="px-2 py-1 bg-github-border text-github-muted text-xs rounded-full">
-                  {template.type}
-                </span>
-              </label>
+              <div key={template.id} className="border border-github-border rounded-lg p-3">
+                <label className="flex items-start space-x-3">
+                  <Checkbox
+                    checked={selectedTemplates.includes(template.id)}
+                    onCheckedChange={(checked) =>
+                      handleTemplateChange(template.id, checked as boolean)
+                    }
+                    className="w-4 h-4 mt-1 text-github-blue bg-github-bg border-github-border rounded focus:ring-github-blue focus:ring-2"
+                    data-testid={`checkbox-${template.id}`}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <span className="text-sm font-medium text-github-text">
+                        {template.label}
+                      </span>
+                      <Badge variant={template.isCustom ? 'default' : 'secondary'} className="text-xs">
+                        {template.isCustom ? 'Custom' : 'Default'}
+                      </Badge>
+                      <span className="px-2 py-1 bg-github-border text-github-muted text-xs rounded-full">
+                        {template.type}
+                      </span>
+                    </div>
+                    {template.customTemplate && (
+                      <div className="text-xs text-github-muted space-y-1">
+                        <p className="line-clamp-2">{template.customTemplate.body}</p>
+                        {template.customTemplate.milestone && (
+                          <p className="text-github-blue">
+                            📌 Milestone: {template.customTemplate.milestone}
+                          </p>
+                        )}
+                        {template.customTemplate.labels && template.customTemplate.labels.length > 0 && (
+                          <p>
+                            🏷️ Labels: {template.customTemplate.labels.join(', ')}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </label>
+              </div>
             ))}
           </div>
         </div>
