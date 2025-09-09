@@ -18,6 +18,7 @@ import {
   commentOnPR,
   getPullRequest,
   listRepositoryIssues,
+  listRepositoryMilestones,
   listRepositoryCollaborators,
   listPRsForIssue,
 } from './lib/github-rest';
@@ -1788,7 +1789,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Repository Issues Management Routes
 
-  // Get repository issues (open + latest 10 closed)
+  // Get repository issues (open + latest 5 closed)
   app.get(
     '/api/repositories/:owner/:repo/issues',
     requireAuth,
@@ -1850,6 +1851,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         console.error('Error fetching repository issues:', error);
         res.status(500).json({ error: 'Failed to fetch repository issues' });
+      }
+    }
+  );
+
+  // Get repository milestones for filtering
+  app.get(
+    '/api/repositories/:owner/:repo/milestones',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { owner, repo } = req.params;
+        const user = req.user!;
+
+        // Check if user has access to this repository
+        const userRepos = await databaseStorage.getUserRepositories(user.id);
+        const userRepo = userRepos.find(
+          (r) => r.owner === owner && r.repo === repo
+        );
+        if (!userRepo) {
+          return res
+            .status(404)
+            .json({ error: 'Repository not found or no access' });
+        }
+
+        const milestones = await listRepositoryMilestones(
+          user.accessToken,
+          owner,
+          repo
+        );
+        res.json(milestones);
+      } catch (error) {
+        console.error('Error fetching repository milestones:', error);
+        res.status(500).json({ error: 'Failed to fetch repository milestones' });
       }
     }
   );
@@ -1971,6 +2005,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         console.error('Error fetching PRs for issue:', error);
         res.status(500).json({ error: 'Failed to fetch PRs for issue' });
+      }
+    }
+  );
+
+  // Issue Priority Management (Phase 3 of Issue Workflow Plan)
+  
+  // Get issue priorities for repository
+  app.get(
+    '/api/repositories/:owner/:repo/priorities',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { owner, repo } = req.params;
+        const user = req.user!;
+
+        // Check if user has access to this repository
+        const userRepos = await databaseStorage.getUserRepositories(user.id);
+        const userRepo = userRepos.find(
+          (r) => r.owner === owner && r.repo === repo
+        );
+        if (!userRepo) {
+          return res
+            .status(404)
+            .json({ error: 'Repository not found or no access' });
+        }
+
+        const priorities = await databaseStorage.getIssuePriorities(
+          user.id,
+          userRepo.id
+        );
+        res.json(priorities);
+      } catch (error) {
+        console.error('Error fetching issue priorities:', error);
+        res.status(500).json({ error: 'Failed to fetch issue priorities' });
+      }
+    }
+  );
+
+  // Update issue priorities (for drag-and-drop reordering)
+  app.put(
+    '/api/repositories/:owner/:repo/priorities',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { owner, repo } = req.params;
+        const { priorities } = req.body;
+        const user = req.user!;
+
+        if (!Array.isArray(priorities)) {
+          return res.status(400).json({ error: 'Priorities must be an array' });
+        }
+
+        // Check if user has access to this repository
+        const userRepos = await databaseStorage.getUserRepositories(user.id);
+        const userRepo = userRepos.find(
+          (r) => r.owner === owner && r.repo === repo
+        );
+        if (!userRepo) {
+          return res
+            .status(404)
+            .json({ error: 'Repository not found or no access' });
+        }
+
+        await databaseStorage.updateIssuePriorities(
+          user.id,
+          userRepo.id,
+          priorities
+        );
+
+        res.json({ success: true });
+      } catch (error) {
+        console.error('Error updating issue priorities:', error);
+        res.status(500).json({ error: 'Failed to update issue priorities' });
+      }
+    }
+  );
+
+  // Set priority for specific issue
+  app.put(
+    '/api/repositories/:owner/:repo/issues/:issueNumber/priority',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { owner, repo, issueNumber } = req.params;
+        const { priority } = req.body;
+        const user = req.user!;
+
+        if (typeof priority !== 'number') {
+          return res.status(400).json({ error: 'Priority must be a number' });
+        }
+
+        // Check if user has access to this repository
+        const userRepos = await databaseStorage.getUserRepositories(user.id);
+        const userRepo = userRepos.find(
+          (r) => r.owner === owner && r.repo === repo
+        );
+        if (!userRepo) {
+          return res
+            .status(404)
+            .json({ error: 'Repository not found or no access' });
+        }
+
+        const issuePriority = await databaseStorage.setIssuePriority({
+          userId: user.id,
+          repositoryId: userRepo.id,
+          issueNumber: parseInt(issueNumber),
+          priority,
+        });
+
+        res.json(issuePriority);
+      } catch (error) {
+        console.error('Error setting issue priority:', error);
+        res.status(500).json({ error: 'Failed to set issue priority' });
       }
     }
   );
@@ -2424,8 +2571,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      // Find the first unassigned issue that doesn't have an open PR
-      let nextIssue = null;
+      // Find the highest priority unassigned issue that doesn't have an open PR
+      // Step 1: Get issue priorities for this repository 
+      const priorities = await databaseStorage.getIssuePriorities(
+        user.id,
+        userRepo.id
+      );
+
+      // Create priority map for quick lookup
+      const priorityMap = new Map<number, number>();
+      priorities.forEach((p) => {
+        priorityMap.set(p.issueNumber, p.priority);
+      });
+
+      // Step 2: Find eligible issues (unassigned, no PRs)
+      const eligibleIssues = [];
       for (const issue of issues.open) {
         // Skip if already assigned
         if (issue.assignees && issue.assignees.length > 0) {
@@ -2447,19 +2607,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
           continue;
         }
 
-        nextIssue = issue;
-        break;
+        eligibleIssues.push(issue);
       }
 
-      if (!nextIssue) {
+      if (eligibleIssues.length === 0) {
         console.log(
           `No unassigned issues without PRs found in ${owner}/${repo}`
         );
         return;
       }
 
+      // Step 3: Sort eligible issues by priority (prioritized issues first, then by issue number)
+      eligibleIssues.sort((a, b) => {
+        const aPriority = priorityMap.get(a.number);
+        const bPriority = priorityMap.get(b.number);
+
+        // If both have priorities, sort by priority (lower number = higher priority)
+        if (aPriority !== undefined && bPriority !== undefined) {
+          return aPriority - bPriority;
+        }
+
+        // If only A has priority, A comes first
+        if (aPriority !== undefined && bPriority === undefined) {
+          return -1;
+        }
+
+        // If only B has priority, B comes first
+        if (aPriority === undefined && bPriority !== undefined) {
+          return 1;
+        }
+
+        // Neither has priority, sort by issue number (newer issues first for activity)
+        return b.number - a.number;
+      });
+
+      const nextIssue = eligibleIssues[0];
+      const priority = priorityMap.get(nextIssue.number);
+      
       console.log(
-        `Attempting to assign issue #${nextIssue.number} to Copilot...`
+        `Attempting to assign highest priority issue #${nextIssue.number}${
+          priority !== undefined ? ` (priority: ${priority})` : ' (no specific priority)'
+        } to Copilot...`
       );
 
       // Use the existing Copilot assignment service
@@ -2475,8 +2663,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       if (result.success) {
+        const priorityInfo = priority !== undefined ? ` (priority: ${priority})` : ' (no specific priority)';
         console.log(
-          `✅ Successfully assigned issue #${nextIssue.number} to ${result.assignedAgent}`
+          `✅ Successfully assigned highest priority issue #${nextIssue.number}${priorityInfo} to ${result.assignedAgent}`
         );
 
         // Send notification to all users monitoring this repository

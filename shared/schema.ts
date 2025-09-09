@@ -305,6 +305,33 @@ export const glassNotifications = pgTable(
   ]
 );
 
+// Issue priorities for drag-and-drop ordering (Phase 3 of Issue Workflow Plan)
+export const issuePriorities = pgTable(
+  'issue_priorities',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    repositoryId: varchar('repository_id')
+      .notNull()
+      .references(() => userRepositories.id, { onDelete: 'cascade' }),
+    issueNumber: integer('issue_number').notNull(),
+    priority: integer('priority').notNull().default(0), // Lower number = higher priority
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => [
+    index('issue_priorities_user_id_idx').on(table.userId),
+    index('issue_priorities_repository_id_idx').on(table.repositoryId),
+    index('issue_priorities_priority_idx').on(table.priority),
+    // Unique constraint to prevent duplicate priorities for same user+repo+issue
+    index('issue_priorities_unique_idx').on(table.userId, table.repositoryId, table.issueNumber),
+  ]
+);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   repositories: many(userRepositories),
@@ -316,6 +343,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   mentraGlasses: many(mentraGlasses),
   voiceCommands: many(voiceCommands),
   glassNotifications: many(glassNotifications),
+  issuePriorities: many(issuePriorities),
 }));
 
 export const userRepositoriesRelations = relations(
@@ -327,8 +355,20 @@ export const userRepositoriesRelations = relations(
     }),
     tasks: many(tasks),
     taskTemplates: many(taskTemplates),
+    issuePriorities: many(issuePriorities),
   })
 );
+
+export const issuePrioritiesRelations = relations(issuePriorities, ({ one }) => ({
+  user: one(users, {
+    fields: [issuePriorities.userId],
+    references: [users.id],
+  }),
+  repository: one(userRepositories, {
+    fields: [issuePriorities.repositoryId],
+    references: [userRepositories.id],
+  }),
+}));
 
 export const tasksRelations = relations(tasks, ({ one }) => ({
   user: one(users, {
@@ -554,6 +594,13 @@ export const insertGlassNotificationSchema = createInsertSchema(
   mentraMessageId: true,
 });
 
+export const insertIssuePrioritySchema = createInsertSchema(issuePriorities).pick({
+  userId: true,
+  repositoryId: true,
+  issueNumber: true,
+  priority: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -574,6 +621,8 @@ export type NotificationSettings = typeof notificationSettings.$inferSelect;
 export type InsertNotificationSettings = z.infer<
   typeof insertNotificationSettingsSchema
 >;
+export type IssuePriority = typeof issuePriorities.$inferSelect;
+export type InsertIssuePriority = z.infer<typeof insertIssuePrioritySchema>;
 
 // mentraOS Types
 export type MentraGlass = typeof mentraGlasses.$inferSelect;

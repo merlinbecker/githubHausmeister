@@ -139,6 +139,13 @@ export interface Issue {
     name: string;
     color: string;
   }>;
+  milestone?: {
+    id: number;
+    title: string;
+    description?: string;
+    state: 'open' | 'closed';
+    due_on?: string;
+  };
   created_at: string;
   updated_at: string;
   html_url: string;
@@ -174,6 +181,18 @@ export interface Collaborator {
   role_name: string;
 }
 
+export interface Milestone {
+  id: number;
+  title: string;
+  description?: string;
+  state: 'open' | 'closed';
+  due_on?: string;
+  created_at: string;
+  updated_at: string;
+  open_issues: number;
+  closed_issues: number;
+}
+
 export interface IssuesResponse {
   open: Issue[];
   closed: Issue[];
@@ -188,6 +207,19 @@ export async function getRepositoryIssues(
   });
   if (!response.ok) {
     throw new Error(`Failed to get repository issues: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function getRepositoryMilestones(
+  owner: string,
+  repo: string
+): Promise<Milestone[]> {
+  const response = await fetch(`/api/repositories/${owner}/${repo}/milestones`, {
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to get repository milestones: ${response.statusText}`);
   }
   return response.json();
 }
@@ -252,6 +284,71 @@ export async function getIssuePRs(
   );
   if (!response.ok) {
     throw new Error(`Failed to get issue PRs: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+// Issue Priority Management API (Phase 3 of Issue Workflow Plan)
+export interface IssuePriority {
+  id: string;
+  userId: string;
+  repositoryId: string;
+  issueNumber: number;
+  priority: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getIssuePriorities(
+  owner: string,
+  repo: string
+): Promise<IssuePriority[]> {
+  const response = await fetch(`/api/repositories/${owner}/${repo}/priorities`, {
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to get issue priorities: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function updateIssuePriorities(
+  owner: string,
+  repo: string,
+  priorities: Array<{ issueNumber: number; priority: number }>
+): Promise<void> {
+  const response = await fetch(`/api/repositories/${owner}/${repo}/priorities`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify({ priorities }),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to update issue priorities: ${response.statusText}`);
+  }
+}
+
+export async function setIssuePriority(
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  priority: number
+): Promise<IssuePriority> {
+  const response = await fetch(
+    `/api/repositories/${owner}/${repo}/issues/${issueNumber}/priority`,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({ priority }),
+    }
+  );
+  if (!response.ok) {
+    throw new Error(`Failed to set issue priority: ${response.statusText}`);
   }
   return response.json();
 }

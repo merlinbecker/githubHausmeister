@@ -637,7 +637,7 @@ function calculateSimilarity(str1: string, str2: string): number {
 }
 
 /**
- * List repository issues (open issues + latest 10 closed)
+ * List repository issues (open issues + latest 5 closed with milestone data)
  */
 export async function listRepositoryIssues(
   token: string,
@@ -657,14 +657,14 @@ export async function listRepositoryIssues(
       per_page: 100,
     });
 
-    // Get latest 10 closed issues
+    // Get latest 5 closed issues (as per Issue Workflow Plan)
     const closedIssuesResponse = await octokit.rest.issues.listForRepo({
       owner,
       repo,
       state: 'closed',
       sort: 'updated',
       direction: 'desc',
-      per_page: 10,
+      per_page: 5,
     });
 
     // Filter out pull requests (issues API returns both issues and PRs)
@@ -681,6 +681,31 @@ export async function listRepositoryIssues(
     };
   } catch (error) {
     console.error('Error fetching repository issues:', error);
+    throw error;
+  }
+}
+
+/**
+ * List repository milestones for filtering
+ */
+export async function listRepositoryMilestones(
+  token: string,
+  owner: string,
+  repo: string
+) {
+  const octokit = new Octokit({ auth: token });
+
+  try {
+    const { data } = await octokit.rest.issues.listMilestones({
+      owner,
+      repo,
+      state: 'all', // Get both open and closed milestones
+      per_page: 100,
+    });
+
+    return data;
+  } catch (error) {
+    console.error('Error fetching repository milestones:', error);
     throw error;
   }
 }

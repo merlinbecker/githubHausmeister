@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   GitPullRequest,
@@ -8,6 +8,9 @@ import {
   CheckCircle,
   AlertCircle,
   Bot,
+  Target,
+  ArrowUpDown,
+  List,
 } from 'lucide-react';
 import {
   getRepositoryIssues,
@@ -21,6 +24,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import MilestoneFilter from '@/components/MilestoneFilter';
+import DraggableIssueList from '@/components/DraggableIssueList';
 
 interface IssueListProps {
   repository: UserRepository;
@@ -30,6 +35,8 @@ export default function IssueList({ repository }: IssueListProps) {
   const { toast } = useToast();
   const _queryClient = useQueryClient();
   const [assigningIssue, setAssigningIssue] = useState<number | null>(null);
+  const [selectedMilestone, setSelectedMilestone] = useState<string | null>(null);
+  const [showPriorityView, setShowPriorityView] = useState(false);
 
   const {
     data: issues,
@@ -71,6 +78,20 @@ export default function IssueList({ repository }: IssueListProps) {
   const handleAssignToCopilot = (issueNumber: number) => {
     assignMutation.mutate(issueNumber);
   };
+
+  // Filter issues by selected milestone
+  const filteredIssues = useMemo(() => {
+    if (!issues) return null;
+    
+    if (!selectedMilestone) {
+      return issues; // No filter, return all issues
+    }
+    
+    return {
+      open: issues.open.filter(issue => issue.milestone?.title === selectedMilestone),
+      closed: issues.closed.filter(issue => issue.milestone?.title === selectedMilestone),
+    };
+  }, [issues, selectedMilestone]);
 
   const getStateIcon = (state: string, hasOpenPR: boolean) => {
     if (hasOpenPR) {
@@ -194,6 +215,12 @@ export default function IssueList({ repository }: IssueListProps) {
                       {label.name}
                     </Badge>
                   ))}
+                  {issue.milestone && (
+                    <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                      <Target className="h-3 w-3" />
+                      {issue.milestone.title}
+                    </Badge>
+                  )}
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
                     {new Date(issue.created_at).toLocaleDateString()}
@@ -327,58 +354,92 @@ export default function IssueList({ repository }: IssueListProps) {
     );
   }
 
-  if (!issues) {
+  if (!filteredIssues) {
     return null;
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <GitBranch className="h-5 w-5" />
-          Issues for {repository.owner}/{repository.repo}
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <GitBranch className="h-5 w-5" />
+            Issues for {repository.owner}/{repository.repo}
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={showPriorityView ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowPriorityView(!showPriorityView)}
+              className="text-sm"
+            >
+              {showPriorityView ? (
+                <>
+                  <List className="h-4 w-4 mr-2" />
+                  Normal View
+                </>
+              ) : (
+                <>
+                  <ArrowUpDown className="h-4 w-4 mr-2" />
+                  Priority View
+                </>
+              )}
+            </Button>
+            <MilestoneFilter 
+              repository={repository}
+              selectedMilestone={selectedMilestone}
+              onMilestoneChange={setSelectedMilestone}
+            />
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="open" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="open" className="flex items-center gap-2">
-              <AlertCircle className="h-4 w-4" />
-              Open ({issues.open.length})
-            </TabsTrigger>
-            <TabsTrigger value="closed" className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4" />
-              Recent Closed ({issues.closed.length})
-            </TabsTrigger>
-          </TabsList>
+        {showPriorityView ? (
+          <DraggableIssueList
+            repository={repository}
+            issues={filteredIssues.open}
+          />
+        ) : (
+          <Tabs defaultValue="open" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="open" className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4" />
+                Open ({filteredIssues.open.length})
+              </TabsTrigger>
+              <TabsTrigger value="closed" className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4" />
+                Recent Closed ({filteredIssues.closed.length})
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="open" className="mt-4">
-            {issues.open.length === 0 ? (
-              <div className="text-center py-8 text-github-text-secondary">
-                <CheckCircle className="h-8 w-8 mx-auto mb-2" />
-                <p>No open issues</p>
-                <p className="text-sm">All caught up! 🎉</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {issues.open.map(renderIssueCard)}
-              </div>
-            )}
-          </TabsContent>
+            <TabsContent value="open" className="mt-4">
+              {filteredIssues.open.length === 0 ? (
+                <div className="text-center py-8 text-github-text-secondary">
+                  <CheckCircle className="h-8 w-8 mx-auto mb-2" />
+                  <p>{selectedMilestone ? `No open issues in "${selectedMilestone}"` : 'No open issues'}</p>
+                  <p className="text-sm">{selectedMilestone ? 'Try selecting a different milestone' : 'All caught up! 🎉'}</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredIssues.open.map(renderIssueCard)}
+                </div>
+              )}
+            </TabsContent>
 
-          <TabsContent value="closed" className="mt-4">
-            {issues.closed.length === 0 ? (
-              <div className="text-center py-8 text-github-text-secondary">
-                <AlertCircle className="h-8 w-8 mx-auto mb-2" />
-                <p>No recent closed issues</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {issues.closed.map(renderIssueCard)}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="closed" className="mt-4">
+              {filteredIssues.closed.length === 0 ? (
+                <div className="text-center py-8 text-github-text-secondary">
+                  <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+                  <p>{selectedMilestone ? `No recent closed issues in "${selectedMilestone}"` : 'No recent closed issues'}</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredIssues.closed.map(renderIssueCard)}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        )}
       </CardContent>
     </Card>
   );
