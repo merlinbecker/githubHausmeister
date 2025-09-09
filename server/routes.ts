@@ -4,7 +4,7 @@ import session from 'express-session';
 import connectPg from 'connect-pg-simple';
 import { randomUUID } from 'crypto';
 import { databaseStorage } from './lib/database-storage';
-import { insertTaskSchema, type LegacyTaskTemplate } from '@shared/schema';
+import { insertTaskSchema, type LegacyTaskTemplate, type TaskTemplate } from '@shared/schema';
 import { verifySignature, parseWebhookPayload } from './lib/webhook-verify';
 import {
   startNextIfIdle,
@@ -575,7 +575,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ error: 'Repository not found' });
         }
 
-        const taskTemplates: Record<string, LegacyTaskTemplate> = {
+        // Get custom templates for this repository
+        const customTemplates = await databaseStorage.getTaskTemplates(
+          req.user!.id,
+          repository.id
+        );
+
+        // Create a map of custom templates by type for quick lookup
+        const customTemplateMap = new Map<string, TaskTemplate>();
+        customTemplates.forEach(template => {
+          customTemplateMap.set(template.type, template);
+        });
+
+        // Default fallback templates (legacy support)
+        const defaultTemplates: Record<string, LegacyTaskTemplate> = {
           tests: {
             type: 'tests',
             title: 'Tests nachziehen (kritische Pfade)',
@@ -611,17 +624,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const createdTasks = [];
         for (let i = 0; i < Math.min(count, 10); i++) {
           for (const templateKey of templates) {
-            const template = taskTemplates[templateKey];
-            if (!template) continue;
+            // First try to use custom template, then fall back to default
+            const customTemplate = customTemplateMap.get(templateKey);
+            const defaultTemplate = defaultTemplates[templateKey];
+            
+            if (!customTemplate && !defaultTemplate) continue;
+
+            // Use custom template data if available, otherwise use default
+            const templateData = customTemplate || {
+              title: defaultTemplate!.title,
+              body: defaultTemplate!.body,
+              labels: defaultTemplate!.labels,
+              milestone: defaultTemplate!.milestone || null,
+            };
 
             const taskData = insertTaskSchema.parse({
               userId: req.user!.id,
               repositoryId: repository.id,
               owner: repository.owner,
               repo: repository.repo,
-              title: template.title,
-              body: template.body,
-              labels: template.labels as string[],
+              title: templateData.title,
+              body: templateData.body,
+              labels: templateData.labels as string[],
+              milestone: templateData.milestone,
             });
 
             const task = await databaseStorage.createTask(taskData);
@@ -642,6 +667,177 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         console.error('Error creating tasks:', error);
         res.status(500).json({ error: 'Failed to create tasks' });
+      }
+    }
+  );
+
+  // Task Template Management Endpoints
+
+  // Get templates for a repository
+  app.get(
+    '/api/repositories/:repositoryId/templates',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { repositoryId } = req.params;
+        
+        // Verify user owns the repository
+        const repository = await databaseStorage.getUserRepository(
+          req.user!.id,
+          repositoryId
+        );
+        if (!repository) {
+          return res.status(404).json({ error: 'Repository not found' });
+        }
+
+        const templates = await databaseStorage.getTaskTemplates(
+          req.user!.id,
+          repositoryId
+        );
+
+        res.json({ templates });
+      } catch (error) {
+        console.error('Error fetching templates:', error);
+        res.status(500).json({ error: 'Failed to fetch templates' });
+      }
+    }
+  );
+
+  // Create or update a template
+  app.post(
+    '/api/repositories/:repositoryId/templates',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { repositoryId } = req.params;
+        const { type, title, body, labels, milestone } = req.body;
+
+        if (!type || !title || !body) {
+          return res.status(400).json({ 
+            error: 'Type, title, and body are required' 
+          });
+        }
+
+        // Verify user owns the repository
+        const repository = await databaseStorage.getUserRepository(
+          req.user!.id,
+          repositoryId
+        );
+        if (!repository) {
+          return res.status(404).json({ error: 'Repository not found' });
+        }
+
+        // Check if template already exists for this type
+        const existingTemplate = await databaseStorage.getTaskTemplateByType(
+          req.user!.id,
+          repositoryId,
+          type
+        );
+
+        let template;
+        if (existingTemplate) {
+          // Update existing template
+          template = await databaseStorage.updateTaskTemplate(
+            existingTemplate.id,
+            { title, body, labels: labels || [], milestone }
+          );
+        } else {
+          // Create new template
+          template = await databaseStorage.createTaskTemplate({
+            userId: req.user!.id,
+            repositoryId,
+            type,
+            title,
+            body,
+            labels: labels || [],
+            milestone,
+            isActive: true,
+          });
+        }
+
+        res.json({ template });
+      } catch (error) {
+        console.error('Error creating/updating template:', error);
+        res.status(500).json({ error: 'Failed to save template' });
+      }
+    }
+  );
+
+  // Update a specific template
+  app.put(
+    '/api/repositories/:repositoryId/templates/:templateId',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { repositoryId, templateId } = req.params;
+        const { title, body, labels, milestone } = req.body;
+
+        // Verify user owns the repository
+        const repository = await databaseStorage.getUserRepository(
+          req.user!.id,
+          repositoryId
+        );
+        if (!repository) {
+          return res.status(404).json({ error: 'Repository not found' });
+        }
+
+        // Verify template exists and belongs to user
+        const existingTemplate = await databaseStorage.getTaskTemplateById(templateId);
+        if (!existingTemplate || existingTemplate.userId !== req.user!.id) {
+          return res.status(404).json({ error: 'Template not found' });
+        }
+
+        const template = await databaseStorage.updateTaskTemplate(templateId, {
+          title,
+          body,
+          labels: labels || [],
+          milestone,
+        });
+
+        if (!template) {
+          return res.status(404).json({ error: 'Template not found' });
+        }
+
+        res.json({ template });
+      } catch (error) {
+        console.error('Error updating template:', error);
+        res.status(500).json({ error: 'Failed to update template' });
+      }
+    }
+  );
+
+  // Delete a template
+  app.delete(
+    '/api/repositories/:repositoryId/templates/:templateId',
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { repositoryId, templateId } = req.params;
+
+        // Verify user owns the repository
+        const repository = await databaseStorage.getUserRepository(
+          req.user!.id,
+          repositoryId
+        );
+        if (!repository) {
+          return res.status(404).json({ error: 'Repository not found' });
+        }
+
+        // Verify template exists and belongs to user
+        const existingTemplate = await databaseStorage.getTaskTemplateById(templateId);
+        if (!existingTemplate || existingTemplate.userId !== req.user!.id) {
+          return res.status(404).json({ error: 'Template not found' });
+        }
+
+        const deleted = await databaseStorage.deleteTaskTemplate(templateId);
+        if (!deleted) {
+          return res.status(404).json({ error: 'Template not found' });
+        }
+
+        res.json({ success: true });
+      } catch (error) {
+        console.error('Error deleting template:', error);
+        res.status(500).json({ error: 'Failed to delete template' });
       }
     }
   );
