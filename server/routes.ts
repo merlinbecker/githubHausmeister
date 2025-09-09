@@ -4,7 +4,7 @@ import session from 'express-session';
 import connectPg from 'connect-pg-simple';
 import { randomUUID } from 'crypto';
 import { databaseStorage } from './lib/database-storage';
-import { insertTaskSchema, type TaskTemplate } from '@shared/schema';
+import { insertTaskSchema, type LegacyTaskTemplate } from '@shared/schema';
 import { verifySignature, parseWebhookPayload } from './lib/webhook-verify';
 import {
   startNextIfIdle,
@@ -575,7 +575,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ error: 'Repository not found' });
         }
 
-        const taskTemplates: Record<string, TaskTemplate> = {
+        const taskTemplates: Record<string, LegacyTaskTemplate> = {
           tests: {
             type: 'tests',
             title: 'Tests nachziehen (kritische Pfade)',

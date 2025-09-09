@@ -63,6 +63,7 @@ export const tasks = pgTable(
     title: text('title').notNull(),
     body: text('body').notNull(),
     labels: json('labels').$type<string[]>().default([]),
+    milestone: text('milestone'), // GitHub milestone title
     issueNumber: integer('issue_number'),
     issueUrl: text('issue_url'),
     pullNumber: integer('pull_number'),
@@ -77,6 +78,35 @@ export const tasks = pgTable(
   (table) => [
     index('tasks_user_id_idx').on(table.userId),
     index('tasks_status_idx').on(table.status),
+  ]
+);
+
+// User-customizable task templates (per repository)
+export const taskTemplates = pgTable(
+  'task_templates',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    repositoryId: varchar('repository_id')
+      .notNull()
+      .references(() => userRepositories.id, { onDelete: 'cascade' }),
+    type: text('type').notNull(), // tests, lint, types, security, docs
+    title: text('title').notNull(),
+    body: text('body').notNull(),
+    labels: json('labels').$type<string[]>().default([]),
+    milestone: text('milestone'), // GitHub milestone title
+    isActive: boolean('is_active').default(true),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => [
+    index('task_templates_user_id_idx').on(table.userId),
+    index('task_templates_repository_id_idx').on(table.repositoryId),
+    index('task_templates_type_idx').on(table.type),
   ]
 );
 
@@ -279,6 +309,7 @@ export const glassNotifications = pgTable(
 export const usersRelations = relations(users, ({ many }) => ({
   repositories: many(userRepositories),
   tasks: many(tasks),
+  taskTemplates: many(taskTemplates),
   systemState: many(userSystemState),
   pushSubscriptions: many(pushSubscriptions),
   notificationSettings: many(notificationSettings),
@@ -295,6 +326,7 @@ export const userRepositoriesRelations = relations(
       references: [users.id],
     }),
     tasks: many(tasks),
+    taskTemplates: many(taskTemplates),
   })
 );
 
@@ -305,6 +337,17 @@ export const tasksRelations = relations(tasks, ({ one }) => ({
   }),
   repository: one(userRepositories, {
     fields: [tasks.repositoryId],
+    references: [userRepositories.id],
+  }),
+}));
+
+export const taskTemplatesRelations = relations(taskTemplates, ({ one }) => ({
+  user: one(users, {
+    fields: [taskTemplates.userId],
+    references: [users.id],
+  }),
+  repository: one(userRepositories, {
+    fields: [taskTemplates.repositoryId],
     references: [userRepositories.id],
   }),
 }));
@@ -415,6 +458,7 @@ export const insertTaskSchema = createInsertSchema(tasks).pick({
   title: true,
   body: true,
   labels: true,
+  milestone: true,
 });
 
 export const insertWebhookDeliverySchema = createInsertSchema(
@@ -451,6 +495,17 @@ export const insertNotificationSettingsSchema = createInsertSchema(
   prMerged: true,
   ciStatusChanged: true,
   copilotAssigned: true,
+});
+
+export const insertTaskTemplateSchema = createInsertSchema(taskTemplates).pick({
+  userId: true,
+  repositoryId: true,
+  type: true,
+  title: true,
+  body: true,
+  labels: true,
+  milestone: true,
+  isActive: true,
 });
 
 // mentraOS Insert Schemas
@@ -506,6 +561,8 @@ export type UserRepository = typeof userRepositories.$inferSelect;
 export type InsertUserRepository = z.infer<typeof insertUserRepositorySchema>;
 export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type Task = typeof tasks.$inferSelect;
+export type TaskTemplate = typeof taskTemplates.$inferSelect;
+export type InsertTaskTemplate = z.infer<typeof insertTaskTemplateSchema>;
 export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;
 export type InsertWebhookDelivery = z.infer<typeof insertWebhookDeliverySchema>;
 export type UserSystemState = typeof userSystemState.$inferSelect;
@@ -586,11 +643,12 @@ export interface GitHubRepository {
   };
 }
 
-export interface TaskTemplate {
+export interface LegacyTaskTemplate {
   type: string;
   title: string;
   body: string;
   labels: string[];
+  milestone?: string;
 }
 
 export interface WebhookEvent {
