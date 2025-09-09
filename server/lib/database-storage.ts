@@ -77,6 +77,19 @@ export class DatabaseStorage {
       .where(eq(users.id, userId));
   }
 
+  async updateUser(
+    userId: string,
+    userData: Partial<Pick<User, 'webhookForwardUrl'>>
+  ): Promise<void> {
+    await db
+      .update(users)
+      .set({
+        ...userData,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+  }
+
   // Repository operations
   async getUserRepositories(userId: string): Promise<UserRepository[]> {
     return db

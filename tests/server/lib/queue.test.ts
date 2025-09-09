@@ -211,6 +211,7 @@ describe('Queue Management Functions', () => {
         accessToken: '',
         refreshToken: null,
         tokenExpiresAt: null,
+        webhookForwardUrl: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -264,6 +265,7 @@ describe('Queue Management Functions', () => {
         accessToken: 'test-token',
         refreshToken: null,
         tokenExpiresAt: null,
+        webhookForwardUrl: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       });

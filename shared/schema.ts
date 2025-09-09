@@ -22,6 +22,7 @@ export const users = pgTable('users', {
   accessToken: text('access_token').notNull(),
   refreshToken: text('refresh_token'),
   tokenExpiresAt: timestamp('token_expires_at'),
+  webhookForwardUrl: text('webhook_forward_url'), // URL for webhook forwarding
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
@@ -393,6 +394,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
   accessToken: true,
   refreshToken: true,
   tokenExpiresAt: true,
+  webhookForwardUrl: true,
 });
 
 export const insertUserRepositorySchema = createInsertSchema(
