@@ -141,9 +141,8 @@ Das System implementiert eine modulare Frontend/Backend-Architektur mit React + 
 /shared/                        # Gemeinsame TypeScript Types
   schema.ts                     # Database Schema & Zod Validations
 
-/data/                          # Persistente State Files
-  state.json                    # Task Queue State
-  deliveries.json               # Webhook Delivery Log
+/data/                          # Legacy: Wird nicht mehr verwendet
+  # System nutzt jetzt vollständig PostgreSQL
 
 /tests/                         # Test Suites
   /server/lib/                  # Server Logic Tests
@@ -233,7 +232,7 @@ graph TB
 | ------------------------ | ------------------------------------------- | ------------------------------------------------------------------------------------- |
 | **Frontend-Architektur** | React + TypeScript + Vite                   | Schnelle Entwicklungserfahrung, optimiertes Bundling                                  |
 | **Backend-Architektur**  | Express.js RESTful API                      | Bewährtes Node.js Framework mit klarer API-Struktur                                   |
-| **Daten-Persistierung**  | Hybrid: PostgreSQL + In-Memory + File-State | PostgreSQL für dauerhafte Daten, In-Memory für Queue, JSON-Files für kritischen State |
+| **Daten-Persistierung**  | PostgreSQL + Drizzle ORM                    | Type-safe Database Operations, Multi-User Support, ACID-Garantien                     |
 | **GitHub Integration**   | REST + GraphQL APIs                         | REST für Standard-Operationen, GraphQL für Copilot-spezifische Features               |
 | **Task Management**      | Single-Task Queue mit Persistierung         | Verhindert Konflikte, einfache Implementierung                                        |
 
@@ -906,11 +905,11 @@ graph TB
 
 **Schnittstelle(n)**:
 
-- Drizzle ORM für PostgreSQL
-- File System für JSON State
-- In-Memory Storage für Queues
+- Drizzle ORM für PostgreSQL with type-safe queries
+- Express Sessions für OAuth-Authentication State  
+- DatabaseStorage Service für alle CRUD-Operationen
 
-**Ablageort/Datei(en)**: `shared/schema.ts`, `server/lib/database-storage.ts`, `server/lib/state.ts`
+**Ablageort/Datei(en)**: `shared/schema.ts`, `server/lib/database-storage.ts`, `server/db.ts`
 
 ## Ebene 2
 
@@ -926,17 +925,15 @@ graph TB
     end
 
     subgraph "Storage"
-        DB[(Database)]
-        JSON[JSON Files]
-        Memory[In-Memory Queue]
+        DB[(PostgreSQL Database)]
+        ORM[Drizzle ORM]
     end
 
     QueueAPI --> Processor
     Processor --> State
     Processor --> Limiter
     State --> DB
-    State --> JSON
-    QueueAPI --> Memory
+    ORM --> DB
 
     Processor --> GitHubOps[GitHub Operations]
     Processor --> WebhookHandler[Webhook Handler]
@@ -1160,7 +1157,7 @@ graph TB
 
         subgraph "Environment"
             Secrets[Replit Secrets<br/>Environment Variables]
-            Storage[File System<br/>JSON State Files]
+            Sessions[Express Sessions<br/>OAuth State]
         end
     end
 
@@ -1170,34 +1167,34 @@ graph TB
     end
 
     subgraph "Client Devices"
-        Browser[Web Browser<br/>Mobile + Desktop]
+        Browser[Web Browser<br/>PWA-enabled]
     end
 
     Browser <-->|HTTPS| Frontend
     Frontend <-->|HTTP/JSON| Backend
-    Backend <-->|TLS| NeonDB
+    Backend <-->|TLS/SQL| NeonDB
     Backend <-->|HTTPS/Bearer| GitHub
     Backend --> Secrets
-    Backend --> Storage
+    Backend --> Sessions
 
     GitHub -->|Webhooks/HTTPS| Backend
 ```
 
-**Begründung**: Single-Container Deployment auf Replit reduziert Komplexität und Deployment-Overhead. Externe Services für Skalierbarkeit und Zuverlässigkeit.
+**Begründung**: Single-Container Deployment auf Replit reduziert Komplexität und Deployment-Overhead. Externe Services für Skalierbarkeit und Zuverlässigkeit. Vollständige Database-basierte Persistierung.
 
 **Qualitäts- und/oder Leistungsmerkmale**:
 
 - **Verfügbarkeit**: Replit-Platform mit automatischem Neustart
-- **Skalierbarkeit**: Serverless PostgreSQL über Neon
-- **Sicherheit**: Environment Variables über Replit Secrets
-- **Performance**: Client-side Caching, optimierte Builds
+- **Skalierbarität**: Serverless PostgreSQL über Neon
+- **Sicherheit**: Environment Variables über Replit Secrets, OAuth-Sessions
+- **Performance**: Client-side Caching, optimierte Builds, Database Indexing
 
 **Zuordnung von Bausteinen zu Infrastruktur**:
 
-- **Frontend**: Statische Assets served von Express.js
-- **Backend**: Node.js Express.js Server
-- **Database**: Neon PostgreSQL mit Drizzle ORM
-- **State**: JSON Files im Container File System
+- **Frontend**: React PWA served von Express.js mit Service Worker
+- **Backend**: Node.js Express.js Server mit TypeScript
+- **Database**: Neon PostgreSQL mit Drizzle ORM und automatischen Backups
+- **Authentication**: GitHub OAuth mit Express Sessions
 
 # Querschnittliche Konzepte
 
@@ -1238,21 +1235,22 @@ graph LR
 ```mermaid
 graph TB
     subgraph "State Management"
-        TaskDB[(PostgreSQL<br/>Tasks & Users)]
-        StateFile[JSON Files<br/>Monthly Counters]
-        Memory[In-Memory<br/>Active Queues]
+        TaskDB[(PostgreSQL<br/>Alle Daten)]
+        Drizzle[Drizzle ORM<br/>Type-Safe Queries]
+        Session[Session Store<br/>OAuth Sessions]
     end
 
-    TaskDB --> Persistent[Persistent Data]
-    StateFile --> Critical[Critical State]
-    Memory --> Transient[Transient Data]
+    TaskDB --> Persistent[Persistent Multi-User Data]
+    Drizzle --> TypeSafe[Type-Safe Database Operations]
+    Session --> Authentication[User Authentication State]
 ```
 
 **Implementierung**:
 
-- PostgreSQL für langfristige Datenpersistierung
-- JSON Files für kritische System-State (monatliche Zähler)
-- In-Memory Storage für temporäre Queue-Verwaltung
+- PostgreSQL für alle Datenpersistierung (Tasks, Users, Templates, Push Subscriptions)
+- Drizzle ORM für type-safe Database Operations mit Migrations
+- Session-basierte Authentication State für OAuth-Flows
+- Kein File-System Storage mehr erforderlich
 
 ## API Rate Limiting
 
@@ -1315,12 +1313,12 @@ Jedes Repository, das von GitHub Hausmeister verwaltet werden soll, benötigt ei
 | **React + TypeScript für Frontend** | ✅ Umgesetzt | Type Safety, Component-basierte Architektur, große Community     | Komplexere Build-Pipeline, Lernkurve für neue Entwickler |
 | **Express.js für Backend**          | ✅ Umgesetzt | Bewährtes Framework, große Middleware-Auswahl, RESTful APIs      | Weniger strukturiert als andere Frameworks               |
 | **Drizzle ORM statt Prisma**        | ✅ Umgesetzt | Bessere TypeScript Integration, Schema-first Approach            | Kleinere Community, weniger Resources                    |
-| **Hybrid Storage Strategy**         | ✅ Umgesetzt | Optimiert verschiedene Datentypen, Performance vs. Persistierung | Komplexere Datenverwaltung, Konsistenz-Herausforderungen |
-| **Single Task Concurrency**         | ✅ Umgesetzt | Verhindert GitHub API Konflikte, einfache Implementierung        | Reduzierte Durchsatzleistung, Queue-Delays               |
-| **Replit als Deployment Platform**  | ✅ Umgesetzt | Integrierte Entwicklungsumgebung, Secrets Management             | Vendor Lock-in, begrenzte Skalierungsoptionen            |
-| **Wouter statt React Router**       | ✅ Umgesetzt | Reduzierte Bundle-Größe, einfache API                            | Weniger Features, kleinere Community                     |
-| **PWA mit Service Worker**          | ✅ Umgesetzt | Offline-Funktionalität, Push-Notifications, App-like Experience  | Komplexität der Caching-Strategien, Browser-Support      |
-| **VAPID für Push-Notifications**    | ✅ Umgesetzt | Standard-konform, sicher, plattformübergreifend                  | Setup-Komplexität, iOS-Einschränkungen                   |
+| **PostgreSQL + Drizzle ORM Strategy** | ✅ Umgesetzt | Type-safe Database, Multi-User Support, Skalierbar             | Externe Database-Abhängigkeit, Komplexere Queries      |
+| **Single Task Concurrency per User**    | ✅ Umgesetzt | Verhindert GitHub API Konflikte, User-isolierte Verarbeitung   | Reduzierte Durchsatzleistung pro User                  |
+| **Replit als Deployment Platform**      | ✅ Umgesetzt | Integrierte Entwicklungsumgebung, Secrets Management           | Vendor Lock-in, begrenzte Skalierungsoptionen          |
+| **Wouter statt React Router**           | ✅ Umgesetzt | Reduzierte Bundle-Größe, einfache API                          | Weniger Features, kleinere Community                   |
+| **PWA mit Service Worker**              | ✅ Umgesetzt | Offline-Funktionalität, Push-Notifications, App-like Experience | Komplexität der Caching-Strategien, Browser-Support    |
+| **VAPID für Push-Notifications**        | ✅ Umgesetzt | Standard-konform, sicher, plattformübergreifend                | Setup-Komplexität, iOS-Einschränkungen                 |
 
 # Qualitätsanforderungen
 
@@ -1379,15 +1377,15 @@ graph TB
 | **CI/CD Pipeline**        | Keine automatisierte Build/Deploy Pipeline | Hoch      | GitHub Actions einrichten                  |
 | **Error Monitoring**      | Nur Console-Logging vorhanden              | Mittel    | Strukturiertes Logging + Monitoring        |
 | **WebSocket Integration** | Real-time Updates nur über Polling         | Niedrig   | WebSocket für Live-Updates                 |
-| **Backup Strategy**       | Keine automatisierte Backups               | Mittel    | Neon PostgreSQL Backup + State File Backup |
+| **Backup Strategy**       | Keine automatisierte Backups               | Mittel    | Neon PostgreSQL automatische Backups       |
 | **PWA Testing Coverage**  | PWA-spezifische Features nicht getestet    | Mittel    | Service Worker und Push-Notification Tests |
 
 ## Bekannte Limitationen
 
-- **Single Task Concurrency**: Reduzierte Parallelität zugunsten von Stabilität
+- **Single Task Concurrency per User**: Reduzierte Parallelität zugunsten von Stabilität
 - **Replit Vendor Lock-in**: Deployment-spezifische Konfiguration
-- **File-based State**: JSON State Files nicht für High-Concurrency geeignet
-- **In-Memory Queue**: Queue geht bei Neustart verloren (wird aus DB rekonstruiert)
+- **PostgreSQL Dependency**: Vollständige Abhängigkeit von externer Neon Database
+- **OAuth Token Expiry**: Benutzer müssen sich nach Token-Ablauf erneut anmelden
 
 # Glossar
 
