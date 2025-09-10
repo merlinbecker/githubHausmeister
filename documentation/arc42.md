@@ -675,27 +675,64 @@ export const notificationSettings = pgTable('notification_settings', {
 
 ### Chore-Task-Templates
 
-Das System verwendet vordefinierte Templates für verschiedene Wartungsaufgaben:
+**Aktueller Implementierungsstand**: Das System unterstützt sowohl Standard-Templates als auch benutzerdefinierten Repository-spezifische Templates über die Datenbank:
+
+#### Standard Default Templates
 
 ```typescript
-const templates = [
-  {
+// server/routes.ts (Aktuelle Standard-Templates)
+const defaultTemplates = {
+  tests: {
+    type: 'tests',
     title: 'Tests nachziehen (kritische Pfade)',
     body: 'Bitte Unit Tests für Kernfunktionen ergänzen. Ziel: Abdeckung +10%. Closes after CI green.',
     labels: ['chore', 'tests'],
   },
-  {
+  lint: {
+    type: 'lint',
     title: 'Lint/Format Fehler beheben',
     body: 'Bitte eslint/prettier-Probleme lösen und CI grün machen.',
     labels: ['chore', 'lint'],
   },
-  {
-    title: 'Types härten (strict/tsconfig)',
+  types: {
+    type: 'types',
+    title: 'TypeScript Typen härten',
     body: 'Bitte TypeScript-Fehler reduzieren; keine suppressions. CI muss grün sein.',
     labels: ['chore', 'types'],
   },
-];
+  security: {
+    type: 'security',
+    title: 'Dependencies aktualisieren (Sicherheit)',
+    body: 'Bitte Sicherheitsupdates für Dependencies durchführen und CI grün machen.',
+    labels: ['chore', 'security'],
+  },
+  docs: {
+    type: 'docs',
+    title: 'Dokumentation vervollständigen',
+    body: 'Bitte fehlende Dokumentation ergänzen und README aktualisieren.',
+    labels: ['chore', 'docs'],
+  },
+};
 ```
+
+#### Database-Schema für Custom Templates
+
+```typescript
+// shared/schema.ts
+export const taskTemplates = pgTable('task_templates', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar('user_id').references(() => users.id),
+  repositoryId: varchar('repository_id').references(() => userRepositories.id),
+  type: text('type').notNull(), // tests, lint, types, security, docs
+  title: text('title').notNull(),
+  body: text('body').notNull(),
+  labels: json('labels').$type<string[]>(),
+  milestone: text('milestone'),
+  isActive: boolean('is_active').default(true),
+});
+```
+
+**Template-Resolution-Strategie**: Custom Repository Template → Standard Default Template → Skip
 
 ### GitHub Actions CI-Workflow (Ziel-Repository)
 
@@ -727,80 +764,97 @@ jobs:
 graph TB
     subgraph "GitHub Hausmeister System"
         subgraph "Frontend Layer"
-            UI[React Web UI]
-            Components[UI Components]
+            WebApp[React PWA<br/>Vite + TypeScript]
+            Components[shadcn/ui Components<br/>Dashboard, TaskQueue, etc.]
+            ServiceWorker[Service Worker<br/>Push Notifications]
         end
 
         subgraph "Backend Layer"
-            API[Express.js API]
-            Routes[Route Handlers]
-            Auth[Authentication]
+            API[Express.js API<br/>REST Endpoints]
+            Auth[GitHub OAuth<br/>Session Management] 
+            Routes[Route Handlers<br/>API Logic]
         end
 
         subgraph "Business Logic Layer"
-            TaskQueue[Task Queue Manager]
-            GitHub[GitHub Integration]
-            Webhook[Webhook Processor]
-            Storage[Data Storage]
+            Queue[Multi-User Queue Manager<br/>database-based]
+            GitHub[GitHub Integration<br/>REST + GraphQL]
+            Copilot[CopilotAssignmentService<br/>589 lines, comprehensive]
+            Webhook[Webhook Processor<br/>HMAC verification]
+            Notifications[NotificationService<br/>Web Push + Mentra]
+            WebPush[WebPush Service<br/>VAPID implementation]
         end
 
         subgraph "Data Layer"
-            PostgreSQL[(PostgreSQL DB)]
-            FileState[JSON State Files]
-            Memory[In-Memory Cache]
+            Database[(PostgreSQL<br/>Neon Serverless)]
+            ORM[Drizzle ORM<br/>Type-safe queries]
+            Storage[DatabaseStorage<br/>Multi-tenant data]
         end
     end
 
-    subgraph "External Systems"
-        GitHubAPI[GitHub APIs]
-        Copilot[GitHub Copilot]
+    subgraph "External Services"
+        GitHubAPI[GitHub REST API v3<br/>Issues, PRs, Repos]
+        GraphQLAPI[GitHub GraphQL API v4<br/>Copilot Assignment]
+        CopilotAgent[GitHub Copilot Agent<br/>SWE Tasks]
+        WebPushService[Browser Push API<br/>VAPID Protocol]
     end
 
-    UI --> API
+    WebApp --> API
+    ServiceWorker --> WebPushService
+    API --> Auth
     API --> Routes
-    Routes --> Auth
-    Routes --> TaskQueue
+    Routes --> Queue
     Routes --> GitHub
-    Routes --> Webhook
-    Routes --> Storage
+    Routes --> Webhook  
+    Routes --> Notifications
 
-    TaskQueue --> Storage
+    Queue --> Storage
     GitHub --> GitHubAPI
-    GitHub --> Copilot
-    Webhook --> TaskQueue
+    GitHub --> GraphQLAPI
+    Copilot --> GraphQLAPI
+    Copilot --> CopilotAgent
+    Notifications --> WebPush
+    WebPush --> WebPushService
+    Webhook --> Queue
 
-    Storage --> PostgreSQL
-    Storage --> FileState
-    Storage --> Memory
+    Storage --> Database
+    ORM --> Database
 ```
 
-**Begründung**: Das System folgt einer klassischen 3-Schichten-Architektur mit klarer Trennung von Präsentation, Geschäftslogik und Datenhaltung. Die Hybrid-Speicherstrategie optimiert Performance und Persistierung.
+**Architektur-Entscheidungen**:
+
+- **Multi-User Design**: PostgreSQL-basierte Multi-Tenancy mit OAuth-Authentication
+- **Comprehensive Services**: Robuste Service-Klassen (CopilotAssignmentService: 589 LOC)
+- **PWA-First**: Service Worker, Push Notifications, Mobile-optimiert
+- **Type Safety**: End-to-End TypeScript mit Drizzle ORM für Database
 
 **Enthaltene Bausteine**:
 
-- **Frontend Layer**: React-basierte Benutzeroberfläche
-- **Backend Layer**: Express.js API mit Authentifizierung
-- **Business Logic Layer**: Kerngeschäftslogik für Task Management und GitHub Integration
-- **Data Layer**: Hybride Speicherlösung für verschiedene Datentypen
+- **Frontend Layer**: React PWA mit shadcn/ui, TanStack Query für Server State
+- **Backend Layer**: Express.js mit GitHub OAuth, Session-Management
+- **Business Logic Layer**: Spezialisierte Services für Queue, GitHub APIs, Push Notifications
+- **Data Layer**: PostgreSQL mit Drizzle ORM, typsichere Multi-User-Datenhaltung
 
 **Wichtige Schnittstellen**:
 
-- **REST API**: Frontend-Backend Kommunikation
-- **GitHub APIs**: Externe Integration für Repository-Management
-- **Webhook Interface**: Eingehende GitHub-Events
-- **Push API**: VAPID-basierte Push-Benachrichtigungen
-- **Service Worker**: Offline-Funktionalität und Background-Synchronisation
+- **REST API**: Frontend-Backend Kommunikation über typisierte Endpoints
+- **GitHub OAuth**: Standard OAuth 2.0 Flow für Multi-User Authentication  
+- **GitHub REST/GraphQL**: Duale API-Integration für Issue/PR Management und Copilot Assignment
+- **Webhook Interface**: HMAC-SHA256 verifizierte GitHub-Events
+- **Web Push API**: VAPID-protokoll-basierte Push-Benachrichtigungen
+- **PostgreSQL**: Drizzle ORM-basierte typsichere Datenbankoperationen
 
 ### Frontend Layer
 
-**Zweck/Verantwortung**: Bereitstellung einer responsiven Progressive Web App für Repository-Management, Task-Überwachung und Systemkontrolle mit Push-Benachrichtigungen.
+**Zweck/Verantwortung**: Progressive Web App mit React für Multi-User Repository-Management, Real-time Task-Überwachung und Mobile-First UI mit Push-Benachrichtigungen.
 
 **Schnittstelle(n)**:
 
-- REST API Client über `/api/*` Endpoints
-- Push Subscription Management über `/api/push/*`
-- Service Worker für Background Push-Handling
-- PWA Installation Prompts und Offline-Funktionalität
+- **TanStack Query Client**: Server State Management mit automatischem Caching
+- **GitHub OAuth Flow**: Login/Logout über `/auth/login` und `/auth/callback`  
+- **REST API Endpoints**: Typisierte API-Kommunikation über `/api/*`
+- **Push Subscription**: Push-Registrierung über `/api/push/subscribe`
+- **Service Worker**: Background Push-Handling und PWA-Funktionalität
+- **Wouter Router**: Client-side Routing zwischen Dashboard und Developer Tools
 
 **Qualitäts-/Leistungsmerkmale**:
 
@@ -936,43 +990,75 @@ graph TB
 
 ```mermaid
 sequenceDiagram
-    participant User as Benutzer
-    participant UI as React UI
+    participant User as User (OAuth)
+    participant UI as React PWA
     participant API as Express API
-    participant Queue as Task Queue
-    participant GitHub as GitHub API
-    participant Copilot as GitHub Copilot
+    participant Auth as OAuth Middleware
+    participant DB as PostgreSQL
+    participant Queue as Multi-User Queue
+    participant GitHub as GitHub REST API
+    participant Copilot as CopilotAssignmentService
+    participant GraphQL as GitHub GraphQL
     participant Webhook as Webhook Handler
+    participant Push as NotificationService
 
+    User->>UI: Login via GitHub OAuth
+    UI->>API: GET /auth/login
+    API->>Auth: redirect to GitHub
+    Auth-->>UI: OAuth callback with session
+    
     User->>UI: Repository auswählen + Tasks erstellen
-    UI->>API: POST /api/tasks
-    API->>Queue: createTasks(templates)
-
-    loop Für jede Task
-        Queue->>GitHub: createIssue()
+    UI->>API: POST /api/tasks (with user session)
+    API->>Auth: verify session
+    API->>DB: get user repositories
+    API->>Queue: createTasks(userId, templates)
+    
+    Queue->>DB: insert tasks with status='queued'
+    Queue->>Queue: startNextIfIdle(userId)
+    
+    loop Für jede User Task
+        Queue->>DB: get user access token
+        Queue->>GitHub: createIssue(userToken, ...)
         GitHub-->>Queue: Issue created
-        Queue->>Copilot: assignAgent()
-        Copilot-->>Queue: Agent assigned
-        Queue->>Queue: updateStatus('in_progress')
+        Queue->>DB: update task with issueNumber
+        Queue->>Copilot: assignToIssue(userToken, ...)
+        Copilot->>GraphQL: findBestAgent() with fallback
+        Copilot->>GraphQL: replaceActorsForAssignable()
+        Copilot-->>Queue: Assignment result
+        Queue->>DB: updateStatus('in_progress')
+        Queue->>Push: sendNotification(TASK_STARTED)
     end
 
-    Note over GitHub,Copilot: Copilot arbeitet an Issue
+    Note over GitHub,Copilot: Copilot Agent arbeitet an Issue
 
-    GitHub->>Webhook: PR created (webhook)
+    GitHub->>Webhook: PR created (HMAC-signed webhook)
     Webhook->>API: POST /api/webhook
-    API->>Queue: handlePREvent()
+    API->>Webhook: verifySignature()
+    API->>DB: find task by issueNumber
+    API->>DB: updateTask with pullNumber
+    API->>Push: sendNotification(PR_CREATED)
 
     GitHub->>Webhook: CI completed (webhook)
     Webhook->>API: POST /api/webhook
-    API->>GitHub: approvePR() + mergePR()
-    API->>Queue: updateStatus('completed')
+    API->>GitHub: isPRGreen(userToken, ...)
+    alt CI Green
+        API->>GitHub: createReviewApprove() + mergePR()
+        API->>DB: updateStatus('completed')
+        API->>Push: sendNotification(TASK_COMPLETED)
+        API->>Queue: startNextIfIdle(userId)
+    else CI Failed
+        API->>DB: updateStatus('failed')
+        API->>Push: sendNotification(TASK_FAILED)
+    end
 ```
 
-**Besonderheiten**:
+**Multi-User-Besonderheiten**:
 
-- Einzelaufgaben-Verarbeitung verhindert Konflikte
-- Webhook-Events triggern automatische Weiterverarbeitung
-- Persistente Zustandsverfolgung über alle Schritte
+- **OAuth-basierte Authentifizierung**: Jeder User nutzt eigenen GitHub Token
+- **Pro-User Task Queues**: Isolierte Verarbeitung pro Benutzer in Database
+- **Comprehensive Copilot Service**: 589-LOC Service mit Multi-Level-Fallback
+- **Real-time Push Notifications**: Web Push für Task-Updates per User
+- **Database-State Management**: PostgreSQL statt JSON-Files für Multi-Tenancy
 
 ## Webhook Event Processing
 
