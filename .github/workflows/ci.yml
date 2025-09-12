@@ -1,4 +1,4 @@
-name: CI
+name: CI with SonarQube
 
 on:
   pull_request:
@@ -6,17 +6,47 @@ on:
   push:
     branches: [main, develop]
 
+permissions:
+  contents: read
+  pull-requests: read
+
+env:
+  SONAR_ORG: merlinbecker
+  SONAR_PROJECT_KEY: merlinbecker_githubHausmeister
+  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
 # pro PR nur ein Lauf
 concurrency:
   group: pr-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
+  check-labels:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    outputs:
+      should-run: ${{ steps.check.outputs.should-run }}
+    steps:
+      - name: Check if PR has chore label
+        id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = context.payload.pull_request.labels.map(label => label.name);
+            const hasChoreLabel = labels.includes('chore');
+            console.log('PR labels:', labels);
+            console.log('Has chore label:', hasChoreLabel);
+            core.setOutput('should-run', !hasChoreLabel);
+            return !hasChoreLabel;
+
   test-and-build:
     runs-on: ubuntu-latest
+    needs: [check-labels]
     
-    # Run on all PRs including drafts, and on push events
-    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    # Run on push events or PRs without chore label
+    if: |
+      github.event_name == 'push' || 
+      (github.event_name == 'pull_request' && needs.check-labels.outputs.should-run == 'true')
     
     steps:
       - name: Checkout code
@@ -46,6 +76,30 @@ jobs:
       - name: Build application
         run: npm run build
         
+      # Verify coverage file exists for SonarQube
+      - name: Verify coverage file
+        run: |
+          test -f coverage/lcov.info || { echo "coverage/lcov.info not found"; exit 2; }
+        
+      # SonarCloud Scan
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v2
+        env:
+          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
+        with:
+          projectBaseDir: .
+        
+      # Upload artifacts for analysis
+      - name: Upload coverage and scanner artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-and-scannerwork
+          path: |
+            coverage/lcov.info
+            coverage/coverage-final.json
+            .scannerwork/**
+          if-no-files-found: warn
+        
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
         if: success() && (github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
@@ -55,3 +109,66 @@ jobs:
           files: ./coverage/coverage-final.json
           flags: unittests
           name: codecov-umbrella
+
+  auto-merge:
+    runs-on: ubuntu-latest
+    needs: [check-labels, test-and-build]
+    if: |
+      github.event_name == 'pull_request' && 
+      needs.test-and-build.result == 'success' &&
+      needs.check-labels.outputs.should-run == 'true'
+    
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - name: Auto-merge PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo, number } = context.issue;
+            
+            // Check if PR is mergeable
+            const { data: pr } = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: number
+            });
+            
+            if (pr.mergeable && pr.mergeable_state === 'clean') {
+              console.log('PR is ready for auto-merge');
+              
+              // Approve the PR first
+              try {
+                await github.rest.pulls.createReview({
+                  owner,
+                  repo,
+                  pull_number: number,
+                  event: 'APPROVE',
+                  body: '✅ Automated approval after successful CI checks'
+                });
+                console.log('PR approved automatically');
+              } catch (error) {
+                console.log('Approval failed or already approved:', error.message);
+              }
+              
+              // Merge the PR
+              try {
+                await github.rest.pulls.merge({
+                  owner,
+                  repo,
+                  pull_number: number,
+                  commit_title: `Auto-merge: ${pr.title}`,
+                  commit_message: 'Automatically merged after successful CI validation',
+                  merge_method: 'squash'
+                });
+                console.log('PR merged successfully');
+              } catch (error) {
+                console.log('Merge failed:', error.message);
+                throw error;
+              }
+            } else {
+              console.log('PR is not ready for merge. Mergeable:', pr.mergeable, 'State:', pr.mergeable_state);
+              throw new Error('PR is not in a mergeable state');
+            }
