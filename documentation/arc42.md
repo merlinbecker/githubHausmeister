@@ -51,18 +51,26 @@ GitHub Hausmeister ist eine automatisierte GitHub-Wartungsanwendung, die Reposit
 
 | Constraint              | Beschreibung                                 |
 | ----------------------- | -------------------------------------------- |
+| **Frontend Framework**  | React 18 mit TypeScript und Vite            |
+| **Backend Framework**   | Express.js mit TypeScript                    |
+| **UI Framework**        | shadcn/ui Komponenten mit Tailwind CSS      |
 | **Deployment Platform** | Replit mit integriertem Secrets Management   |
-| **Database**            | PostgreSQL (Neon Serverless)                 |
+| **Database**            | PostgreSQL (Neon Serverless) mit Drizzle ORM |
+| **State Management**    | TanStack Query für Server State              |
+| **Build System**        | Vite (Frontend) + ESBuild (Backend)          |
 | **GitHub API Limits**   | Rate Limiting durch GitHub REST/GraphQL APIs |
 | **Node.js Runtime**     | ES Modules, TypeScript-first Entwicklung     |
+| **PWA Requirements**    | Service Worker, Web Push, VAPID Authentication |
 
 ## Organisatorische Randbedingungen
 
 | Constraint                  | Beschreibung                                                            |
 | --------------------------- | ----------------------------------------------------------------------- |
-| **Repository Access**       | Erfordert GitHub Personal Access Tokens mit spezifischen Berechtigungen |
+| **GitHub OAuth**            | Erfordert GitHub OAuth App für Multi-User Authentication               |
+| **Repository Access**       | User-spezifische GitHub Tokens via OAuth                               |
 | **Monthly Task Limits**     | Konfigurierbare Limits zur Verhinderung von API Rate Limiting           |
-| **Single Task Concurrency** | Nur eine aktive Aufgabe gleichzeitig zur Konfliktverhinderung           |
+| **Single Task Concurrency** | Nur eine aktive Aufgabe gleichzeitig pro User zur Konfliktverhinderung |
+| **Multi-Tenancy**           | Unterstützung mehrerer Benutzer mit isolierten Repositories            |
 
 ## Konfiguration und Umgebungsvariablen
 
@@ -70,51 +78,78 @@ GitHub Hausmeister ist eine automatisierte GitHub-Wartungsanwendung, die Reposit
 
 | Variable                | Beschreibung                                                                              | Beispielwert                | Erforderlich      |
 | ----------------------- | ----------------------------------------------------------------------------------------- | --------------------------- | ----------------- |
-| `GITHUB_TOKEN`          | GitHub Personal Access Token mit repo, workflow, admin:repo_hook, read:org Berechtigungen | `ghp_xxxxxxxxxxxxx`         | ✅                |
+| `DATABASE_URL`          | PostgreSQL Verbindungsstring (Neon Serverless)                                            | `postgresql://user:pass@...` | ✅                |
+| `GITHUB_CLIENT_ID`      | GitHub OAuth App Client ID                                                               | `Iv1.a1b2c3d4e5f6g7h8`      | ✅                |
+| `GITHUB_CLIENT_SECRET`  | GitHub OAuth App Client Secret                                                           | `a1b2c3d4e5f6g7h8i9j0...`   | ✅                |
+| `GITHUB_REDIRECT_URI`   | OAuth Redirect URI                                                                        | `https://app.replit.dev/auth/callback` | ✅ |
 | `GITHUB_WEBHOOK_SECRET` | Secret für GitHub Webhook-Signatur-Verifikation                                           | `super_secret_webhook_key`  | ✅                |
+| `SESSION_SECRET`        | Secret für Express Session Encryption                                                    | `random_session_secret_key` | ✅                |
 | `COPILOT_ACTOR_ID`      | NodeID des GitHub Copilot Coding Agents (optional)                                        | `MDQ6VXNlcjxxxxxxxxx`       | ❌                |
-| `OWNER`                 | GitHub Benutzer oder Organisation                                                         | `mein-github-user-oder-org` | ✅                |
-| `REPOSITORIES`          | Komma-getrennte Liste der zu verwaltenden Repositories                                    | `repo1,repo2,repo3`         | ✅                |
 | `MAX_MONTHLY_TASKS`     | Maximale Anzahl Tasks pro Monat                                                           | `50`                        | ❌ (Standard: 50) |
 | `VAPID_PUBLIC_KEY`      | VAPID Public Key für Push-Benachrichtigungen                                              | `BCVxZ2z3TZr...`            | ❌ (für PWA)      |
 | `VAPID_PRIVATE_KEY`     | VAPID Private Key für Push-Benachrichtigungen                                             | `WzG5kR8kF2h...`            | ❌ (für PWA)      |
 | `VAPID_SUBJECT`         | VAPID Subject (E-Mail oder URL)                                                           | `mailto:admin@example.com`  | ❌ (für PWA)      |
+| `PORT`                  | Server Port (Replit setzt dies automatisch)                                               | `3000`                      | ❌                |
+| `REPLIT_DEV_DOMAIN`     | Development Domain (automatisch gesetzt)                                                  | `abc123-3000.preview...`    | ❌                |
+| `COPILOT_CACHE_TTL`     | Cache TTL für Copilot Assignments in Sekunden                                             | `300`                       | ❌ (Standard: 300)|
 
 ### Dateisystem-Struktur
 
-Das System verwendet eine spezifische Verzeichnisstruktur, die sowohl die ursprünglich geplante Next.js Struktur als auch die aktuelle React + Express.js Implementierung widerspiegelt:
+Das System implementiert eine modulare Frontend/Backend-Architektur mit React + Vite und Express.js:
 
 ```
-Geplante Struktur (aus ursprünglichem Design):
-/app
-  /ui
-    page.tsx
-    components/StatusCard.tsx
-    components/RepoPicker.tsx
-/app/api
-  /webhook/route.ts
-  /issues/create/route.ts
-  /tasks/start/route.ts
-  /tasks/status/route.ts
-  /tasks/approve-merge/route.ts
-/lib
-  github-rest.ts
-  github-graphql.ts
-  queue.ts
-  state.ts
-  ci.ts
-  copilot.ts
-  webhook-verify.ts
+/client/src/                    # React Frontend (Vite)
+  /components/                  # UI Komponenten
+    StatusOverview.tsx          # Dashboard Status
+    TaskQueue.tsx               # Task-Warteschlange
+    ActiveTaskCard.tsx          # Aktive Task Anzeige
+    SystemControls.tsx          # System-Steuerung
+    WebhookSettings.tsx         # Webhook-Konfiguration
+    Collaborators.tsx           # Repository-Mitarbeiter
+  /pages/                       # Route-Komponenten
+    dashboard.tsx               # Haupt-Dashboard
+    login.tsx                   # GitHub OAuth Login
+    developer-tools.tsx         # Entwickler-Tools
+    mock-login.tsx              # Mock Login (Development)
+  /hooks/                       # React Hooks
+    useAuth.ts                  # Authentifizierung
+    usePushNotifications.ts     # Push-Benachrichtigungen
+    useNotificationPrompt.ts    # Notification Prompts
+  /lib/                         # Frontend Utils
+    queryClient.ts              # TanStack Query Client
 
-Aktuelle Implementierung:
-/client/src/           # React Frontend
-/server/              # Express.js Backend
-  /lib/               # Business Logic Module
-  /routes.ts          # API Route Handlers
-/shared/              # Gemeinsame TypeScript Types
-/data/                # Persistente State Files
-  state.json
-  deliveries.json
+/server/                        # Express.js Backend
+  index.ts                      # Server Entry Point
+  routes.ts                     # API Route Handlers
+  /lib/                         # Business Logic Layer
+    github-rest.ts              # GitHub REST API Integration
+    github-graphql.ts           # GitHub GraphQL API
+    copilot-assignment.ts       # Copilot Agent Assignment
+    queue.ts                    # Task Queue Management
+    database-storage.ts         # Database Operations
+    auth-middleware.ts          # Authentication Middleware
+    github-oauth.ts             # GitHub OAuth Handler
+    notificationService.ts      # Push Notification Service
+    webPush.ts                  # Web Push Implementation
+    webhook-verify.ts           # Webhook Signature Verification
+    ci.ts                       # CI Status Checks
+    mentraService.ts            # Mentra Integration
+    vapid.ts                    # VAPID Key Management
+    feature-flags.ts            # Feature Flag System
+    mock-auth-service.ts        # Mock Authentication (Dev)
+
+/shared/                        # Gemeinsame TypeScript Types
+  schema.ts                     # Database Schema & Zod Validations
+
+/data/                          # Legacy: Wird nicht mehr verwendet
+  # System nutzt jetzt vollständig PostgreSQL
+
+/tests/                         # Test Suites
+  /server/lib/                  # Server Logic Tests
+
+/documentation/                 # Projekt-Dokumentation
+  arc42.md                      # Diese Architekturdokumentation
+  repository-status.md          # Repository Status Analysis
 ```
 
 # Kontextabgrenzung
@@ -197,7 +232,7 @@ graph TB
 | ------------------------ | ------------------------------------------- | ------------------------------------------------------------------------------------- |
 | **Frontend-Architektur** | React + TypeScript + Vite                   | Schnelle Entwicklungserfahrung, optimiertes Bundling                                  |
 | **Backend-Architektur**  | Express.js RESTful API                      | Bewährtes Node.js Framework mit klarer API-Struktur                                   |
-| **Daten-Persistierung**  | Hybrid: PostgreSQL + In-Memory + File-State | PostgreSQL für dauerhafte Daten, In-Memory für Queue, JSON-Files für kritischen State |
+| **Daten-Persistierung**  | PostgreSQL + Drizzle ORM                    | Type-safe Database Operations, Multi-User Support, ACID-Garantien                     |
 | **GitHub Integration**   | REST + GraphQL APIs                         | REST für Standard-Operationen, GraphQL für Copilot-spezifische Features               |
 | **Task Management**      | Single-Task Queue mit Persistierung         | Verhindert Konflikte, einfache Implementierung                                        |
 
@@ -215,102 +250,82 @@ graph TB
 
 ### GitHub GraphQL Integration für Copilot-Zuweisung
 
-Das System verwendet eine spezielle Strategie für die Copilot-Agent-Zuweisung:
+Das System implementiert einen robusten Copilot-Assignment-Service mit mehreren Fallback-Strategien:
 
-**Strategie**: Wenn `COPILOT_ACTOR_ID` in den Umgebungsvariablen gesetzt ist, wird diese direkt verwendet. Andernfalls versucht das System, die Copilot-Agent-ID via GraphQL zu ermitteln. Bei Fehlschlag wird ein klarer Fehlerhinweis ausgegeben.
+**Aktueller Implementierungsstand**: Ein vollständiger `CopilotAssignmentService` (589 Zeilen Code) mit:
 
-#### GraphQL Client Implementation
+- **Multi-Strategie-Agent-Discovery**: Environment Variable → Repository-basierte Suche → GraphQL Suche → Fallback
+- **Caching**: Agent-Informationen werden gecacht für bessere Performance
+- **Retry-Mechanismen**: Automatische Wiederholung bei fehlgeschlagenen Assignments  
+- **Verification**: Überprüfung erfolgreicher Zuweisung mit konfigurierbarer Verzögerung
+- **Updated GraphQL**: Verwendet `replaceActorsForAssignable` statt deprecated `addAssigneesToAssignable`
+
+#### Zentrale Service-Klasse
 
 ```typescript
-// lib/github-graphql.ts (Referenzimplementierung)
-import fetch from 'node-fetch';
+// server/lib/copilot-assignment.ts (Aktuelle Implementierung)
+export class CopilotAssignmentService {
+  constructor(private token: string, config?: Partial<CopilotConfig>)
 
-const GQL = 'https://api.github.com/graphql';
-const TOKEN = process.env.GITHUB_TOKEN!;
-
-export async function gql<T>(
-  query: string,
-  variables: Record<string, any> = {}
-): Promise<T> {
-  const res = await fetch(GQL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ query, variables }),
-  });
-  if (!res.ok)
-    throw new Error(`GraphQL HTTP ${res.status}: ${await res.text()}`);
-  const json = await res.json();
-  if (json.errors)
-    throw new Error(`GraphQL errors: ${JSON.stringify(json.errors)}`);
-  return json.data as T;
+  // Agent Discovery mit Multi-Level Fallback
+  async findBestAgent(owner: string, repo: string): Promise<AgentInfo>
+  
+  // Issue-Assignment mit Retry und Verification  
+  async assignToIssue(owner: string, repo: string, issueNumber: number): Promise<AssignmentResult>
+  
+  // Verification der erfolgreichen Zuweisung
+  async verifyAssignment(owner: string, repo: string, issueNumber: number): Promise<VerificationResult>
 }
 ```
 
-#### Copilot-Agent-Ermittlung und Zuweisung
+**GitHub's Recommended GraphQL Approach**: Das System implementiert die von GitHub empfohlene GraphQL-Mutation:
 
-```typescript
-// lib/copilot.ts (Referenzimplementierung)
-import { gql } from './github-graphql';
-
-export async function getCopilotNodeId(): Promise<string> {
-  const configured = process.env.COPILOT_ACTOR_ID;
-  if (configured && configured.trim()) return configured.trim();
-
-  // Fallback: GraphQL-Suche nach Copilot-Agenten
-  const query = `
-    query($login: String!) {
-      user(login: $login) { id login }
-      organization(login: $login) { id login }
-    }`;
-
-  const candidates = ['copilot', 'github-copilot', 'copilot-swe-agent'];
-  for (const login of candidates) {
-    try {
-      const data: any = await gql(query, { login });
-      if (data?.user?.id) return data.user.id;
-      if (data?.organization?.id) return data.organization.id;
-    } catch {}
+```graphql
+mutation {
+  replaceActorsForAssignable(input: {
+    assignableId: $issueNodeId,
+    actorIds: [$copilotAgentId]
+  }) {
+    assignable { ... on Issue { assignees(first: 10) { nodes { login, id } } } }
   }
-  throw new Error(
-    'COPILOT_ACTOR_ID nicht konfiguriert und Copilot-Agent-ID nicht auffindbar. Bitte .env setzen.'
-  );
-}
-
-export async function addAssignee(issueNodeId: string, assigneeNodeId: string) {
-  const mutation = `
-    mutation($assignableId: ID!, $assigneeIds: [ID!]!) {
-      addAssigneesToAssignable(input: {assignableId: $assignableId, assigneeIds: $assigneeIds}) {
-        assignable { ... on Issue { id number title } }
-      }
-    }`;
-  return gql(mutation, {
-    assignableId: issueNodeId,
-    assigneeIds: [assigneeNodeId],
-  });
 }
 ```
 
 ### CI-Status-Überprüfung
 
-```typescript
-// lib/ci.ts (Referenzimplementierung)
-import { octokit } from './github-rest';
+Umfassende CI-Validierung mit sowohl GitHub Status API als auch Checks API:
 
-export async function isPRGreen(owner: string, repo: string, sha: string) {
-  // Kombiniert Status Checks und Check Runs für vollständige CI-Validierung
+```typescript
+// server/lib/ci.ts (Aktuelle Implementierung)
+export async function isPRGreen(token: string, owner: string, repo: string, sha: string): Promise<boolean> {
+  const octokit = new Octokit({ auth: token });
+
   const [statusRes, checksRes] = await Promise.all([
     octokit.rest.repos.getCombinedStatusForRef({ owner, repo, ref: sha }),
     octokit.rest.checks.listForRef({ owner, repo, ref: sha }),
   ]);
 
-  const allStatusesOk = statusRes.data.state === 'success';
+  // Berücksichtigt auch den Fall ohne CI-Checks (neutral state)
+  const allStatusesOk = statusRes.data.state === 'success' || statusRes.data.statuses.length === 0;
   const allChecksOk = checksRes.data.check_runs.every(
-    (cr) => cr.conclusion === 'success'
+    (cr) => cr.conclusion === 'success' || cr.conclusion === 'neutral'
   );
+
   return allStatusesOk && allChecksOk;
+}
+
+export async function getCIStatus(token: string, owner: string, repo: string, sha: string) {
+  // Detaillierte CI-Status-Informationen für Dashboard-Anzeige
+  const [statusRes, checksRes] = await Promise.all([
+    octokit.rest.repos.getCombinedStatusForRef({ owner, repo, ref: sha }),
+    octokit.rest.checks.listForRef({ owner, repo, ref: sha }),
+  ]);
+
+  return {
+    combined: statusRes.data.state,
+    statuses: statusRes.data.statuses,
+    checks: checksRes.data.check_runs,
+  };
 }
 ```
 
@@ -393,95 +408,70 @@ export async function listPRsForIssue(
 
 ### State Management und Queue-System
 
-#### State-Datenstruktur
+**Aktuelle Implementierung**: Das System verwendet eine robuste PostgreSQL-basierte Datenpersistierung mit Drizzle ORM anstatt JSON-Files:
+
+#### Database Schema (PostgreSQL mit Drizzle ORM)
 
 ```typescript
-// lib/state.ts (Referenzimplementierung)
-import fs from 'fs';
-import path from 'path';
+// shared/schema.ts (Aktuelle Datenbankstruktur)
+export const users = pgTable('users', {
+  id: varchar('id').primaryKey(), // GitHub user ID
+  username: text('username').notNull(),
+  accessToken: text('access_token').notNull(),
+  // ... weitere User-Felder
+});
 
-const p = path.join(process.cwd(), 'data/state.json');
+export const tasks = pgTable('tasks', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar('user_id').references(() => users.id),
+  owner: text('owner').notNull(),
+  repo: text('repo').notNull(),
+  title: text('title').notNull(),
+  status: text('status').default('queued'), // queued, in_progress, completed, failed
+  issueNumber: integer('issue_number'),
+  pullNumber: integer('pull_number'),
+  // ... weitere Task-Felder
+});
 
-type State = {
-  monthlyDone: number;
-  activeTask?: {
-    owner: string;
-    repo: string;
-    issueNumber: number;
-    pullNumber?: number;
-    headSha?: string;
-  };
-  queue: Array<{
-    owner: string;
-    repo: string;
-    title: string;
-    body: string;
-    labels: string[];
-  }>;
-};
-
-const DEFAULT_STATE: State = { monthlyDone: 0, queue: [] };
-
-export function loadState(): State {
-  try {
-    return JSON.parse(fs.readFileSync(p, 'utf8'));
-  } catch {
-    return DEFAULT_STATE;
-  }
-}
-
-export function saveState(s: State) {
-  fs.mkdirSync(path.dirname(p), { recursive: true });
-  fs.writeFileSync(p, JSON.stringify(s, null, 2));
-}
+export const userSystemState = pgTable('user_system_state', {
+  userId: varchar('user_id').primaryKey(),
+  systemRunning: boolean('system_running').default(false),
+  monthlyTasksCreated: integer('monthly_tasks_created').default(0),
+  lastTaskCreatedAt: timestamp('last_task_created_at'),
+  activeTaskId: varchar('active_task_id'),
+});
 ```
 
-#### Single-Task Queue Management
+#### Multi-User Queue Management
 
 ```typescript
-// lib/queue.ts (Referenzimplementierung)
-import { loadState, saveState } from './state';
-import { createIssue } from './github-rest';
-import { getCopilotNodeId, addAssignee } from './copilot';
+// server/lib/queue.ts (Aktuelle Implementierung)
+export async function startNextIfIdle(userId: string): Promise<void> {
+  const appState = await databaseStorage.getUserAppState(userId);
+  
+  // Check system running and no active task
+  if (!appState.systemRunning || appState.activeTask) return;
 
-export async function startNextIfIdle() {
-  const s = loadState();
-  if (s.activeTask || s.queue.length === 0) return;
+  // Get next queued task for this user
+  const queuedTasks = appState.queue; // From database
+  if (queuedTasks.length === 0) return;
 
-  const max = Number(process.env.MAX_MONTHLY_TASKS || 50);
-  if (s.monthlyDone >= max) return;
+  const maxTasks = Number(process.env.MAX_MONTHLY_TASKS || 50);
+  if (appState.monthlyDone >= maxTasks) return;
 
-  const job = s.queue.shift()!;
-  // 1) Issue erstellen
-  const issue = await createIssue(
-    job.owner,
-    job.repo,
-    job.title,
-    job.body,
-    job.labels
-  );
-  // 2) Copilot zuweisen (GraphQL)
-  const copilotId = await getCopilotNodeId();
-  await addAssignee(issue.node_id, copilotId);
-
-  s.activeTask = {
-    owner: job.owner,
-    repo: job.repo,
-    issueNumber: issue.number,
-  };
-  saveState(s);
+  const nextTask = queuedTasks[0];
+  
+  // Mark as in_progress and create GitHub issue
+  await databaseStorage.updateTask(nextTask.id, { status: 'in_progress' });
+  
+  const user = await databaseStorage.getUserById(userId);
+  const issue = await createIssue(user.accessToken, nextTask.owner, nextTask.repo, ...);
+  
+  // Assign to Copilot via comprehensive service
+  const copilotService = new CopilotAssignmentService(user.accessToken);
+  await copilotService.assignToIssue(nextTask.owner, nextTask.repo, issue.number);
 }
-
-export function markDoneAndContinue() {
-  const s = loadState();
-  s.activeTask = undefined;
-  s.monthlyDone += 1;
-  saveState(s);
-  // Nächster Start asynchron
-  setTimeout(() => {
-    startNextIfIdle().catch(console.error);
-  }, 1000);
-}
+```
 ```
 
 ### Webhook-Verarbeitung und Signatur-Verifikation
@@ -684,27 +674,64 @@ export const notificationSettings = pgTable('notification_settings', {
 
 ### Chore-Task-Templates
 
-Das System verwendet vordefinierte Templates für verschiedene Wartungsaufgaben:
+**Aktueller Implementierungsstand**: Das System unterstützt sowohl Standard-Templates als auch benutzerdefinierten Repository-spezifische Templates über die Datenbank:
+
+#### Standard Default Templates
 
 ```typescript
-const templates = [
-  {
+// server/routes.ts (Aktuelle Standard-Templates)
+const defaultTemplates = {
+  tests: {
+    type: 'tests',
     title: 'Tests nachziehen (kritische Pfade)',
     body: 'Bitte Unit Tests für Kernfunktionen ergänzen. Ziel: Abdeckung +10%. Closes after CI green.',
     labels: ['chore', 'tests'],
   },
-  {
+  lint: {
+    type: 'lint',
     title: 'Lint/Format Fehler beheben',
     body: 'Bitte eslint/prettier-Probleme lösen und CI grün machen.',
     labels: ['chore', 'lint'],
   },
-  {
-    title: 'Types härten (strict/tsconfig)',
+  types: {
+    type: 'types',
+    title: 'TypeScript Typen härten',
     body: 'Bitte TypeScript-Fehler reduzieren; keine suppressions. CI muss grün sein.',
     labels: ['chore', 'types'],
   },
-];
+  security: {
+    type: 'security',
+    title: 'Dependencies aktualisieren (Sicherheit)',
+    body: 'Bitte Sicherheitsupdates für Dependencies durchführen und CI grün machen.',
+    labels: ['chore', 'security'],
+  },
+  docs: {
+    type: 'docs',
+    title: 'Dokumentation vervollständigen',
+    body: 'Bitte fehlende Dokumentation ergänzen und README aktualisieren.',
+    labels: ['chore', 'docs'],
+  },
+};
 ```
+
+#### Database-Schema für Custom Templates
+
+```typescript
+// shared/schema.ts
+export const taskTemplates = pgTable('task_templates', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar('user_id').references(() => users.id),
+  repositoryId: varchar('repository_id').references(() => userRepositories.id),
+  type: text('type').notNull(), // tests, lint, types, security, docs
+  title: text('title').notNull(),
+  body: text('body').notNull(),
+  labels: json('labels').$type<string[]>(),
+  milestone: text('milestone'),
+  isActive: boolean('is_active').default(true),
+});
+```
+
+**Template-Resolution-Strategie**: Custom Repository Template → Standard Default Template → Skip
 
 ### GitHub Actions CI-Workflow (Ziel-Repository)
 
@@ -736,80 +763,97 @@ jobs:
 graph TB
     subgraph "GitHub Hausmeister System"
         subgraph "Frontend Layer"
-            UI[React Web UI]
-            Components[UI Components]
+            WebApp[React PWA<br/>Vite + TypeScript]
+            Components[shadcn/ui Components<br/>Dashboard, TaskQueue, etc.]
+            ServiceWorker[Service Worker<br/>Push Notifications]
         end
 
         subgraph "Backend Layer"
-            API[Express.js API]
-            Routes[Route Handlers]
-            Auth[Authentication]
+            API[Express.js API<br/>REST Endpoints]
+            Auth[GitHub OAuth<br/>Session Management] 
+            Routes[Route Handlers<br/>API Logic]
         end
 
         subgraph "Business Logic Layer"
-            TaskQueue[Task Queue Manager]
-            GitHub[GitHub Integration]
-            Webhook[Webhook Processor]
-            Storage[Data Storage]
+            Queue[Multi-User Queue Manager<br/>database-based]
+            GitHub[GitHub Integration<br/>REST + GraphQL]
+            Copilot[CopilotAssignmentService<br/>589 lines, comprehensive]
+            Webhook[Webhook Processor<br/>HMAC verification]
+            Notifications[NotificationService<br/>Web Push + Mentra]
+            WebPush[WebPush Service<br/>VAPID implementation]
         end
 
         subgraph "Data Layer"
-            PostgreSQL[(PostgreSQL DB)]
-            FileState[JSON State Files]
-            Memory[In-Memory Cache]
+            Database[(PostgreSQL<br/>Neon Serverless)]
+            ORM[Drizzle ORM<br/>Type-safe queries]
+            Storage[DatabaseStorage<br/>Multi-tenant data]
         end
     end
 
-    subgraph "External Systems"
-        GitHubAPI[GitHub APIs]
-        Copilot[GitHub Copilot]
+    subgraph "External Services"
+        GitHubAPI[GitHub REST API v3<br/>Issues, PRs, Repos]
+        GraphQLAPI[GitHub GraphQL API v4<br/>Copilot Assignment]
+        CopilotAgent[GitHub Copilot Agent<br/>SWE Tasks]
+        WebPushService[Browser Push API<br/>VAPID Protocol]
     end
 
-    UI --> API
+    WebApp --> API
+    ServiceWorker --> WebPushService
+    API --> Auth
     API --> Routes
-    Routes --> Auth
-    Routes --> TaskQueue
+    Routes --> Queue
     Routes --> GitHub
-    Routes --> Webhook
-    Routes --> Storage
+    Routes --> Webhook  
+    Routes --> Notifications
 
-    TaskQueue --> Storage
+    Queue --> Storage
     GitHub --> GitHubAPI
-    GitHub --> Copilot
-    Webhook --> TaskQueue
+    GitHub --> GraphQLAPI
+    Copilot --> GraphQLAPI
+    Copilot --> CopilotAgent
+    Notifications --> WebPush
+    WebPush --> WebPushService
+    Webhook --> Queue
 
-    Storage --> PostgreSQL
-    Storage --> FileState
-    Storage --> Memory
+    Storage --> Database
+    ORM --> Database
 ```
 
-**Begründung**: Das System folgt einer klassischen 3-Schichten-Architektur mit klarer Trennung von Präsentation, Geschäftslogik und Datenhaltung. Die Hybrid-Speicherstrategie optimiert Performance und Persistierung.
+**Architektur-Entscheidungen**:
+
+- **Multi-User Design**: PostgreSQL-basierte Multi-Tenancy mit OAuth-Authentication
+- **Comprehensive Services**: Robuste Service-Klassen (CopilotAssignmentService: 589 LOC)
+- **PWA-First**: Service Worker, Push Notifications, Mobile-optimiert
+- **Type Safety**: End-to-End TypeScript mit Drizzle ORM für Database
 
 **Enthaltene Bausteine**:
 
-- **Frontend Layer**: React-basierte Benutzeroberfläche
-- **Backend Layer**: Express.js API mit Authentifizierung
-- **Business Logic Layer**: Kerngeschäftslogik für Task Management und GitHub Integration
-- **Data Layer**: Hybride Speicherlösung für verschiedene Datentypen
+- **Frontend Layer**: React PWA mit shadcn/ui, TanStack Query für Server State
+- **Backend Layer**: Express.js mit GitHub OAuth, Session-Management
+- **Business Logic Layer**: Spezialisierte Services für Queue, GitHub APIs, Push Notifications
+- **Data Layer**: PostgreSQL mit Drizzle ORM, typsichere Multi-User-Datenhaltung
 
 **Wichtige Schnittstellen**:
 
-- **REST API**: Frontend-Backend Kommunikation
-- **GitHub APIs**: Externe Integration für Repository-Management
-- **Webhook Interface**: Eingehende GitHub-Events
-- **Push API**: VAPID-basierte Push-Benachrichtigungen
-- **Service Worker**: Offline-Funktionalität und Background-Synchronisation
+- **REST API**: Frontend-Backend Kommunikation über typisierte Endpoints
+- **GitHub OAuth**: Standard OAuth 2.0 Flow für Multi-User Authentication  
+- **GitHub REST/GraphQL**: Duale API-Integration für Issue/PR Management und Copilot Assignment
+- **Webhook Interface**: HMAC-SHA256 verifizierte GitHub-Events
+- **Web Push API**: VAPID-protokoll-basierte Push-Benachrichtigungen
+- **PostgreSQL**: Drizzle ORM-basierte typsichere Datenbankoperationen
 
 ### Frontend Layer
 
-**Zweck/Verantwortung**: Bereitstellung einer responsiven Progressive Web App für Repository-Management, Task-Überwachung und Systemkontrolle mit Push-Benachrichtigungen.
+**Zweck/Verantwortung**: Progressive Web App mit React für Multi-User Repository-Management, Real-time Task-Überwachung und Mobile-First UI mit Push-Benachrichtigungen.
 
 **Schnittstelle(n)**:
 
-- REST API Client über `/api/*` Endpoints
-- Push Subscription Management über `/api/push/*`
-- Service Worker für Background Push-Handling
-- PWA Installation Prompts und Offline-Funktionalität
+- **TanStack Query Client**: Server State Management mit automatischem Caching
+- **GitHub OAuth Flow**: Login/Logout über `/auth/login` und `/auth/callback`  
+- **REST API Endpoints**: Typisierte API-Kommunikation über `/api/*`
+- **Push Subscription**: Push-Registrierung über `/api/push/subscribe`
+- **Service Worker**: Background Push-Handling und PWA-Funktionalität
+- **Wouter Router**: Client-side Routing zwischen Dashboard und Developer Tools
 
 **Qualitäts-/Leistungsmerkmale**:
 
@@ -861,11 +905,11 @@ graph TB
 
 **Schnittstelle(n)**:
 
-- Drizzle ORM für PostgreSQL
-- File System für JSON State
-- In-Memory Storage für Queues
+- Drizzle ORM für PostgreSQL with type-safe queries
+- Express Sessions für OAuth-Authentication State  
+- DatabaseStorage Service für alle CRUD-Operationen
 
-**Ablageort/Datei(en)**: `shared/schema.ts`, `server/lib/database-storage.ts`, `server/lib/state.ts`
+**Ablageort/Datei(en)**: `shared/schema.ts`, `server/lib/database-storage.ts`, `server/db.ts`
 
 ## Ebene 2
 
@@ -881,17 +925,15 @@ graph TB
     end
 
     subgraph "Storage"
-        DB[(Database)]
-        JSON[JSON Files]
-        Memory[In-Memory Queue]
+        DB[(PostgreSQL Database)]
+        ORM[Drizzle ORM]
     end
 
     QueueAPI --> Processor
     Processor --> State
     Processor --> Limiter
     State --> DB
-    State --> JSON
-    QueueAPI --> Memory
+    ORM --> DB
 
     Processor --> GitHubOps[GitHub Operations]
     Processor --> WebhookHandler[Webhook Handler]
@@ -945,43 +987,75 @@ graph TB
 
 ```mermaid
 sequenceDiagram
-    participant User as Benutzer
-    participant UI as React UI
+    participant User as User (OAuth)
+    participant UI as React PWA
     participant API as Express API
-    participant Queue as Task Queue
-    participant GitHub as GitHub API
-    participant Copilot as GitHub Copilot
+    participant Auth as OAuth Middleware
+    participant DB as PostgreSQL
+    participant Queue as Multi-User Queue
+    participant GitHub as GitHub REST API
+    participant Copilot as CopilotAssignmentService
+    participant GraphQL as GitHub GraphQL
     participant Webhook as Webhook Handler
+    participant Push as NotificationService
 
+    User->>UI: Login via GitHub OAuth
+    UI->>API: GET /auth/login
+    API->>Auth: redirect to GitHub
+    Auth-->>UI: OAuth callback with session
+    
     User->>UI: Repository auswählen + Tasks erstellen
-    UI->>API: POST /api/tasks
-    API->>Queue: createTasks(templates)
-
-    loop Für jede Task
-        Queue->>GitHub: createIssue()
+    UI->>API: POST /api/tasks (with user session)
+    API->>Auth: verify session
+    API->>DB: get user repositories
+    API->>Queue: createTasks(userId, templates)
+    
+    Queue->>DB: insert tasks with status='queued'
+    Queue->>Queue: startNextIfIdle(userId)
+    
+    loop Für jede User Task
+        Queue->>DB: get user access token
+        Queue->>GitHub: createIssue(userToken, ...)
         GitHub-->>Queue: Issue created
-        Queue->>Copilot: assignAgent()
-        Copilot-->>Queue: Agent assigned
-        Queue->>Queue: updateStatus('in_progress')
+        Queue->>DB: update task with issueNumber
+        Queue->>Copilot: assignToIssue(userToken, ...)
+        Copilot->>GraphQL: findBestAgent() with fallback
+        Copilot->>GraphQL: replaceActorsForAssignable()
+        Copilot-->>Queue: Assignment result
+        Queue->>DB: updateStatus('in_progress')
+        Queue->>Push: sendNotification(TASK_STARTED)
     end
 
-    Note over GitHub,Copilot: Copilot arbeitet an Issue
+    Note over GitHub,Copilot: Copilot Agent arbeitet an Issue
 
-    GitHub->>Webhook: PR created (webhook)
+    GitHub->>Webhook: PR created (HMAC-signed webhook)
     Webhook->>API: POST /api/webhook
-    API->>Queue: handlePREvent()
+    API->>Webhook: verifySignature()
+    API->>DB: find task by issueNumber
+    API->>DB: updateTask with pullNumber
+    API->>Push: sendNotification(PR_CREATED)
 
     GitHub->>Webhook: CI completed (webhook)
     Webhook->>API: POST /api/webhook
-    API->>GitHub: approvePR() + mergePR()
-    API->>Queue: updateStatus('completed')
+    API->>GitHub: isPRGreen(userToken, ...)
+    alt CI Green
+        API->>GitHub: createReviewApprove() + mergePR()
+        API->>DB: updateStatus('completed')
+        API->>Push: sendNotification(TASK_COMPLETED)
+        API->>Queue: startNextIfIdle(userId)
+    else CI Failed
+        API->>DB: updateStatus('failed')
+        API->>Push: sendNotification(TASK_FAILED)
+    end
 ```
 
-**Besonderheiten**:
+**Multi-User-Besonderheiten**:
 
-- Einzelaufgaben-Verarbeitung verhindert Konflikte
-- Webhook-Events triggern automatische Weiterverarbeitung
-- Persistente Zustandsverfolgung über alle Schritte
+- **OAuth-basierte Authentifizierung**: Jeder User nutzt eigenen GitHub Token
+- **Pro-User Task Queues**: Isolierte Verarbeitung pro Benutzer in Database
+- **Comprehensive Copilot Service**: 589-LOC Service mit Multi-Level-Fallback
+- **Real-time Push Notifications**: Web Push für Task-Updates per User
+- **Database-State Management**: PostgreSQL statt JSON-Files für Multi-Tenancy
 
 ## Webhook Event Processing
 
@@ -1083,7 +1157,7 @@ graph TB
 
         subgraph "Environment"
             Secrets[Replit Secrets<br/>Environment Variables]
-            Storage[File System<br/>JSON State Files]
+            Sessions[Express Sessions<br/>OAuth State]
         end
     end
 
@@ -1093,34 +1167,34 @@ graph TB
     end
 
     subgraph "Client Devices"
-        Browser[Web Browser<br/>Mobile + Desktop]
+        Browser[Web Browser<br/>PWA-enabled]
     end
 
     Browser <-->|HTTPS| Frontend
     Frontend <-->|HTTP/JSON| Backend
-    Backend <-->|TLS| NeonDB
+    Backend <-->|TLS/SQL| NeonDB
     Backend <-->|HTTPS/Bearer| GitHub
     Backend --> Secrets
-    Backend --> Storage
+    Backend --> Sessions
 
     GitHub -->|Webhooks/HTTPS| Backend
 ```
 
-**Begründung**: Single-Container Deployment auf Replit reduziert Komplexität und Deployment-Overhead. Externe Services für Skalierbarkeit und Zuverlässigkeit.
+**Begründung**: Single-Container Deployment auf Replit reduziert Komplexität und Deployment-Overhead. Externe Services für Skalierbarkeit und Zuverlässigkeit. Vollständige Database-basierte Persistierung.
 
 **Qualitäts- und/oder Leistungsmerkmale**:
 
 - **Verfügbarkeit**: Replit-Platform mit automatischem Neustart
-- **Skalierbarkeit**: Serverless PostgreSQL über Neon
-- **Sicherheit**: Environment Variables über Replit Secrets
-- **Performance**: Client-side Caching, optimierte Builds
+- **Skalierbarität**: Serverless PostgreSQL über Neon
+- **Sicherheit**: Environment Variables über Replit Secrets, OAuth-Sessions
+- **Performance**: Client-side Caching, optimierte Builds, Database Indexing
 
 **Zuordnung von Bausteinen zu Infrastruktur**:
 
-- **Frontend**: Statische Assets served von Express.js
-- **Backend**: Node.js Express.js Server
-- **Database**: Neon PostgreSQL mit Drizzle ORM
-- **State**: JSON Files im Container File System
+- **Frontend**: React PWA served von Express.js mit Service Worker
+- **Backend**: Node.js Express.js Server mit TypeScript
+- **Database**: Neon PostgreSQL mit Drizzle ORM und automatischen Backups
+- **Authentication**: GitHub OAuth mit Express Sessions
 
 # Querschnittliche Konzepte
 
@@ -1161,21 +1235,22 @@ graph LR
 ```mermaid
 graph TB
     subgraph "State Management"
-        TaskDB[(PostgreSQL<br/>Tasks & Users)]
-        StateFile[JSON Files<br/>Monthly Counters]
-        Memory[In-Memory<br/>Active Queues]
+        TaskDB[(PostgreSQL<br/>Alle Daten)]
+        Drizzle[Drizzle ORM<br/>Type-Safe Queries]
+        Session[Session Store<br/>OAuth Sessions]
     end
 
-    TaskDB --> Persistent[Persistent Data]
-    StateFile --> Critical[Critical State]
-    Memory --> Transient[Transient Data]
+    TaskDB --> Persistent[Persistent Multi-User Data]
+    Drizzle --> TypeSafe[Type-Safe Database Operations]
+    Session --> Authentication[User Authentication State]
 ```
 
 **Implementierung**:
 
-- PostgreSQL für langfristige Datenpersistierung
-- JSON Files für kritische System-State (monatliche Zähler)
-- In-Memory Storage für temporäre Queue-Verwaltung
+- PostgreSQL für alle Datenpersistierung (Tasks, Users, Templates, Push Subscriptions)
+- Drizzle ORM für type-safe Database Operations mit Migrations
+- Session-basierte Authentication State für OAuth-Flows
+- Kein File-System Storage mehr erforderlich
 
 ## API Rate Limiting
 
@@ -1238,12 +1313,12 @@ Jedes Repository, das von GitHub Hausmeister verwaltet werden soll, benötigt ei
 | **React + TypeScript für Frontend** | ✅ Umgesetzt | Type Safety, Component-basierte Architektur, große Community     | Komplexere Build-Pipeline, Lernkurve für neue Entwickler |
 | **Express.js für Backend**          | ✅ Umgesetzt | Bewährtes Framework, große Middleware-Auswahl, RESTful APIs      | Weniger strukturiert als andere Frameworks               |
 | **Drizzle ORM statt Prisma**        | ✅ Umgesetzt | Bessere TypeScript Integration, Schema-first Approach            | Kleinere Community, weniger Resources                    |
-| **Hybrid Storage Strategy**         | ✅ Umgesetzt | Optimiert verschiedene Datentypen, Performance vs. Persistierung | Komplexere Datenverwaltung, Konsistenz-Herausforderungen |
-| **Single Task Concurrency**         | ✅ Umgesetzt | Verhindert GitHub API Konflikte, einfache Implementierung        | Reduzierte Durchsatzleistung, Queue-Delays               |
-| **Replit als Deployment Platform**  | ✅ Umgesetzt | Integrierte Entwicklungsumgebung, Secrets Management             | Vendor Lock-in, begrenzte Skalierungsoptionen            |
-| **Wouter statt React Router**       | ✅ Umgesetzt | Reduzierte Bundle-Größe, einfache API                            | Weniger Features, kleinere Community                     |
-| **PWA mit Service Worker**          | ✅ Umgesetzt | Offline-Funktionalität, Push-Notifications, App-like Experience  | Komplexität der Caching-Strategien, Browser-Support      |
-| **VAPID für Push-Notifications**    | ✅ Umgesetzt | Standard-konform, sicher, plattformübergreifend                  | Setup-Komplexität, iOS-Einschränkungen                   |
+| **PostgreSQL + Drizzle ORM Strategy** | ✅ Umgesetzt | Type-safe Database, Multi-User Support, Skalierbar             | Externe Database-Abhängigkeit, Komplexere Queries      |
+| **Single Task Concurrency per User**    | ✅ Umgesetzt | Verhindert GitHub API Konflikte, User-isolierte Verarbeitung   | Reduzierte Durchsatzleistung pro User                  |
+| **Replit als Deployment Platform**      | ✅ Umgesetzt | Integrierte Entwicklungsumgebung, Secrets Management           | Vendor Lock-in, begrenzte Skalierungsoptionen          |
+| **Wouter statt React Router**           | ✅ Umgesetzt | Reduzierte Bundle-Größe, einfache API                          | Weniger Features, kleinere Community                   |
+| **PWA mit Service Worker**              | ✅ Umgesetzt | Offline-Funktionalität, Push-Notifications, App-like Experience | Komplexität der Caching-Strategien, Browser-Support    |
+| **VAPID für Push-Notifications**        | ✅ Umgesetzt | Standard-konform, sicher, plattformübergreifend                | Setup-Komplexität, iOS-Einschränkungen                 |
 
 # Qualitätsanforderungen
 
@@ -1302,15 +1377,15 @@ graph TB
 | **CI/CD Pipeline**        | Keine automatisierte Build/Deploy Pipeline | Hoch      | GitHub Actions einrichten                  |
 | **Error Monitoring**      | Nur Console-Logging vorhanden              | Mittel    | Strukturiertes Logging + Monitoring        |
 | **WebSocket Integration** | Real-time Updates nur über Polling         | Niedrig   | WebSocket für Live-Updates                 |
-| **Backup Strategy**       | Keine automatisierte Backups               | Mittel    | Neon PostgreSQL Backup + State File Backup |
+| **Backup Strategy**       | Keine automatisierte Backups               | Mittel    | Neon PostgreSQL automatische Backups       |
 | **PWA Testing Coverage**  | PWA-spezifische Features nicht getestet    | Mittel    | Service Worker und Push-Notification Tests |
 
 ## Bekannte Limitationen
 
-- **Single Task Concurrency**: Reduzierte Parallelität zugunsten von Stabilität
+- **Single Task Concurrency per User**: Reduzierte Parallelität zugunsten von Stabilität
 - **Replit Vendor Lock-in**: Deployment-spezifische Konfiguration
-- **File-based State**: JSON State Files nicht für High-Concurrency geeignet
-- **In-Memory Queue**: Queue geht bei Neustart verloren (wird aus DB rekonstruiert)
+- **PostgreSQL Dependency**: Vollständige Abhängigkeit von externer Neon Database
+- **OAuth Token Expiry**: Benutzer müssen sich nach Token-Ablauf erneut anmelden
 
 # Glossar
 
