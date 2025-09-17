@@ -141,6 +141,135 @@ describe('DatabaseStorage', () => {
     });
   });
 
+  describe('Repository operations', () => {
+    it('should get user repositories', async () => {
+      const mockRepositories = [mockRepository];
+      const { db } = await import('../../../server/db');
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn(() => ({
+          where: vi.fn(() => ({
+            orderBy: vi.fn(() => Promise.resolve(mockRepositories)),
+          })),
+        })),
+      } as any);
+
+      const repositories = await storage.getUserRepositories('test-user-id');
+      expect(repositories).toEqual(mockRepositories);
+    });
+
+    it('should add repository to user', async () => {
+      const repoData = {
+        userId: 'test-user-id',
+        owner: 'test-owner',
+        repo: 'test-repo',
+        fullName: 'test-owner/test-repo',
+      };
+
+      const { db } = await import('../../../server/db');
+      vi.mocked(db.insert).mockReturnValue({
+        values: vi.fn(() => ({
+          onConflictDoNothing: vi.fn(() => ({
+            returning: vi.fn(() => Promise.resolve([mockRepository])),
+          })),
+        })),
+      } as any);
+
+      const repository = await storage.addUserRepository(repoData);
+      expect(repository).toEqual(mockRepository);
+    });
+
+    it('should remove repository from user', async () => {
+      const { db } = await import('../../../server/db');
+      vi.mocked(db.delete).mockReturnValue({
+        where: vi.fn(() => Promise.resolve()),
+      } as any);
+
+      await storage.removeUserRepository('repo-id');
+      expect(db.delete).toHaveBeenCalled();
+    });
+  });
+
+  describe('Task operations extended', () => {
+    it('should get user tasks', async () => {
+      const mockTasks = [mockTask];
+      const { db } = await import('../../../server/db');
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn(() => ({
+          where: vi.fn(() => ({
+            orderBy: vi.fn(() => ({
+              limit: vi.fn(() => Promise.resolve(mockTasks)),
+            })),
+          })),
+        })),
+      } as any);
+
+      const tasks = await storage.getUserTasks('test-user-id', 10);
+      expect(tasks).toEqual(mockTasks);
+    });
+
+    it('should get queued tasks', async () => {
+      const queuedTasks = [{ ...mockTask, status: 'queued' }];
+      const { db } = await import('../../../server/db');
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn(() => ({
+          where: vi.fn(() => ({
+            orderBy: vi.fn(() => Promise.resolve(queuedTasks)),
+          })),
+        })),
+      } as any);
+
+      const tasks = await storage.getQueuedTasks('test-user-id');
+      expect(tasks).toEqual(queuedTasks);
+    });
+
+    it('should get active task', async () => {
+      const activeTask = { ...mockTask, status: 'in_progress' };
+      const { db } = await import('../../../server/db');
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn(() => ({
+          where: vi.fn(() => Promise.resolve([activeTask])),
+        })),
+      } as any);
+
+      const task = await storage.getActiveTask('test-user-id');
+      expect(task).toEqual(activeTask);
+    });
+
+    it('should update task', async () => {
+      const { db } = await import('../../../server/db');
+      vi.mocked(db.update).mockReturnValue({
+        set: vi.fn(() => ({
+          where: vi.fn(() => ({
+            returning: vi.fn(() => Promise.resolve([{ ...mockTask, status: 'completed' }])),
+          })),
+        })),
+      } as any);
+
+      const updatedTask = await storage.updateTask('task-id', { status: 'completed' });
+      expect(updatedTask?.status).toBe('completed');
+    });
+
+    it('should delete task', async () => {
+      const { db } = await import('../../../server/db');
+      vi.mocked(db.delete).mockReturnValue({
+        where: vi.fn(() => Promise.resolve({ rowCount: 0 })), // No rows deleted
+      } as any);
+
+      const result = await storage.deleteTask('task-id');
+      expect(result).toBe(false); // Should return false when no rows deleted
+    });
+
+    it('should delete task successfully', async () => {
+      const { db } = await import('../../../server/db');
+      vi.mocked(db.delete).mockReturnValue({
+        where: vi.fn(() => Promise.resolve({ rowCount: 1 })), // One row deleted
+      } as any);
+
+      const result = await storage.deleteTask('task-id');
+      expect(result).toBe(true); // Should return true when task is deleted
+    });
+  });
+
   describe('Task operations', () => {
     it('should create task', async () => {
       const taskData: InsertTask = {
