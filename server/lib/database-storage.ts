@@ -36,6 +36,27 @@ export class DatabaseStorage {
     return user;
   }
 
+  async createOrUpdateUser(userData: InsertUser): Promise<User> {
+    // Try to get existing user first
+    const existingUser = await this.getUserById(userData.id);
+    
+    if (existingUser) {
+      // Update existing user
+      const [user] = await db
+        .update(users)
+        .set({
+          ...userData,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userData.id))
+        .returning();
+      return user;
+    } else {
+      // Create new user
+      return this.createUser(userData);
+    }
+  }
+
   async updateUserToken(
     userId: string,
     accessToken: string,
@@ -132,6 +153,10 @@ export class DatabaseStorage {
   async addTask(taskData: InsertTask): Promise<Task> {
     const [task] = await db.insert(tasks).values(taskData).returning();
     return task;
+  }
+
+  async createTask(taskData: InsertTask): Promise<Task> {
+    return this.addTask(taskData);
   }
 
   async updateTask(taskId: string, taskData: Partial<Task>): Promise<Task> {
@@ -320,6 +345,12 @@ export class DatabaseStorage {
       .values(templateData)
       .returning();
     return template;
+  }
+
+  async createTaskTemplate(
+    templateData: InsertTaskTemplate
+  ): Promise<TaskTemplate> {
+    return this.addTaskTemplate(templateData);
   }
 
   async updateTaskTemplate(
