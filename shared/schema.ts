@@ -22,7 +22,7 @@ export const users = pgTable('users', {
   accessToken: text('access_token').notNull(),
   refreshToken: text('refresh_token'),
   tokenExpiresAt: timestamp('token_expires_at'),
-  webhookForwardUrl: text('webhook_forward_url'), // URL for webhook forwarding
+  // webhookForwardUrl removed - moved to repository-specific setting
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
@@ -41,9 +41,18 @@ export const userRepositories = pgTable(
     repo: text('repo').notNull(),
     webhookId: integer('webhook_id'), // GitHub webhook ID
     isActive: boolean('is_active').default(true),
+    // New columns for repository-centric workflow
+    monthlyAssignmentLimit: integer('monthly_assignment_limit').default(10),
+    isCurrentActive: boolean('is_current_active').default(false),
+    monthlyAssignmentsUsed: integer('monthly_assignments_used').default(0),
+    lastMonthlyReset: timestamp('last_monthly_reset').defaultNow(),
+    webhookForwardUrl: text('webhook_forward_url'), // Repository-specific webhook forwarding URL
     createdAt: timestamp('created_at').defaultNow(),
   },
-  (table) => [index('user_repositories_user_id_idx').on(table.userId)]
+  (table) => [
+    index('user_repositories_user_id_idx').on(table.userId),
+    index('user_repositories_current_active_idx').on(table.userId, table.isCurrentActive),
+  ]
 );
 
 export const tasks = pgTable(
@@ -132,9 +141,13 @@ export const userSystemState = pgTable(
     userId: varchar('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    monthlyDone: integer('monthly_done').default(0),
+    // Remove monthlyDone - moved to per-repository tracking
     systemRunning: boolean('system_running').default(true),
     lastReset: timestamp('last_reset').defaultNow(),
+    // New columns for repository-centric workflow
+    currentRepositoryId: varchar('current_repository_id')
+      .references(() => userRepositories.id, { onDelete: 'set null' }),
+    isPaused: boolean('is_paused').default(false),
   },
   (table) => [index('user_system_state_user_id_idx').on(table.userId)]
 );
@@ -148,161 +161,6 @@ export const sessions = pgTable(
     expire: timestamp('expire').notNull(),
   },
   (table) => [index('IDX_session_expire').on(table.expire)]
-);
-
-// Push subscription table
-export const pushSubscriptions = pgTable(
-  'push_subscriptions',
-  {
-    id: varchar('id')
-      .primaryKey()
-      .default(sql`gen_random_uuid()`),
-    userId: varchar('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    endpoint: text('endpoint').notNull(),
-    p256dhKey: text('p256dh_key').notNull(),
-    authKey: text('auth_key').notNull(),
-    userAgent: text('user_agent'),
-    isActive: boolean('is_active').default(true),
-    createdAt: timestamp('created_at').defaultNow(),
-    lastUsed: timestamp('last_used').defaultNow(),
-  },
-  (table) => [
-    index('push_subscriptions_user_id_idx').on(table.userId),
-    index('push_subscriptions_endpoint_idx').on(table.endpoint),
-  ]
-);
-
-// Notification settings table
-export const notificationSettings = pgTable(
-  'notification_settings',
-  {
-    id: varchar('id')
-      .primaryKey()
-      .default(sql`gen_random_uuid()`),
-    userId: varchar('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    taskStarted: boolean('task_started').default(true),
-    taskCompleted: boolean('task_completed').default(true),
-    taskFailed: boolean('task_failed').default(true),
-    prCreated: boolean('pr_created').default(true),
-    prMerged: boolean('pr_merged').default(true),
-    ciStatusChanged: boolean('ci_status_changed').default(false),
-    copilotAssigned: boolean('copilot_assigned').default(true),
-    updatedAt: timestamp('updated_at').defaultNow(),
-  },
-  (table) => [index('notification_settings_user_id_idx').on(table.userId)]
-);
-
-// mentraOS Smartglasses table
-export const mentraGlasses = pgTable(
-  'mentra_glasses',
-  {
-    id: varchar('id')
-      .primaryKey()
-      .default(sql`gen_random_uuid()`),
-    userId: varchar('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    glassId: text('glass_id').notNull().unique(), // mentraOS glass identifier
-    glassName: text('glass_name').notNull(), // User-friendly name
-    deviceModel: text('device_model').default('evenrealities G1'),
-    pairingToken: text('pairing_token'), // For secure pairing process
-    isActive: boolean('is_active').default(true),
-    lastSeen: timestamp('last_seen').defaultNow(),
-    apiEndpoint: text('api_endpoint'), // mentraOS API endpoint for this glass
-    createdAt: timestamp('created_at').defaultNow(),
-    updatedAt: timestamp('updated_at').defaultNow(),
-  },
-  (table) => [
-    index('mentra_glasses_user_id_idx').on(table.userId),
-    index('mentra_glasses_glass_id_idx').on(table.glassId),
-  ]
-);
-
-// mentraOS Session Management
-export const mentraSessions = pgTable(
-  'mentra_sessions',
-  {
-    id: varchar('id')
-      .primaryKey()
-      .default(sql`gen_random_uuid()`),
-    glassId: varchar('glass_id')
-      .notNull()
-      .references(() => mentraGlasses.id, { onDelete: 'cascade' }),
-    sessionToken: text('session_token').notNull(),
-    isActive: boolean('is_active').default(true),
-    startedAt: timestamp('started_at').defaultNow(),
-    lastActivity: timestamp('last_activity').defaultNow(),
-    expiresAt: timestamp('expires_at'), // Session expiration
-  },
-  (table) => [
-    index('mentra_sessions_glass_id_idx').on(table.glassId),
-    index('mentra_sessions_token_idx').on(table.sessionToken),
-  ]
-);
-
-// Voice Commands Log
-export const voiceCommands = pgTable(
-  'voice_commands',
-  {
-    id: varchar('id')
-      .primaryKey()
-      .default(sql`gen_random_uuid()`),
-    userId: varchar('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    glassId: varchar('glass_id')
-      .notNull()
-      .references(() => mentraGlasses.id, { onDelete: 'cascade' }),
-    originalText: text('original_text').notNull(), // Raw voice-to-text
-    normalizedCommand: text('normalized_command'), // Parsed/cleaned command
-    commandType: text('command_type'), // e.g., 'task_create', 'status_check'
-    commandParams: json('command_params').$type<Record<string, any>>(), // Command parameters
-    executionStatus: text('execution_status').default('pending'), // pending, executed, failed
-    result: json('result').$type<Record<string, any>>(), // Command execution result
-    errorMessage: text('error_message'),
-    processedAt: timestamp('processed_at'),
-    createdAt: timestamp('created_at').defaultNow(),
-  },
-  (table) => [
-    index('voice_commands_user_id_idx').on(table.userId),
-    index('voice_commands_glass_id_idx').on(table.glassId),
-    index('voice_commands_status_idx').on(table.executionStatus),
-  ]
-);
-
-// Glass Notifications Log
-export const glassNotifications = pgTable(
-  'glass_notifications',
-  {
-    id: varchar('id')
-      .primaryKey()
-      .default(sql`gen_random_uuid()`),
-    userId: varchar('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    glassId: varchar('glass_id')
-      .notNull()
-      .references(() => mentraGlasses.id, { onDelete: 'cascade' }),
-    notificationType: text('notification_type').notNull(), // text, image, combined
-    title: text('title'),
-    message: text('message'),
-    imageUrl: text('image_url'), // For image notifications
-    imageData: text('image_data'), // Base64 encoded image data
-    deliveryStatus: text('delivery_status').default('pending'), // pending, sent, delivered, failed
-    mentraMessageId: text('mentra_message_id'), // mentraOS message ID
-    sentAt: timestamp('sent_at'),
-    acknowledgedAt: timestamp('acknowledged_at'), // When user acknowledged on glass
-    createdAt: timestamp('created_at').defaultNow(),
-  },
-  (table) => [
-    index('glass_notifications_user_id_idx').on(table.userId),
-    index('glass_notifications_glass_id_idx').on(table.glassId),
-    index('glass_notifications_status_idx').on(table.deliveryStatus),
-  ]
 );
 
 // Issue priorities for drag-and-drop ordering (Phase 3 of Issue Workflow Plan)
@@ -338,11 +196,6 @@ export const usersRelations = relations(users, ({ many }) => ({
   tasks: many(tasks),
   taskTemplates: many(taskTemplates),
   systemState: many(userSystemState),
-  pushSubscriptions: many(pushSubscriptions),
-  notificationSettings: many(notificationSettings),
-  mentraGlasses: many(mentraGlasses),
-  voiceCommands: many(voiceCommands),
-  glassNotifications: many(glassNotifications),
   issuePriorities: many(issuePriorities),
 }));
 
@@ -399,71 +252,9 @@ export const userSystemStateRelations = relations(
       fields: [userSystemState.userId],
       references: [users.id],
     }),
-  })
-);
-
-export const pushSubscriptionsRelations = relations(
-  pushSubscriptions,
-  ({ one }) => ({
-    user: one(users, {
-      fields: [pushSubscriptions.userId],
-      references: [users.id],
-    }),
-  })
-);
-
-export const notificationSettingsRelations = relations(
-  notificationSettings,
-  ({ one }) => ({
-    user: one(users, {
-      fields: [notificationSettings.userId],
-      references: [users.id],
-    }),
-  })
-);
-
-// mentraOS Relations
-export const mentraGlassesRelations = relations(
-  mentraGlasses,
-  ({ one, many }) => ({
-    user: one(users, {
-      fields: [mentraGlasses.userId],
-      references: [users.id],
-    }),
-    sessions: many(mentraSessions),
-    voiceCommands: many(voiceCommands),
-    notifications: many(glassNotifications),
-  })
-);
-
-export const mentraSessionsRelations = relations(mentraSessions, ({ one }) => ({
-  glass: one(mentraGlasses, {
-    fields: [mentraSessions.glassId],
-    references: [mentraGlasses.id],
-  }),
-}));
-
-export const voiceCommandsRelations = relations(voiceCommands, ({ one }) => ({
-  user: one(users, {
-    fields: [voiceCommands.userId],
-    references: [users.id],
-  }),
-  glass: one(mentraGlasses, {
-    fields: [voiceCommands.glassId],
-    references: [mentraGlasses.id],
-  }),
-}));
-
-export const glassNotificationsRelations = relations(
-  glassNotifications,
-  ({ one }) => ({
-    user: one(users, {
-      fields: [glassNotifications.userId],
-      references: [users.id],
-    }),
-    glass: one(mentraGlasses, {
-      fields: [glassNotifications.glassId],
-      references: [mentraGlasses.id],
+    currentRepository: one(userRepositories, {
+      fields: [userSystemState.currentRepositoryId],
+      references: [userRepositories.id],
     }),
   })
 );
@@ -477,7 +268,6 @@ export const insertUserSchema = createInsertSchema(users).pick({
   accessToken: true,
   refreshToken: true,
   tokenExpiresAt: true,
-  webhookForwardUrl: true,
 });
 
 export const insertUserRepositorySchema = createInsertSchema(
@@ -488,6 +278,11 @@ export const insertUserRepositorySchema = createInsertSchema(
   repo: true,
   webhookId: true,
   isActive: true,
+  monthlyAssignmentLimit: true,
+  isCurrentActive: true,
+  monthlyAssignmentsUsed: true,
+  lastMonthlyReset: true,
+  webhookForwardUrl: true,
 });
 
 export const insertTaskSchema = createInsertSchema(tasks).pick({
@@ -514,29 +309,6 @@ export const insertWebhookDeliverySchema = createInsertSchema(
   payloadSummary: true,
 });
 
-export const insertPushSubscriptionSchema = createInsertSchema(
-  pushSubscriptions
-).pick({
-  userId: true,
-  endpoint: true,
-  p256dhKey: true,
-  authKey: true,
-  userAgent: true,
-});
-
-export const insertNotificationSettingsSchema = createInsertSchema(
-  notificationSettings
-).pick({
-  userId: true,
-  taskStarted: true,
-  taskCompleted: true,
-  taskFailed: true,
-  prCreated: true,
-  prMerged: true,
-  ciStatusChanged: true,
-  copilotAssigned: true,
-});
-
 export const insertTaskTemplateSchema = createInsertSchema(taskTemplates).pick({
   userId: true,
   repositoryId: true,
@@ -546,52 +318,6 @@ export const insertTaskTemplateSchema = createInsertSchema(taskTemplates).pick({
   labels: true,
   milestone: true,
   isActive: true,
-});
-
-// mentraOS Insert Schemas
-export const insertMentraGlassSchema = createInsertSchema(mentraGlasses).pick({
-  userId: true,
-  glassId: true,
-  glassName: true,
-  deviceModel: true,
-  pairingToken: true,
-  isActive: true,
-  apiEndpoint: true,
-});
-
-export const insertMentraSessionSchema = createInsertSchema(
-  mentraSessions
-).pick({
-  glassId: true,
-  sessionToken: true,
-  isActive: true,
-  expiresAt: true,
-});
-
-export const insertVoiceCommandSchema = createInsertSchema(voiceCommands).pick({
-  userId: true,
-  glassId: true,
-  originalText: true,
-  normalizedCommand: true,
-  commandType: true,
-  commandParams: true,
-  executionStatus: true,
-  result: true,
-  errorMessage: true,
-});
-
-export const insertGlassNotificationSchema = createInsertSchema(
-  glassNotifications
-).pick({
-  userId: true,
-  glassId: true,
-  notificationType: true,
-  title: true,
-  message: true,
-  imageUrl: true,
-  imageData: true,
-  deliveryStatus: true,
-  mentraMessageId: true,
 });
 
 export const insertIssuePrioritySchema = createInsertSchema(issuePriorities).pick({
@@ -613,28 +339,8 @@ export type InsertTaskTemplate = z.infer<typeof insertTaskTemplateSchema>;
 export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;
 export type InsertWebhookDelivery = z.infer<typeof insertWebhookDeliverySchema>;
 export type UserSystemState = typeof userSystemState.$inferSelect;
-export type PushSubscription = typeof pushSubscriptions.$inferSelect;
-export type InsertPushSubscription = z.infer<
-  typeof insertPushSubscriptionSchema
->;
-export type NotificationSettings = typeof notificationSettings.$inferSelect;
-export type InsertNotificationSettings = z.infer<
-  typeof insertNotificationSettingsSchema
->;
 export type IssuePriority = typeof issuePriorities.$inferSelect;
 export type InsertIssuePriority = z.infer<typeof insertIssuePrioritySchema>;
-
-// mentraOS Types
-export type MentraGlass = typeof mentraGlasses.$inferSelect;
-export type InsertMentraGlass = z.infer<typeof insertMentraGlassSchema>;
-export type MentraSession = typeof mentraSessions.$inferSelect;
-export type InsertMentraSession = z.infer<typeof insertMentraSessionSchema>;
-export type VoiceCommand = typeof voiceCommands.$inferSelect;
-export type InsertVoiceCommand = z.infer<typeof insertVoiceCommandSchema>;
-export type GlassNotification = typeof glassNotifications.$inferSelect;
-export type InsertGlassNotification = z.infer<
-  typeof insertGlassNotificationSchema
->;
 
 // API Response types
 export interface AppState {
