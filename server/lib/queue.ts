@@ -4,7 +4,7 @@ import { NotificationService, NotificationType } from './notificationService';
 
 export async function startNextIfIdle(userId: string): Promise<void> {
   try {
-    const appState = await databaseStorage.getUserAppState(userId);
+    const appState = await databaseStorage.getAppState(userId);
 
     // Check if system is running and no active task
     if (!appState.systemRunning || appState.activeTask) {
@@ -189,7 +189,7 @@ export async function startNextIfIdle(userId: string): Promise<void> {
 
 export async function markTaskCompleted(taskId: string): Promise<void> {
   try {
-    const task = await databaseStorage.getTaskById(taskId);
+    const task = await databaseStorage.getTask(taskId);
     if (!task) {
       console.error(`Task ${taskId} not found`);
       return;
@@ -199,11 +199,13 @@ export async function markTaskCompleted(taskId: string): Promise<void> {
       status: 'completed',
     });
 
-    // Update monthly counter
-    const systemState = await databaseStorage.getUserSystemState(task.userId);
-    await databaseStorage.updateUserSystemState(task.userId, {
-      monthlyDone: (systemState.monthlyDone || 0) + 1,
-    });
+    // Update monthly counter for the repository
+    const repository = await databaseStorage.getUserRepository(task.userId, task.repositoryId);
+    if (repository) {
+      await databaseStorage.updateUserRepository(repository.id, {
+        monthlyAssignmentsUsed: (repository.monthlyAssignmentsUsed || 0) + 1,
+      });
+    }
 
     console.log(`Task ${taskId} marked as completed`);
 
@@ -238,7 +240,7 @@ export async function markTaskFailed(
   reason?: string
 ): Promise<void> {
   try {
-    const task = await databaseStorage.getTaskById(taskId);
+    const task = await databaseStorage.getTask(taskId);
     if (!task) {
       console.error(`Task ${taskId} not found`);
       return;

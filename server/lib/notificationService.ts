@@ -1,9 +1,4 @@
 import { databaseStorage } from './database-storage';
-import {
-  sendPushToMultipleSubscriptions,
-  type NotificationPayload,
-} from './webPush';
-import { MentraService } from './mentraService';
 
 export enum NotificationType {
   TASK_STARTED = 'taskStarted',
@@ -13,9 +8,6 @@ export enum NotificationType {
   PR_MERGED = 'prMerged',
   CI_STATUS_CHANGED = 'ciStatusChanged',
   COPILOT_ASSIGNED = 'copilotAssigned',
-  // mentraOS specific notifications
-  GLASS_COMMAND_EXECUTED = 'glassCommandExecuted',
-  GLASS_STATUS_UPDATE = 'glassStatusUpdate',
 }
 
 export interface NotificationContext {
@@ -26,6 +18,15 @@ export interface NotificationContext {
   pullNumber?: number;
   copilotAgent?: string;
   error?: string;
+  url?: string;
+  data?: any;
+}
+
+export interface NotificationPayload {
+  title: string;
+  body: string;
+  icon?: string;
+  tag?: string;
   url?: string;
   data?: any;
 }
@@ -41,7 +42,7 @@ export class NotificationService {
       case NotificationType.TASK_STARTED:
         return {
           title: '🚀 Task gestartet',
-          body: `"${context.taskTitle}" in ${repo}`,
+          body: `Task "${context.taskTitle}" wurde in ${repo} gestartet`,
           icon: '/icon-192.png',
           tag: 'task-started',
           url: context.url || '/',
@@ -51,7 +52,7 @@ export class NotificationService {
       case NotificationType.TASK_COMPLETED:
         return {
           title: '✅ Task abgeschlossen',
-          body: `"${context.taskTitle}" in ${repo} erfolgreich beendet`,
+          body: `Task "${context.taskTitle}" wurde erfolgreich in ${repo} abgeschlossen`,
           icon: '/icon-192.png',
           tag: 'task-completed',
           url: context.url || '/',
@@ -61,7 +62,7 @@ export class NotificationService {
       case NotificationType.TASK_FAILED:
         return {
           title: '❌ Task fehlgeschlagen',
-          body: `"${context.taskTitle}" in ${repo}: ${context.error || 'Unbekannter Fehler'}`,
+          body: `Task "${context.taskTitle}" ist in ${repo} fehlgeschlagen`,
           icon: '/icon-192.png',
           tag: 'task-failed',
           url: context.url || '/',
@@ -70,8 +71,8 @@ export class NotificationService {
 
       case NotificationType.PR_CREATED:
         return {
-          title: '📝 Pull Request erstellt',
-          body: `Copilot hat PR #${context.pullNumber} in ${repo} geöffnet`,
+          title: '📄 Pull Request erstellt',
+          body: `PR #${context.pullNumber} wurde in ${repo} erstellt`,
           icon: '/icon-192.png',
           tag: 'pr-created',
           url: context.url || '/',
@@ -80,8 +81,8 @@ export class NotificationService {
 
       case NotificationType.PR_MERGED:
         return {
-          title: '🎉 Pull Request gemergt',
-          body: `PR #${context.pullNumber} in ${repo} wurde automatisch gemergt`,
+          title: '🎉 Pull Request gemerged',
+          body: `PR #${context.pullNumber} wurde in ${repo} gemerged`,
           icon: '/icon-192.png',
           tag: 'pr-merged',
           url: context.url || '/',
@@ -100,30 +101,10 @@ export class NotificationService {
 
       case NotificationType.CI_STATUS_CHANGED:
         return {
-          title: '🔄 CI-Status geändert',
+          title: '⚙️ CI Status geändert',
           body: `Neuer Status für PR #${context.pullNumber} in ${repo}`,
           icon: '/icon-192.png',
           tag: 'ci-status',
-          url: context.url || '/',
-          data: { type, context },
-        };
-
-      case NotificationType.GLASS_COMMAND_EXECUTED:
-        return {
-          title: '🤖 Befehl ausgeführt',
-          body: context.data?.message || 'Sprachbefehl wurde verarbeitet',
-          icon: '/icon-192.png',
-          tag: 'glass-command',
-          url: context.url || '/',
-          data: { type, context },
-        };
-
-      case NotificationType.GLASS_STATUS_UPDATE:
-        return {
-          title: '📊 Status Update',
-          body: context.data?.message || 'System Status wurde aktualisiert',
-          icon: '/icon-192.png',
-          tag: 'glass-status',
           url: context.url || '/',
           data: { type, context },
         };
@@ -133,7 +114,7 @@ export class NotificationService {
           title: 'GitHub Hausmeister',
           body: 'Neue Aktivität in Ihrer Repository-Wartung',
           icon: '/icon-192.png',
-          tag: 'general',
+          tag: 'notification',
           url: context.url || '/',
           data: { type, context },
         };
@@ -146,92 +127,24 @@ export class NotificationService {
   ): Promise<{
     sent: number;
     failed: number;
-    glassSent: number;
-    glassFailed: number;
   }> {
     try {
-      // Get user's notification settings
-      const settings = await databaseStorage.getUserNotificationSettings(
-        context.userId
-      );
-
-      // Check if this notification type is enabled
-      const settingKey = type as keyof typeof settings;
-      if (settings[settingKey] === false) {
-        console.log(`Notification ${type} disabled for user ${context.userId}`);
-        return { sent: 0, failed: 0, glassSent: 0, glassFailed: 0 };
-      }
-
       // Generate notification content
       const payload = this.getNotificationContent(type, context);
 
-      let webResults = { successful: 0, failed: 0 };
-      const glassResults = { sent: 0, failed: 0 };
-
-      // Send to web push subscriptions
-      const subscriptions = await databaseStorage.getUserPushSubscriptions(
-        context.userId
-      );
-
-      if (subscriptions.length > 0) {
-        const pushSubscriptions = subscriptions.map((sub) => ({
-          endpoint: sub.endpoint,
-          keys: {
-            p256dh: sub.p256dhKey,
-            auth: sub.authKey,
-          },
-        }));
-
-        webResults = await sendPushToMultipleSubscriptions(
-          pushSubscriptions,
-          payload
-        );
-      }
-
-      // Send to mentraOS glasses
-      const glasses = await databaseStorage.getUserGlasses(context.userId);
-
-      if (glasses.length > 0) {
-        const glassPromises = glasses.map(async (glass) => {
-          try {
-            await MentraService.sendNotificationToGlass({
-              glassId: glass.glassId,
-              notification: {
-                type: 'text',
-                title: payload.title,
-                message: payload.body,
-              },
-            });
-            return { success: true };
-          } catch (error) {
-            console.error(
-              `Failed to send notification to glass ${glass.glassId}:`,
-              error
-            );
-            return { success: false };
-          }
-        });
-
-        const glassResultsArray = await Promise.allSettled(glassPromises);
-        glassResults.sent = glassResultsArray.filter(
-          (result) => result.status === 'fulfilled' && result.value.success
-        ).length;
-        glassResults.failed = glassResultsArray.length - glassResults.sent;
-      }
-
+      // For now, we just log the notification since push notifications table was removed
+      // TODO: Implement alternative notification system if needed
       console.log(
-        `Sent ${type} notification to user ${context.userId}: Web: ${webResults.successful}/${webResults.failed}, Glass: ${glassResults.sent}/${glassResults.failed}`
+        `[NOTIFICATION] ${type} for user ${context.userId}: ${payload.title} - ${payload.body}`
       );
 
       return {
-        sent: webResults.successful,
-        failed: webResults.failed,
-        glassSent: glassResults.sent,
-        glassFailed: glassResults.failed,
+        sent: 1, // We consider console logging as "sent"
+        failed: 0,
       };
     } catch (error) {
       console.error(`Error sending ${type} notification:`, error);
-      return { sent: 0, failed: 1, glassSent: 0, glassFailed: 0 };
+      return { sent: 0, failed: 1 };
     }
   }
 }

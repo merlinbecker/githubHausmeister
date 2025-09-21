@@ -33,7 +33,6 @@ import { ServiceFactory } from './lib/service-factory';
 import { isMockModeEnabled } from './lib/feature-flags';
 import type { MockAuthService } from './lib/mock-auth-service';
 import { initializeWebPush } from './lib/webPush';
-import { MentraService } from './lib/mentraService';
 
 // Extend session types
 declare module 'express-session' {
@@ -391,7 +390,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     requireAuth,
     async (req: AuthenticatedRequest, res) => {
       try {
-        const appState = await databaseStorage.getUserAppState(req.user!.id);
+        const appState = await databaseStorage.getAppState(req.user!.id);
         res.json(appState);
       } catch (error) {
         console.error('Error getting app state:', error);
@@ -406,8 +405,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     requireAuth,
     async (req: AuthenticatedRequest, res) => {
       try {
-        const user = await databaseStorage.getUserById(req.user!.id);
-        res.json({ forwardUrl: user?.webhookForwardUrl || null });
+        const appState = await databaseStorage.getAppState(req.user!.id);
+        const currentRepo = appState.repositories.find(r => r.isCurrentActive);
+        res.json({ forwardUrl: currentRepo?.webhookForwardUrl || null });
       } catch (error) {
         console.error('Error getting webhook forward URL:', error);
         res.status(500).json({ error: 'Failed to get webhook forward URL' });
@@ -438,7 +438,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
-        await databaseStorage.updateUser(req.user!.id, {
+        const appState = await databaseStorage.getAppState(req.user!.id);
+        const currentRepo = appState.repositories.find(r => r.isCurrentActive);
+        
+        if (!currentRepo) {
+          return res.status(400).json({ error: 'No active repository selected' });
+        }
+
+        await databaseStorage.updateUserRepository(currentRepo.id, {
           webhookForwardUrl: forwardUrl || null,
         });
 

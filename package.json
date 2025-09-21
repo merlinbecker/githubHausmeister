@@ -13,6 +13,8 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "db:push": "drizzle-kit push",
+    "db:migrate": "tsx scripts/run-migration.ts",
+    "db:rollback": "tsx scripts/rollback-migration.ts",
     "generate-vapid-keys": "tsx scripts/generate-vapid-keys.ts",
     "test": "vitest",
     "test:ui": "vitest --ui",
