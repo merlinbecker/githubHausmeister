@@ -6,19 +6,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { Link } from 'wouter';
 import StatusOverview from '@/components/StatusOverview';
 import ActiveTaskCard from '@/components/ActiveTaskCard';
-import TaskQueue from '@/components/TaskQueue';
-import TaskCreationForm from '@/components/TaskCreationForm';
-import TemplateEditor from '@/components/TemplateEditor';
 import RepositoryManager from '@/components/RepositoryManager';
 import RepositoryIssueManager from '@/components/RepositoryIssueManager';
-import WebhookStatus from '@/components/WebhookStatus';
-import WebhookMonitor from '@/components/WebhookMonitor';
 import SystemControls from '@/components/SystemControls';
-import { NotificationSettings } from '@/components/NotificationSettings';
 import { WebhookSettings } from '@/components/WebhookSettings';
-import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
 
-import { Github, LogOut, User, Wrench } from 'lucide-react';
+import { Github, LogOut, User } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -81,24 +74,6 @@ export default function Dashboard() {
               </span>
             </div>
 
-            {/* Developer Tools Menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm">
-                  <Wrench className="h-4 w-4 mr-2" />
-                  Dev Tools
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem asChild>
-                  <Link href="/dev-tools" className="cursor-pointer">
-                    <Wrench className="h-4 w-4 mr-2" />
-                    Debug & Test Tools
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
             {user && (
               <div className="flex items-center space-x-3">
                 <div className="flex items-center space-x-2">
@@ -130,8 +105,6 @@ export default function Dashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        <PWAInstallPrompt />
-
         <StatusOverview appState={appState} />
 
         {appState?.activeTask && (
@@ -148,31 +121,12 @@ export default function Dashboard() {
 
         <RepositoryIssueManager repositories={appState?.repositories || []} />
 
-        <TaskQueue queue={appState?.queue || []} onRefresh={refetch} />
-
-        <TaskCreationForm
-          repositories={appState?.repositories || []}
-          onRefresh={refetch}
-        />
-
-        <TemplateEditor
-          repositories={appState?.repositories || []}
-        />
-
-        <WebhookStatus />
-
-        <WebhookMonitor
-          repositories={appState?.repositories || []}
-          onRefresh={refetch}
-        />
-
         <SystemControls
           systemRunning={appState?.systemRunning || false}
           onRefresh={refetch}
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <NotificationSettings />
           <WebhookSettings />
         </div>
       </main>

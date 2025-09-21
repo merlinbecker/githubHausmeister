@@ -1,6 +1,5 @@
 import { databaseStorage } from './database-storage';
 import { createIssue } from './github-rest';
-import { NotificationService, NotificationType } from './notificationService';
 
 export async function startNextIfIdle(userId: string): Promise<void> {
   try {
@@ -91,16 +90,9 @@ export async function startNextIfIdle(userId: string): Promise<void> {
         `Task ${nextTask.id} linked to existing issue #${duplicateCheck.existingIssue.number}`
       );
 
-      // Send notification for linked task
-      await NotificationService.sendNotification(
-        NotificationType.TASK_STARTED,
-        {
-          userId,
-          repositoryName: `${nextTask.owner}/${nextTask.repo}`,
-          taskTitle: nextTask.title,
-          issueNumber: duplicateCheck.existingIssue.number,
-          url: `https://github.com/${nextTask.owner}/${nextTask.repo}/issues/${duplicateCheck.existingIssue.number}`,
-        }
+      // Task linked to existing issue - log status
+      console.log(
+        `📧 Task notification: Task ${nextTask.id} linked to existing issue #${duplicateCheck.existingIssue.number} for ${nextTask.owner}/${nextTask.repo}`
       );
 
       return;
@@ -174,14 +166,10 @@ export async function startNextIfIdle(userId: string): Promise<void> {
 
     console.log(`Task ${nextTask.id} started successfully`);
 
-    // Send notification
-    await NotificationService.sendNotification(NotificationType.TASK_STARTED, {
-      userId,
-      repositoryName: `${nextTask.owner}/${nextTask.repo}`,
-      taskTitle: nextTask.title,
-      issueNumber: issue.number,
-      url: `https://github.com/${nextTask.owner}/${nextTask.repo}/issues/${issue.number}`,
-    });
+    // Log task started
+    console.log(
+      `📧 Task notification: Task started for ${nextTask.owner}/${nextTask.repo} - Issue #${issue.number}`
+    );
   } catch (error) {
     console.error('Error starting next task:', error);
   }
@@ -209,21 +197,9 @@ export async function markTaskCompleted(taskId: string): Promise<void> {
 
     console.log(`Task ${taskId} marked as completed`);
 
-    // Send notification
-    await NotificationService.sendNotification(
-      NotificationType.TASK_COMPLETED,
-      {
-        userId: task.userId,
-        repositoryName: `${task.owner}/${task.repo}`,
-        taskTitle: task.title,
-        issueNumber: task.issueNumber ?? undefined,
-        pullNumber: task.pullNumber ?? undefined,
-        url: task.pullNumber
-          ? `https://github.com/${task.owner}/${task.repo}/pull/${task.pullNumber}`
-          : task.issueNumber
-            ? `https://github.com/${task.owner}/${task.repo}/issues/${task.issueNumber}`
-            : '/',
-      }
+    // Log task completed
+    console.log(
+      `📧 Task notification: Task completed for ${task.owner}/${task.repo} - ${task.title}`
     );
 
     // Start next task if available
@@ -254,17 +230,10 @@ export async function markTaskFailed(
       `Task ${taskId} marked as failed: ${reason || 'Unknown error'}`
     );
 
-    // Send notification
-    await NotificationService.sendNotification(NotificationType.TASK_FAILED, {
-      userId: task.userId,
-      repositoryName: `${task.owner}/${task.repo}`,
-      taskTitle: task.title,
-      issueNumber: task.issueNumber ?? undefined,
-      error: reason,
-      url: task.issueNumber
-        ? `https://github.com/${task.owner}/${task.repo}/issues/${task.issueNumber}`
-        : '/',
-    });
+    // Log task failed
+    console.log(
+      `📧 Task notification: Task failed for ${task.owner}/${task.repo} - ${task.title} (${reason})`
+    );
 
     // Start next task if available
     setTimeout(() => {
