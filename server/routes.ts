@@ -32,8 +32,6 @@ import {
 import { ServiceFactory } from './lib/service-factory';
 import { isMockModeEnabled } from './lib/feature-flags';
 import type { MockAuthService } from './lib/mock-auth-service';
-import { initializeWebPush } from './lib/webPush';
-
 // Extend session types
 declare module 'express-session' {
   interface Session {
@@ -44,11 +42,6 @@ declare module 'express-session' {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Initialize web-push with VAPID keys
-  const webPushInitialized = initializeWebPush();
-  if (!webPushInitialized) {
-    console.warn('⚠️ Push notifications will not be available');
-  }
 
   // Session configuration
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
@@ -1092,15 +1085,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Error getting stats:', error);
       res.status(500).json({ error: 'Failed to get statistics' });
     }
-  });
-
-  // Push notification endpoints
-
-  // Get VAPID public key
-  app.get('/api/push/vapid-public-key', (req, res) => {
-    res.json({
-      publicKey: process.env.VAPID_PUBLIC_KEY,
-    });
   });
 
   // Subscribe to push notifications

@@ -6,11 +6,9 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useAuth } from '@/hooks/useAuth';
 import Dashboard from '@/pages/dashboard';
-import DeveloperTools from '@/pages/developer-tools';
 import Login from '@/pages/login';
 import MockLoginPage from '@/pages/mock-login';
 import NotFound from '@/pages/not-found';
-import { StartupNotificationPrompt } from '@/components/StartupNotificationPrompt';
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -32,7 +30,6 @@ function Router() {
         {isAuthenticated ? (
           <>
             <Route path="/" component={Dashboard} />
-            <Route path="/dev-tools" component={DeveloperTools} />
             <Route component={NotFound} />
           </>
         ) : (
@@ -42,8 +39,6 @@ function Router() {
           </>
         )}
       </Switch>
-      {/* Show notification prompt only for authenticated users */}
-      {isAuthenticated && <StartupNotificationPrompt />}
     </div>
   );
 }
